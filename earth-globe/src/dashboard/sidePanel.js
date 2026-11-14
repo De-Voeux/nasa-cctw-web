@@ -1,9 +1,7 @@
 import { chevronLeft } from "./icons.js"
-import { LEVELS, DEMO } from "../data/stress.js"
+import { LEVELS } from "../data/stress.js"
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c])
-const DAY = new Intl.DateTimeFormat("en", { weekday: "short", day: "numeric", month: "short" })
-const KIND = { history: "History · observed", now: "Today · analysis", forecast: "Forecast · model" }
 const chevronRight = `<svg class="rc-go" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>`
 
 /**
@@ -45,15 +43,6 @@ export class SidePanel {
     this.root.dataset.mode = mode
   }
 
-  _status() {
-    const parts = []
-    if (DEMO) parts.push(`<p class="notice demo">Demo values: the stress levels below are made up to review the design. They are not data.</p>`)
-    if (this.day) {
-      parts.push(`<p class="date-status">${DAY.format(this.day.date)} · ${KIND[this.day.kind]} — environmental layers not ingested yet</p>`)
-    }
-    return parts.join("")
-  }
-
   /**
    * @param {{loc:any, a:{level:string, condition:string}}[]} rows  already filtered and sorted
    */
@@ -79,8 +68,6 @@ export class SidePanel {
       .join("")
 
     this.body.innerHTML = `
-      ${this._status()}
-      <p class="notice">${rows.length} ${rows.length === 1 ? "place" : "places"} from unverified research leads, not confirmed cases, farm locations or outbreak counts.</p>
       <div class="region-list">${cards || `<p class="empty">No place matches the filters.</p>`}</div>`
   }
 
@@ -96,7 +83,6 @@ export class SidePanel {
         <button class="back" data-back>${chevronLeft} All locations</button>
         <h1>${esc(loc.name)}</h1>
         <p class="sub">${esc(loc.country)}${loc.note ? ` · ${esc(loc.note)}` : ""}</p>
-        ${this._status()}
         <div class="card stress-card">
           <h2>Environmental stress</h2>
           <div class="stress-row">
