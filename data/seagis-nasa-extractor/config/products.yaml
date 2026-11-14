@@ -1,0 +1,11 @@
+# Candidate products, resolved by `seagis-extract catalog` against NASA CMR (metadata only).
+# Facts (IDs, units, fills, coverage, sizes) are written to outputs/catalog.json, not here.
+# See docs/CATALOG_REVIEW.md. Chlorophyll-a is out of scope (decision 2026-11-15).
+
+mur_sst:
+  role: primary
+  short_name: MUR-JPL-L4-GLOB-v4.1
+  granule_pattern: "*-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1"
+  variables: [analysed_sst, analysis_error, mask, sea_ice_fraction]
+  harmony_service: sds/HOSS-geographic   # bbox / shape / temporal / variable subset -> NetCDF-4
+

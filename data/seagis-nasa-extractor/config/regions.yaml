@@ -1,0 +1,24 @@
+# 18 parent regions (normalized from 24 literature entries in
+# ../../research/evidence/CANDIDATE_HOST_REGIONS.md — all still unverified leads).
+# No coordinates on purpose: geometry comes from resolved, licensed boundary sources
+# via `regions build`. Status values: candidate | literature_verified | field_verified.
+regions:
+  - {id: ID-SEA-SUL,    country: ID, name: Southeast Sulawesi,  subregions: [Buton, Muna, Wakatobi, Konawe], status: candidate}
+  - {id: ID-SOUTH-SUL,  country: ID, name: South Sulawesi,      subregions: [Takalar, Jeneponto, Pangkep, Selayar], status: candidate}
+  - {id: ID-N-JAVA-SEA, country: ID, name: North Java Sea,      subregions: [Kepulauan Seribu], status: candidate, review_notes: must resolve study-specific coastal sectors}
+  - {id: ID-CENT-SUL,   country: ID, name: Central Sulawesi,    subregions: [Banggai, Morowali, Tomini Gulf], status: candidate}
+  - {id: ID-NTB,        country: ID, name: West Nusa Tenggara,  subregions: [East Lombok, Sumbawa, Bima], status: candidate}
+  - {id: ID-N-KAL,      country: ID, name: North Kalimantan,    subregions: [Nunukan, Tarakan, Sebatik], status: candidate}
+  - {id: ID-MALUKU,     country: ID, name: Maluku,              subregions: [Seram, Kei, Aru], status: candidate, review_notes: validate administrative coverage}
+  - {id: PH-NE-BOHOL,   country: PH, name: Northeastern Bohol,  subregions: [], status: candidate, review_notes: identify actual study coast}
+  - {id: PH-TAWI,       country: PH, name: Tawi-Tawi,           subregions: [Bongao, Sitangkai, Sibutu], status: candidate}
+  - {id: PH-PANG,       country: PH, name: Pangasinan,          subregions: [Bolinao, Lingayen Gulf], status: candidate}
+  - {id: PH-S-LUZON,    country: PH, name: Southern Luzon,      subregions: [], status: candidate, review_notes: study-specific extent required}
+  - {id: PH-PALAWAN,    country: PH, name: Palawan,             subregions: [Coron, Taytay, Roxas], status: candidate}
+  - {id: PH-ZAMBOANGA,  country: PH, name: Zamboanga City,      subregions: [], status: candidate, review_notes: study-specific coast}
+  - {id: PH-DAVAO-N,    country: PH, name: Davao del Norte,     subregions: [], status: candidate, review_notes: validate coastal extent; Samal is administratively separate}
+  - {id: PH-E-SAMAR,    country: PH, name: Eastern Samar,       subregions: [], status: candidate, review_notes: study-specific coastal bays}
+  - {id: PH-BATANGAS,   country: PH, name: Batangas,            subregions: [], status: candidate, review_notes: study-specific coastal bays}
+  - {id: MY-SABAH,      country: MY, name: Sabah,               subregions: [Semporna], status: candidate, review_notes: east Sabah; expand only with evidence}
+  - {id: VN-KHANH-HOA,  country: VN, name: Khanh Hoa,           subregions: [Nha Trang Bay, Cam Ranh], status: candidate}
+pilot_regions: [PH-TAWI, ID-SOUTH-SUL]
