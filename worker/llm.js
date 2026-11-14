@@ -16,9 +16,12 @@ const DEFAULT_BASE = "https://openrouter.ai/api/v1"
 
 // Free models on OpenRouter that advertise tool calling (checked 2026-11-15 against
 // https://openrouter.ai/api/v1/models). The free list changes often: override with ASK_MODELS.
+// Order matters: each request starts at the top. On 2026-11-15 the Gemma model answered 429
+// (busy upstream) on every live request and Nemotron answered, so Nemotron goes first and
+// Gemma stays as the next fallback. Re-check from the `llm_fallback` log lines now and then.
 export const DEFAULT_MODELS = [
-  "google/gemma-4-31b-it:free",
   "nvidia/nemotron-3-ultra-550b-a55b:free",
+  "google/gemma-4-31b-it:free",
   "inclusionai/ling-3.2-flash:free",
   "openrouter/free",
 ]
