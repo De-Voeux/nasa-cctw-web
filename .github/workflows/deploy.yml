@@ -53,8 +53,8 @@ jobs:
         working-directory: earth-globe
         run: npm test
 
-      - name: Test the assistant Worker and the corpus tools
-        run: node --test worker/ask.test.mjs scripts/rag/corpus.test.mjs
+      - name: Test the assistant Worker, the corpus tools and the data loader
+        run: node --test worker/ask.test.mjs scripts/rag/corpus.test.mjs scripts/env/parse.test.mjs
 
       - name: Build site bundle
         run: ./scripts/build-site.sh
