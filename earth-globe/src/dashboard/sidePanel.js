@@ -1,106 +1,114 @@
-import { waveIcon, chevronLeft } from "./icons.js"
-import { SOURCE } from "../data/reportedLocations.js"
+import { chevronLeft } from "./icons.js"
+import { LEVELS, DEMO } from "../data/stress.js"
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c])
 const DAY = new Intl.DateTimeFormat("en", { weekday: "short", day: "numeric", month: "short" })
 const KIND = { history: "History · observed", now: "Today · analysis", forecast: "Forecast · model" }
+const chevronRight = `<svg class="rc-go" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>`
 
 /**
- * Right-hand panel: location list (default), location detail, or an ask-bar answer.
+ * Right-hand panel body: the region cards (default) or one region's detail.
+ * Filtering, sorting and the assessment of each region happen in main.js; this
+ * only draws what it is given.
  */
 export class SidePanel {
   /**
    * @param {HTMLElement} body
-   * @param {{locations:any[], onSelect:(loc:any)=>void, onBack:()=>void}} opts
+   * @param {{root:HTMLElement, onSelect:(id:string)=>void, onBack:()=>void}} opts
+   *   root: the panel element, which gets data-mode="list"|"detail" for CSS
    */
-  constructor(body, { locations, onSelect, onBack }) {
+  constructor(body, { root, onSelect, onBack }) {
     this.body = body
-    this.locations = locations
+    this.root = root
     this.onSelect = onSelect
     this.onBack = onBack
-    this.filter = ""
     this.day = null
     this.selectedId = null
-    this.answer = null
+    this.mode = "list"
+    this.lastRows = []
 
     body.addEventListener("click", (e) => {
-      const row = e.target.closest("[data-loc]")
-      if (row) {
-        const loc = this.locations.find((l) => l.id === row.dataset.loc)
-        if (loc) this.onSelect(loc)
-        return
-      }
+      const card = e.target.closest("[data-loc]")
+      if (card) return this.onSelect(card.dataset.loc)
       if (e.target.closest("[data-back]")) this.onBack()
     })
   }
 
-  setFilter(q) {
-    this.filter = q.trim().toLowerCase()
-    this.answer = null
-    this.showList()
-  }
-
   setDay(day) {
     this.day = day
-    if (this.mode === "list") this.showList()
-    if (this.mode === "detail") this.showLocation(this.locations.find((l) => l.id === this.selectedId))
+    if (this.mode === "list") this.showList(this.lastRows)
+    else if (this._detail) this.showLocation(this._detail.loc, this._detail.a)
   }
 
-  _dateStatus() {
-    if (!this.day) return ""
-    return `<p class="date-status">${DAY.format(this.day.date)} · ${KIND[this.day.kind]} — environmental layers not ingested yet</p>`
+  _setMode(mode) {
+    this.mode = mode
+    this.root.dataset.mode = mode
   }
 
-  showList() {
-    this.mode = "list"
+  _status() {
+    const parts = []
+    if (DEMO) parts.push(`<p class="notice demo">Demo values: the stress levels below are made up to review the design. They are not data.</p>`)
+    if (this.day) {
+      parts.push(`<p class="date-status">${DAY.format(this.day.date)} · ${KIND[this.day.kind]} — environmental layers not ingested yet</p>`)
+    }
+    return parts.join("")
+  }
+
+  /**
+   * @param {{loc:any, a:{level:string, condition:string}}[]} rows  already filtered and sorted
+   */
+  showList(rows) {
+    this.lastRows = rows
+    this._setMode("list")
     this.selectedId = null
-    const q = this.filter
-    const match = (l) => !q || `${l.name} ${l.country} ${l.note || ""} ${l.taxa.join(" ")}`.toLowerCase().includes(q)
-    const rows = this.locations.filter(match)
-    const byCountry = Map.groupBy
-      ? Map.groupBy(rows, (l) => l.country)
-      : rows.reduce((m, l) => m.set(l.country, [...(m.get(l.country) || []), l]), new Map())
-
-    const groups = [...byCountry.entries()]
-      .sort((a, b) => b[1].length - a[1].length)
-      .map(
-        ([country, locs]) => `
-        <h2 class="group-title">${esc(country)} · ${locs.length}</h2>
-        ${locs
-          .map(
-            (l) => `
-          <button class="loc-row" data-loc="${l.id}">
-            <span class="loc-icon">${waveIcon}</span>
-            <span><span class="name">${esc(l.name)}</span><br>
-            <span class="meta">${l.taxa.length} ${l.taxa.length === 1 ? "taxon" : "taxa"} · ${esc(l.concern)} · unverified</span></span>
-          </button>`,
-          )
-          .join("")}`,
-      )
+    const cards = rows
+      .map(({ loc, a }) => {
+        const lv = LEVELS[a.level]
+        return `
+        <button class="region-card" type="button" data-loc="${loc.id}">
+          <img class="level-icon" src="${lv.icon}" alt="" width="81" height="65" decoding="async">
+          <span class="rc-text">
+            <span class="rc-name">${esc(loc.name)}</span>
+            <span class="rc-sub">${esc(loc.country)}</span>
+            <span class="rc-cond">${esc(a.condition)}</span>
+            <span class="rc-level lv-${a.level}">${lv.label}</span>
+          </span>
+          ${chevronRight}
+        </button>`
+      })
       .join("")
 
     this.body.innerHTML = `
-      <div class="panel-head">
-        <p class="eyebrow">Southeast Asia</p>
-        <h1>Reported ice-ice locations</h1>
-        <p class="muted small">${rows.length} of ${this.locations.length} places named in candidate research leads.</p>
-      </div>
-      ${this._dateStatus()}
-      ${this.answer || ""}
-      <p class="notice">These are unverified mentions from <b>${esc(SOURCE.label)}</b>, not confirmed cases, farm locations, or outbreak counts.</p>
-      ${groups || `<p class="empty">No place matches “${esc(q)}”.</p>`}`
+      ${this._status()}
+      <p class="notice">${rows.length} ${rows.length === 1 ? "place" : "places"} from unverified research leads, not confirmed cases, farm locations or outbreak counts.</p>
+      <div class="region-list">${cards || `<p class="empty">No place matches the filters.</p>`}</div>`
   }
 
-  showLocation(loc) {
-    if (!loc) return this.showList()
-    this.mode = "detail"
+  /** @param {any} loc @param {{level:string, condition:string}} a */
+  showLocation(loc, a) {
+    if (!loc) return this.showList(this.lastRows)
+    this._setMode("detail")
     this.selectedId = loc.id
+    this._detail = { loc, a }
+    const lv = LEVELS[a.level]
     this.body.innerHTML = `
       <div class="detail">
         <button class="back" data-back>${chevronLeft} All locations</button>
         <h1>${esc(loc.name)}</h1>
         <p class="sub">${esc(loc.country)}${loc.note ? ` · ${esc(loc.note)}` : ""}</p>
-        ${this._dateStatus()}
+        ${this._status()}
+        <div class="card stress-card">
+          <h2>Environmental stress</h2>
+          <div class="stress-row">
+            <img class="level-icon" src="${lv.icon}" alt="" width="81" height="65" decoding="async">
+            <div>
+              <span class="rc-level lv-${a.level}">${lv.label}</span>
+              <p class="muted small" style="margin:4px 0 0">${esc(a.condition)}${
+                a.level === "insufficient" ? ". NASA, Copernicus and Open-Meteo layers are not connected to this dashboard yet." : ""
+              }</p>
+            </div>
+          </div>
+        </div>
         <div class="card">
           <h2>Reported concern</h2>
           <span class="pill">${esc(loc.concern)}</span>
@@ -119,19 +127,7 @@ export class SidePanel {
             <div class="kv"><dt>Marker position</dt><dd>Approximate</dd></div>
           </dl>
         </div>
-        <div class="card">
-          <h2>Environmental stress</h2>
-          <p class="muted small" style="margin:0">Insufficient data — NASA, Copernicus and Open-Meteo layers are not connected to this dashboard yet.</p>
-        </div>
       </div>`
-    this.body.scrollTop = 0
-  }
-
-  /** Show an ask-bar answer above the list. `html` must already be escaped. */
-  showAnswer(question, html) {
-    this.answer = `<div class="answer"><p class="q">“${esc(question)}”</p>${html}</div>`
-    this.filter = ""
-    this.showList()
     this.body.scrollTop = 0
   }
 }
