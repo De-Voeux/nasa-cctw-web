@@ -24,7 +24,7 @@ import shutil
 import time
 import urllib.parse
 from collections import defaultdict
-from concurrent.futures import FIRST_EXCEPTION, ThreadPoolExecutor, wait
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from pathlib import Path
 
 from . import auth, estimate, process, validate
@@ -104,14 +104,15 @@ def _open_nc(path: Path):
 class Backfill:
     def __init__(self, root: Path, cfg: dict, plan: dict, *, out_dir: Path, raw_dir: Path, processed_dir: Path,
                  membership_dir: Path, harmony: HarmonyClient | None = None, cm_opener=None, log=print,
-                 sleep=time.sleep):
+                 sleep=time.sleep, concurrency: int | None = None):
         self.root, self.cfg, self.plan = root, cfg, plan
         self.out_dir, self.raw_dir, self.processed_dir, self.membership_dir = out_dir, raw_dir, processed_dir, membership_dir
         self.log, self.sleep = log, sleep
         self.manifest = Manifest(out_dir / "fetch_manifest.jsonl")
         ex = plan["execution"]
         self.retries = int(ex.get("retries", 3))
-        self.concurrency = int(ex.get("concurrency", 2))
+        # speed only: how many units run at once; not part of what is downloaded, so not in the plan hash
+        self.concurrency = int(concurrency or ex.get("concurrency", 2))
         self.discard_raw = ex.get("raw_retention", "discard_after_validation") == "discard_after_validation"
         self.grid = estimate.MurGrid()
         self.cid = plan["dataset"]["collection"]["concept_id"]
@@ -229,12 +230,7 @@ class Backfill:
                 self.sleep(min(60, 2 ** attempt))
 
     def _done(self, u: dict) -> bool:
-        rec = self.manifest.items.get(u["key"])
-        if not rec or rec.get("status") != "ok":
-            return False
-        files = rec.get("files") or ([{"path": rec["path"], "sha256": rec["sha256"]}] if rec.get("path") else [])
-        return all(Path(f["path"]).exists() and hashlib.sha256(Path(f["path"]).read_bytes()).hexdigest() == f["sha256"]
-                   for f in files)
+        return unit_files_ok(self.manifest.items.get(u["key"]))
 
     def run(self, units: list[dict], max_units: int | None = None) -> dict:
         free = shutil.disk_usage(self.root).free
@@ -263,7 +259,7 @@ class Backfill:
             futs = {pool.submit(self._run_one, u): u for u in mur}
             pending = set(futs)
             while pending:
-                done, pending = wait(pending, return_when=FIRST_EXCEPTION)
+                done, pending = wait(pending, return_when=FIRST_COMPLETED)   # report each unit as it lands
                 for f in done:
                     if f.exception():
                         for p in pending:
@@ -284,6 +280,51 @@ class Backfill:
         import json
         (self.out_dir / "fetch_summary.json").write_text(json.dumps(summary, indent=1))
         return summary
+
+
+def unit_files_ok(rec: dict | None) -> bool:
+    """A manifest record is a finished unit whose output files still match their SHA-256."""
+    if not rec or rec.get("status") != "ok":
+        return False
+    files = rec.get("files") or ([{"path": rec["path"], "sha256": rec["sha256"]}] if rec.get("path") else [])
+    return all(Path(f["path"]).exists() and hashlib.sha256(Path(f["path"]).read_bytes()).hexdigest() == f["sha256"]
+               for f in files)
+
+
+def status(units: list[dict], manifest_path: Path, lock_path: Path, raw_dir: Path, log_path: Path | None = None,
+           now: float | None = None) -> dict:
+    """Read-only progress of a (running) fetch: nothing is requested, nothing is written."""
+    import os
+    import re
+    now = time.time() if now is None else now
+    items = Manifest(manifest_path).items
+    keys = [u["key"] for u in units]
+    done = [k for k in keys if unit_files_ok(items.get(k))]
+    failed = [k for k in keys if (items.get(k) or {}).get("status") == "failed"]
+    running, started = False, None
+    if lock_path.exists():
+        try:
+            os.kill(int(lock_path.read_text().strip()), 0)
+            running, started = True, lock_path.stat().st_mtime
+        except (ValueError, ProcessLookupError, PermissionError):
+            pass
+    done_at_start = None
+    if log_path and log_path.exists():
+        hits = re.findall(r"^(\d+) units, (\d+) already done, running (\d+)$", log_path.read_text(), re.M)
+        if hits:
+            done_at_start = int(hits[-1][1])
+    out = {"running": running, "units_total": len(keys), "done": len(done), "remaining": len(keys) - len(done),
+           "failed_last_attempt": failed, "raw_files_in_progress": sum(1 for p in raw_dir.rglob("*") if p.is_file())
+           if raw_dir.exists() else 0, "elapsed_min": None, "done_this_run": None, "eta_min": None}
+    if running and started:
+        el = (now - started) / 60
+        out["elapsed_min"] = round(el, 1)
+        if done_at_start is not None:
+            n = len(done) - done_at_start
+            out["done_this_run"] = n
+            if n > 0:
+                out["eta_min"] = round(el / n * out["remaining"], 1)
+    return out
 
 
 class RunLock:

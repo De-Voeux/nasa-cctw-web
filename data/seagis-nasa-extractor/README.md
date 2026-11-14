@@ -22,7 +22,7 @@ uv venv .venv && uv pip install --python .venv '.[dev]'   # reinstall after code
 
 Install non-editable: in this iCloud-synced folder macOS keeps flagging `.pth` files hidden, and Python then skips them, so an editable install breaks (`No module named 'seagis_extractor'`). Without installing: `PYTHONPATH=src .venv/bin/python -m seagis_extractor catalog`.
 
-Python CLI that will extract daily regional coastal SST (GHRSST MUR L4) and Copernicus Marine surface no3, po4, pH and salinity ([docs/COPERNICUS_REVIEW.md](docs/COPERNICUS_REVIEW.md)) for the candidate seaweed regions, over the period set in [config/extraction.yaml](config/extraction.yaml) (currently 2025-11-15 to 2026-11-14 for all sources; narrowed from 2022-06-01 on 2026-11-15). It is the NASA ingestion piece of the [roadmap](../../docs/ROADMAP.md) ("Data foundation") and must follow the project [methodology guardrails](../../docs/METHODOLOGY.md).
+Python CLI that will extract daily regional coastal SST (GHRSST MUR L4) and Copernicus Marine surface no3, po4, pH and salinity ([docs/COPERNICUS_REVIEW.md](docs/COPERNICUS_REVIEW.md)) for the candidate seaweed regions, over the period set in [config/extraction.yaml](config/extraction.yaml) (currently 2026-08-15 to 2026-11-14 for all sources; narrowed on 2026-11-15). It is the NASA ingestion piece of the [roadmap](../../docs/ROADMAP.md) ("Data foundation") and must follow the project [methodology guardrails](../../docs/METHODOLOGY.md).
 
 ## Ground rules
 

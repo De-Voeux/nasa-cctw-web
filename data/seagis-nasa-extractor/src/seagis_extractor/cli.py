@@ -162,6 +162,54 @@ def cmd_pilot(args) -> int:
     return 0 if report["status"] == "PASS" else 4
 
 
+MAX_CONCURRENCY = 16
+
+
+def _concurrency(v: str) -> int:
+    n = int(v)
+    if not 1 <= n <= MAX_CONCURRENCY:
+        raise argparse.ArgumentTypeError(f"must be 1..{MAX_CONCURRENCY}")
+    return n
+
+
+def cmd_status(args) -> int:
+    import json
+
+    from . import backfill
+
+    cfg = load_config(Path(args.config))
+    root = cfg["_root"]
+    plan = json.loads((Path(args.plan) if args.plan else root / "outputs/plan.json").read_text())
+    regions = None
+    if args.batch is not None:
+        batches = (yaml.safe_load((root / "config/fetch_batches.yaml").read_text()) or {}).get("batches") or {}
+        if args.batch not in batches:
+            print(f"unknown batch {args.batch}; defined: {sorted(batches)}", file=sys.stderr)
+            return 2
+        regions = batches[args.batch]
+    units = backfill.build_units(plan, cfg, regions=regions)
+    log = root / f"outputs/fetch/batch{args.batch}.log" if args.batch is not None else None
+    s = backfill.status(units, root / "outputs/fetch/fetch_manifest.jsonl", root / "outputs/fetch/fetch.lock",
+                        root / "data/raw/fetch", log)
+    scope = f"batch {args.batch}" if args.batch is not None else "all batches"
+    print(f"{scope}: {'RUNNING' if s['running'] else 'not running'}")
+    print(f"  done {s['done']}/{s['units_total']} units, remaining {s['remaining']}")
+    if s["running"]:
+        print(f"  elapsed {s['elapsed_min']} min" + (f", finished this run {s['done_this_run']}" if s["done_this_run"] is not None else ""))
+        print(f"  ETA {s['eta_min']} min" if s["eta_min"] is not None else
+              "  ETA: not yet (no unit finished in this run, or no batch log to read the start from)")
+        print(f"  raw daily files in progress: {s['raw_files_in_progress']}")
+    if s["failed_last_attempt"] and s["running"]:
+        print(f"  {len(s['failed_last_attempt'])} of the remaining failed in an earlier run and are being retried now")
+    elif s["failed_last_attempt"]:
+        print(f"  failed ({len(s['failed_last_attempt'])}), rerun the same fetch command to retry:")
+        for k in s["failed_last_attempt"][:10]:
+            print(f"    {k}")
+        if len(s["failed_last_attempt"]) > 10:
+            print(f"    ... and {len(s['failed_last_attempt']) - 10} more")
+    return 0
+
+
 def cmd_fetch(args) -> int:
     import json
 
@@ -189,7 +237,7 @@ def cmd_fetch(args) -> int:
             print("  " + u["key"])
         cal = (plan.get("transfer_ratios") or {}).get("calibration")
         print(f"Calibrated: {'yes' if cal else 'NO (fetch will refuse)'}; budget {plan['execution'].get('max_download_gb')} GB; "
-              f"concurrency {plan['execution'].get('concurrency')}")
+              f"concurrency {args.concurrency or plan['execution'].get('concurrency')}")
         return 0
     try:
         backfill.verify_fetch_plan(plan, args.approve_plan, root)
@@ -202,7 +250,7 @@ def cmd_fetch(args) -> int:
     try:
         bf = backfill.Backfill(root, cfg, plan, out_dir=root / "outputs/fetch", raw_dir=root / "data/raw/fetch",
                                processed_dir=root / "data/processed", membership_dir=root / "outputs/membership",
-                               log=lambda m: print(m, flush=True))
+                               log=lambda m: print(m, flush=True), concurrency=args.concurrency)
         with backfill.RunLock(root / "outputs/fetch/fetch.lock"):
             summary = bf.run(units, max_units=args.max_units)
     except pilot.FetchGuardError as e:
@@ -253,9 +301,16 @@ def main(argv=None) -> int:
     fe.add_argument("--region", action="append", help="limit to region id (repeatable)")
     fe.add_argument("--batch", type=int, default=None, help="run one batch from execution.batches")
     fe.add_argument("--source", choices=["all", "mur", "copernicus"], default="all")
+    fe.add_argument("--concurrency", type=_concurrency, default=None,
+                    help=f"units run at once (1-{MAX_CONCURRENCY}); overrides execution.concurrency, does not change the plan")
     fe.add_argument("--max-units", type=int, default=None, help="stop after N units (e.g. to measure speed)")
     fe.add_argument("--dry-run", action="store_true", help="count the work; send nothing")
     fe.set_defaults(func=cmd_fetch)
+    st = sub.add_parser("status", help="read-only progress of fetch (done / remaining / ETA)")
+    st.add_argument("--config", default="config/extraction.yaml")
+    st.add_argument("--plan", default=None, help="default outputs/plan.json")
+    st.add_argument("--batch", type=int, default=None, help="batch number; omit for every unit in the plan")
+    st.set_defaults(func=cmd_status)
     for name in ("process", "validate", "export"):
         sp = sub.add_parser(name, help="not implemented yet")
         sp.add_argument("rest", nargs="*")

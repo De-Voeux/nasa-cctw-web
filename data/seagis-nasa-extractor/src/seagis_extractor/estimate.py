@@ -124,6 +124,12 @@ def request_for(grid: MurGrid, geom: shapely.Geometry, m: dict, variables: list[
     h = grid.step / 2
     extent = [round(float(grid.lon(m["j0"])) - h, 4), round(float(grid.lat(m["i0"])) - h, 4),
               round(float(grid.lon(m["j1"])) + h, 4), round(float(grid.lat(m["i1"])) + h, 4)]
+    # Keep every request edge at least a quarter cell inside the expected extent. An edge lying on a
+    # cell boundary (always the case at tile edges) lets Harmony add the neighbouring row/column
+    # (seen 2026-11-15: lat -0.665 returned one extra row and the guard aborted the run).
+    q = grid.step / 4
+    req = [round(max(req[0], extent[0] + q), 4), round(max(req[1], extent[1] + q), 4),
+           round(min(req[2], extent[2] - q), 4), round(min(req[3], extent[3] - q), 4)]
     return {"bbox_w_s_e_n": req, "variables": variables, "expected_cells": m["bbox_cells"],
             "expected_extent_w_s_e_n": extent, "grid_index_range": {"lat": [m["i0"], m["i1"]], "lon": [m["j0"], m["j1"]]}}
 
@@ -179,11 +185,15 @@ def check_request(geom: shapely.Geometry, req: dict, max_cells: int, step: float
     minx, miny, maxx, maxy = geom.bounds
     w, s_, e, n = req["bbox_w_s_e_n"]
     eps = 1e-7   # ~1 cm: float noise at tile edges, not a real gap
-    if not (w <= minx + eps and s_ <= miny + eps and e >= maxx - eps and n >= maxy - eps):
+    ew, es, ee, en = req["expected_extent_w_s_e_n"]
+    q = step / 4   # edges may sit a quarter cell inside the expected extent (see request_for)
+    if not (w <= max(minx, ew + q) + eps and s_ <= max(miny, es + q) + eps
+            and e >= min(maxx, ee - q) - eps and n >= min(maxy, en - q) - eps):
         raise RequestGuardError(f"request {req['bbox_w_s_e_n']} does not cover ROI bounds {geom.bounds}")
     if w < minx - step or s_ < miny - step or e > maxx + step or n > maxy + step:
         raise RequestGuardError(f"request {req['bbox_w_s_e_n']} extends more than one grid cell beyond ROI {geom.bounds}")
-    ew, es, ee, en = req["expected_extent_w_s_e_n"]
+    if w < ew + q - eps or s_ < es + q - eps or e > ee - q + eps or n > en - q + eps:
+        raise RequestGuardError(f"request {req['bbox_w_s_e_n']} edge is within a quarter cell of a cell boundary")
     if ew < minx - step or es < miny - step or ee > maxx + step or en > maxy + step:
         raise RequestGuardError(f"expected response extent {req['expected_extent_w_s_e_n']} exceeds ROI by > 1 cell")
     if req["expected_cells"] > max_cells:

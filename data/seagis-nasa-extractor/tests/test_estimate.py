@@ -128,11 +128,30 @@ def test_request_is_tight_around_roi():
     m = estimate.membership(GRID, roi)
     req = estimate.request_for(GRID, roi, m, ["analysed_sst"])
     w, s, e, n = req["bbox_w_s_e_n"]
-    assert w <= 119.6911 and e >= 119.8975 and s <= 4.9603 and n >= 5.2040
-    assert e - w < 0.21 + 0.01 and n - s < 0.25 + 0.01
     ew, es, ee, en = req["expected_extent_w_s_e_n"]
+    q = GRID.step / 4
+    # covers the ROI, or at least reaches a quarter cell into every edge cell
+    assert w <= max(119.6911, ew + q) and e >= min(119.8975, ee - q)
+    assert s <= max(4.9603, es + q) and n >= min(5.2040, en - q)
+    # and never sits on (or within a quarter cell of) a cell boundary
+    assert w >= ew + q - 1e-9 and s >= es + q - 1e-9 and e <= ee - q + 1e-9 and n <= en - q + 1e-9
+    assert e - w < 0.21 + 0.01 and n - s < 0.25 + 0.01
     assert ew >= 119.6911 - 0.01 and ee <= 119.8975 + 0.01
     estimate.check_request(roi, req, max_cells=10_000)
+
+
+
+def test_tile_edges_are_inset_from_cell_boundaries():
+    # wide ROI -> tiles; every tile edge lies on a cell boundary, so the request must be inset
+    roi = box(121.70, -1.90, 122.95, -0.40)
+    m = estimate.membership(GRID, roi)
+    reqs = estimate.request_tiles(GRID, roi, m, ["analysed_sst"], 10_000)
+    assert len(reqs) > 1
+    for r in reqs:
+        w, s, e, n = r["bbox_w_s_e_n"]
+        ew, es, ee, en = r["expected_extent_w_s_e_n"]
+        assert min(w - ew, s - es, ee - e, en - n) >= GRID.step / 4 - 1e-9
+    estimate.check_tiles(roi, reqs, m, 10_000)
 
 
 @pytest.mark.parametrize("bad", [
