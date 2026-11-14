@@ -51,18 +51,22 @@ html[data-panel="hidden"] .side-panel {
   background: var(--panel-bg); border: 1px solid var(--glass-border); border-right: 0; color: var(--text-muted);
   box-shadow: -6px 6px 20px rgba(0, 0, 0, 0.35);
   font-size: 13px; font-weight: 600; letter-spacing: 0.04em;
+  cursor: grab; touch-action: none; user-select: none;
   transition: right 0.3s ease, background 0.3s, color 0.3s, padding 0.3s, border-color 0.3s;
 }
 .panel-toggle:hover { color: var(--text); }
 .panel-toggle svg { width: 22px; height: 22px; stroke-width: 2.4; transition: transform 0.3s ease; }
-.pt-label { writing-mode: vertical-rl; display: none; }
-html[data-panel="hidden"] .panel-toggle {
-  right: 0; padding: 14px 9px; background: var(--accent); border-color: transparent; color: #fff;
+.pt-label { writing-mode: vertical-rl; }
+html[data-panel="hidden"] .panel-toggle { right: 0; }
+.panel-toggle[data-look="hidden"] {
+  background: var(--accent); border-color: transparent; color: #fff;
   box-shadow: -6px 6px 24px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
-html[data-panel="hidden"] .panel-toggle svg { transform: rotate(180deg); }
-html[data-panel="hidden"] .pt-label { display: block; }
-html[data-panel="hidden"] .panel-toggle:hover { filter: brightness(1.12); }
+.panel-toggle[data-look="hidden"] svg { transform: rotate(180deg); }
+.panel-toggle[data-look="hidden"]:hover { filter: brightness(1.12); }
+/* While dragging nothing eases: the panel and the handle stay under the pointer. */
+.panel-dragging .side-panel, .panel-dragging .panel-toggle, .panel-dragging .panel-toggle svg { transition: none !important; }
+.panel-dragging, .panel-dragging * { cursor: grabbing !important; user-select: none !important; }
 /* Draws the eye once, right after the panel was hidden (after the slide has finished). */
 .panel-toggle.nudge { animation: panel-nudge 0.6s ease-in-out 0.35s 3; }
 @keyframes panel-nudge { 50% { transform: translateX(-8px); } }
