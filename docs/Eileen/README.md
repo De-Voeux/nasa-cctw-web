@@ -6,7 +6,7 @@
 
 ## Responsibility and goal
 
-**Frontend for the SEAGIS dashboard**: the page a user lands on. A full-screen 3D globe of Southeast Asia, with see-through "glass" panels floating on top (date pills, layer and zoom controls, a search/detail side panel, and an ask bar). The layout is modelled on Watch Duty's map-first dashboard.
+**Frontend for the SEAmon dashboard**: the page a user lands on. A full-screen 3D globe of Southeast Asia, with see-through "glass" panels floating on top (date pills, layer and zoom controls, a search/detail side panel, and an ask bar). The layout is modelled on Watch Duty's map-first dashboard.
 
 The dashboard builds on Radit's [`EarthGlobe`](../../earth-globe/src/earth/README.md) and lives in the same Parcel subproject, [`earth-globe/`](../../earth-globe/). It is presentation only: it computes no environmental risk and shows no assessed cells.
 

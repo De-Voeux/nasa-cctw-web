@@ -2,7 +2,7 @@
   "name": "seagis-earth-globe",
   "version": "0.1.0",
   "private": true,
-  "description": "three.js Earth globe for the SEAGIS atlas (zoom-out view; hands off to a flat map when zoomed in)",
+  "description": "three.js Earth globe for the SEAmon atlas (zoom-out view; hands off to a flat map when zoomed in)",
   "browserslist": "> 0.5%, last 2 versions, not dead",
   "scripts": {
     "start": "parcel src/index.html src/demo.html --port 1235 --no-autoinstall",

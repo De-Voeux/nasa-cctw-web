@@ -4,11 +4,11 @@
 
 **Last updated:** 2026-11-15
 
-This page is the context handoff for my part of SEAGIS. It records what is verified, what is built, what is only a proposal, and what is still blocked. Everything below was produced and checked on 2026-11-14 and 2026-11-15.
+This page is the context handoff for my part of SEAmon. It records what is verified, what is built, what is only a proposal, and what is still blocked. Everything below was produced and checked on 2026-11-14 and 2026-11-15.
 
 ## Responsibility and goal
 
-Research and data foundation for SEAGIS: which seaweed species and cultivation regions have real evidence behind them, which NASA products can actually be read at those regions, and what analysis the 2026 challenge asks for.
+Research and data foundation for SEAmon: which seaweed species and cultivation regions have real evidence behind them, which NASA products can actually be read at those regions, and what analysis the 2026 challenge asks for.
 
 I own the trail from paper to dataset to any claim shown on the site. I do not own the visual design, the globe, or deployment.
 

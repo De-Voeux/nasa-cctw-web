@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://example.invalid/seagis/assessment.schema.json",
-  "title": "SEAGIS environmental assessment cell",
+  "title": "SEAmon environmental assessment cell",
   "description": "Initial contract. Scientific rule and coverage criteria remain to be defined.",
   "type": "object",
   "additionalProperties": false,

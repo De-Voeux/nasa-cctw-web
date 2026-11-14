@@ -2,7 +2,10 @@ import { EarthGlobe } from "../earth/EarthGlobe.js"
 import albedo from "../assets/earth/albedo.jpg"
 import bump from "../assets/earth/bump.jpg"
 import ocean from "../assets/earth/ocean.png"
-import clouds from "../assets/earth/clouds.jpg"
+// Clouds are off for now: they drift ~8 px/s against the pins, which read as the pins floating.
+// To bring them back, uncomment this import, `clouds` in `textures` and `cloudsFormat` below,
+// and put "Clouds," back in the credit line in index.html.
+// import clouds from "../assets/earth/clouds.jpg"
 import lights from "../assets/earth/lights.png"
 import { LOCATIONS, PLACE_LABELS } from "../data/reportedLocations.js"
 import { GlobeOverlay } from "./overlay.js"
@@ -17,8 +20,8 @@ const $ = (id) => document.getElementById(id)
 // --------------------------------------------------------------- globe
 
 const globe = new EarthGlobe($("globe"), {
-  textures: { albedo, bump, ocean, clouds, lights },
-  cloudsFormat: "luminance", // these cloud maps store density as brightness
+  textures: { albedo, bump, ocean, /* clouds, */ lights },
+  // cloudsFormat: "luminance", // these cloud maps store density as brightness
   background: null, // transparent: the CSS star field shows through
   initialView: { lat: 10, lon: 95, altitude: 3 },
   autoRotate: { enabled: false },
