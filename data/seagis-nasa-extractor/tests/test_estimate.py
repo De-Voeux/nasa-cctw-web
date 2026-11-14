@@ -80,7 +80,7 @@ def test_plan_rows_ranges_and_hash(tmp_path):
         overhead = estimate.ASSUMPTIONS["file_overhead_bytes"][1] * r["n_time"]
         assert r["transfer_bytes_expected"] - overhead < r["uncompressed_bytes"]   # never equate the two
         assert 0 < r["mask_efficiency"] <= 1
-        assert r["final_rows"] == r["n_time"] * 3
+        assert r["final_rows"] == r["n_time"] * len(estimate.ASSUMPTIONS["output_variables"])
     assert plan["transfer_ratios"]["low"] == pytest.approx(0.1, rel=1e-6)
     assert plan["transfer_ratios"]["expected"] == pytest.approx(0.2, rel=1e-6)
     sf = plan["shared_fetch"]["PH-T"]
@@ -119,3 +119,94 @@ def test_estimate_csv_and_summary(tmp_path):
     assert plan["plan_sha256"] in text and "No historical data downloaded" in text
     assert "2020-02-01" in text
     json.dumps(plan, default=str)   # serialisable
+
+
+# ---------------------------------------------------------------- download-scope guards
+
+def test_request_is_tight_around_roi():
+    roi = box(119.6911, 4.9603, 119.8975, 5.2040)
+    m = estimate.membership(GRID, roi)
+    req = estimate.request_for(GRID, roi, m, ["analysed_sst"])
+    w, s, e, n = req["bbox_w_s_e_n"]
+    assert w <= 119.6911 and e >= 119.8975 and s <= 4.9603 and n >= 5.2040
+    assert e - w < 0.21 + 0.01 and n - s < 0.25 + 0.01
+    ew, es, ee, en = req["expected_extent_w_s_e_n"]
+    assert ew >= 119.6911 - 0.01 and ee <= 119.8975 + 0.01
+    estimate.check_request(roi, req, max_cells=10_000)
+
+
+@pytest.mark.parametrize("bad", [
+    [-180, -90, 180, 90],                        # global, e.g. pulling Africa too
+    [119.0, 4.9603, 119.8975, 5.2040],           # extends far west of the ROI
+    [119.70, 4.97, 119.89, 5.20],                # does not cover the ROI
+])
+def test_guard_rejects_requests_not_tied_to_roi(bad):
+    roi = box(119.6911, 4.9603, 119.8975, 5.2040)
+    m = estimate.membership(GRID, roi)
+    req = estimate.request_for(GRID, roi, m, ["analysed_sst"]) | {"bbox_w_s_e_n": bad}
+    with pytest.raises(estimate.RequestGuardError):
+        estimate.check_request(roi, req, max_cells=10_000)
+
+
+def test_guard_rejects_oversized_roi_and_plan_fails(tmp_path):
+    roi = box(119.0, 4.0, 121.0, 6.0)            # 200 x 200 cells
+    m = estimate.membership(GRID, roi)
+    req = estimate.request_for(GRID, roi, m, ["analysed_sst"])
+    with pytest.raises(estimate.RequestGuardError):
+        estimate.check_request(roi, req, max_cells=10_000)
+
+
+def test_plan_records_request_per_roi_and_rows(tmp_path):
+    plan = _fixture(tmp_path)
+    for roi in plan["rois"]:
+        assert roi["request"]["expected_cells"] == roi["bbox_cells"]
+        assert roi["n_requests"] == len(roi["mur_requests"]) == 1
+    assert all(r["request_bbox"] is not None for r in plan["rows"])
+    assert any("Reject" in g for g in plan["fetch_guards"])
+
+
+def test_large_roi_is_tiled_tight_and_complete():
+    import shapely
+    # an L-shaped coastal strip ~2.0 x 1.5 deg: one bbox would be ~30,000 cells
+    roi = shapely.union(box(119.0, 4.0, 121.0, 4.1), box(120.9, 4.0, 121.0, 5.5))
+    m = estimate.membership(GRID, roi)
+    assert m["bbox_cells"] > 10_000
+    reqs = estimate.request_tiles(GRID, roi, m, ["analysed_sst"], 10_000)
+    assert len(reqs) > 1 and all(r["expected_cells"] <= 10_000 for r in reqs)
+    assert sum(r["expected_cells"] for r in reqs) < m["bbox_cells"] / 2       # empty corner never requested
+    estimate.check_tiles(roi, reqs, m, 10_000)                                # covers every ROI cell, no overlap
+    with pytest.raises(estimate.RequestGuardError):
+        estimate.check_tiles(roi, reqs[1:], m, 10_000)                        # dropping a tile is caught
+
+
+def test_small_roi_keeps_single_request():
+    roi = box(119.6911, 4.9603, 119.8975, 5.2040)
+    m = estimate.membership(GRID, roi)
+    reqs = estimate.request_tiles(GRID, roi, m, ["analysed_sst"], 10_000)
+    assert len(reqs) == 1 and reqs[0]["expected_cells"] == m["bbox_cells"]
+
+
+def test_calibration_from_pilot_files():
+    rois = [{"region_id": "R", "subregion_id": s, "mur_requests": [{"expected_cells": c}]} for s, c in (("a", 500), ("b", 1500))]
+    files = [{"source": "mur_sst", "roi": "R/a", "bytes": 59_000 + 500}] * 3 + \
+            [{"source": "mur_sst", "roi": "R/b", "bytes": 59_000 + 1500}] * 3
+    cal = estimate.calibrate_from_pilot({"status": "PASS", "files": files}, rois)
+    assert cal["bytes_per_file"] == pytest.approx(59_000, rel=1e-6) and cal["bytes_per_cell"] == pytest.approx(1.0)
+    with pytest.raises(ValueError):
+        estimate.calibrate_from_pilot({"status": "FAIL", "files": files}, rois)
+
+
+def test_calibrated_plan_uses_measured_bytes(tmp_path):
+    import json as _j
+    plan = _fixture(tmp_path)
+    cal = {"bytes_per_file": 50_000, "bytes_per_cell": 2.0, "low_factor": 0.9, "high_factor": 1.25}
+    r = plan["rows"][0]
+    roi = next(x for x in plan["rois"] if x["subregion_id"] == r["subregion_id"])
+    m = {"bbox_cells": roi["bbox_cells"], "roi_cells": roi["roi_cells"], "n_lat": roi["n_lat"], "n_lon": roi["n_lon"],
+         "i0": 0, "i1": 0, "j0": 0, "j1": 0}
+    row = estimate.row_estimate(roi, m, r["month"], dt.date(2020, 1, 30), dt.date(2020, 1, 31), {"2020-01-30", "2020-01-31"},
+                                {"analysed_sst": 2}, {"low": 0.1, "expected": 0.2, "high": 1.0, "calibration": cal}, 1,
+                                {"2020-01-30": 0, "2020-01-31": 0})
+    cells = sum(q["expected_cells"] for q in roi["mur_requests"])
+    assert row["transfer_bytes_expected"] == int((50_000 * len(roi["mur_requests"]) + 2.0 * cells) * 2)
+    assert row["transfer_bytes_high"] > row["transfer_bytes_expected"] > row["transfer_bytes_low"]

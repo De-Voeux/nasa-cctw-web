@@ -24,6 +24,110 @@ regions:
     review_notes: >-
       Pangkep and Selayar limited to near-main-landmass islands; dropped outer islands
       still count as land and as neighbouring coast.
+
+  # ---- added 2026-11-15: all other regions (user decisions of 2026-11-15) ----
+  # Rules agreed: exact names as written in the research; gulfs and islands mapped to the admin
+  # units that hold their coast (mapping below, for review); regions with no named site use the
+  # whole provincial/city coast and are marked provisional. Philippine municipalities with
+  # duplicate names are disambiguated by their province polygon (within_unit), not coordinates.
+  ID-SEA-SUL:
+    source: IDN-ADM2
+    subregions: {buton: Buton, muna: Muna, wakatobi: Wakatobi, konawe: Konawe}
+    review_notes: >-
+      Exact names only. Variants not included: Buton Selatan, Buton Tengah, Buton Utara,
+      Muna Barat, Konawe Kepulauan, Konawe Selatan, Konawe Utara.
+  ID-N-JAVA-SEA:
+    source: IDN-ADM2
+    subregions: {kepulauan_seribu: Kepulauan Seribu}
+    review_notes: must resolve study-specific coastal sectors
+  ID-CENT-SUL:
+    source: IDN-ADM2
+    subregions:
+      banggai: Banggai
+      morowali: Morowali
+      tomini_parigi_moutong: Parigi Moutong    # Tomini Gulf ->
+      tomini_poso: Poso                        #   Central Sulawesi regencies
+      tomini_tojo_una_una: Tojo Una-Una        #   on the gulf shore
+    review_notes: >-
+      Tomini Gulf mapped to the Central Sulawesi regencies on its shore (Parigi Moutong, Poso,
+      Tojo Una-Una); Gorontalo-province shore not included because the region is Central Sulawesi.
+      Banggai Kepulauan, Banggai Laut and Morowali Utara not included (exact names only).
+  ID-NTB:
+    source: IDN-ADM2
+    subregions: {lombok_timur: Lombok Timur, sumbawa: Sumbawa, bima: Bima}
+    review_notes: East Lombok = Lombok Timur. Bima = the regency; Kota Bima and Sumbawa Barat not included.
+  ID-N-KAL:
+    source: IDN-ADM2
+    subregions: {nunukan: Nunukan, tarakan: Kota Tarakan}
+    review_notes: >-
+      Sebatik (Indonesian half) lies inside the Nunukan regency polygon, so the Nunukan zone covers it;
+      no separate Sebatik zone without sub-regency boundaries.
+  ID-MALUKU:
+    source: IDN-ADM2
+    subregions:
+      seram_barat: Seram Bagian Barat          # Seram ->
+      seram_timur: Seram Bagian Timur          #   the two Seram regencies
+      kei_maluku_tenggara: Maluku Tenggara     # Kei ->
+      kei_tual: Kota Tual                      #   regency + city on the Kei islands
+      aru: Kepulauan Aru
+    review_notes: >-
+      validate administrative coverage. Central Seram belongs to Maluku Tengah, which also holds
+      Ambon/Lease/Banda, so it is not included. Maluku Tenggara Barat (Tanimbar) is not Kei.
+  PH-NE-BOHOL:
+    source: PHL-ADM2
+    subregions: {bohol: Bohol}
+    review_notes: PROVISIONAL whole-province coast; identify actual study coast (northeast).
+  PH-PANG:
+    source: PHL-ADM3
+    within_unit: {source: PHL-ADM2, name: Pangasinan}
+    subregions:
+      bolinao: Bolinao
+      lingayen_gulf_anda: Anda                 # Lingayen Gulf ->
+      lingayen_gulf_alaminos: City of Alaminos #   Pangasinan municipalities
+      lingayen_gulf_sual: Sual                 #   on the gulf shore
+      lingayen_gulf_labrador: Labrador
+      lingayen_gulf_lingayen: Lingayen
+      lingayen_gulf_binmaley: Binmaley
+      lingayen_gulf_dagupan: Dagupan City
+      lingayen_gulf_san_fabian: San Fabian
+    review_notes: >-
+      Lingayen Gulf mapped to the Pangasinan municipalities on the gulf shore; the La Union shore
+      (Santo Tomas, Agoo, Aringay, Rosario) not included because the region is Pangasinan.
+      Mangaldan removed: its admin polygon gets no sea of its own after the nearest-coast split.
+  PH-PALAWAN:
+    source: PHL-ADM3
+    within_unit: {source: PHL-ADM2, name: Palawan}
+    subregions: {coron: Coron, taytay: Taytay, roxas: Roxas}
+  PH-ZAMBOANGA:
+    source: PHL-ADM3
+    subregions: {zamboanga_city: Zamboanga City}
+    review_notes: PROVISIONAL whole-city coast; study-specific coast not yet identified.
+  PH-DAVAO-N:
+    source: PHL-ADM2
+    subregions: {davao_del_norte: Davao del Norte}
+    review_notes: >-
+      PROVISIONAL whole-province coast. The province polygon includes Island Garden City of Samal,
+      which the research notes as administratively separate; review whether to exclude it.
+  PH-E-SAMAR:
+    source: PHL-ADM2
+    subregions: {eastern_samar: Eastern Samar}
+    review_notes: PROVISIONAL whole-province coast; study-specific coastal bays not yet identified.
+  PH-BATANGAS:
+    source: PHL-ADM2
+    subregions: {batangas: Batangas}
+    review_notes: PROVISIONAL whole-province coast; study-specific coastal bays not yet identified.
+  MY-SABAH:
+    source: MYS-ADM2
+    subregions: {semporna: Semporna}
+    review_notes: east Sabah; expand only with evidence
+  VN-KHANH-HOA:
+    source: VNM-ADM2
+    subregions:
+      nha_trang: Nha Trang                     # Nha Trang Bay -> Nha Trang city
+      cam_ranh: Cam Ranh
+    review_notes: Nha Trang Bay mapped to Nha Trang city; the bay's Cam Lam / Ninh Hoa shores not included.
+pending_regions:            # no ROI until a specific coast is identified
+  PH-S-LUZON: Southern Luzon is not an administrative unit; needs named provinces or municipalities.
 pilot_subregions:          # small units for the 7-day pilot (task criterion 4)
   PH-TAWI: bongao
   ID-SOUTH-SUL: takalar

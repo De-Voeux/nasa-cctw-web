@@ -1,6 +1,6 @@
-# Product IDs are resolved by `catalog` (see docs/CATALOG_REVIEW.md). SST only: chlorophyll-a dropped 2026-11-15.
-period:
-  start: '2020-11-15'
+# Product IDs are resolved by `catalog` (see docs/CATALOG_REVIEW.md). NASA: MUR SST only (chlorophyll-a dropped 2026-11-15). Copernicus: no3, po4, pH, salinity.
+period:                    # NASA MUR; all sources start 2022-06-01 (first day of daily CMEMS salinity), decided 2026-11-15
+  start: '2022-06-01'
   end: '2026-11-14'
 regions_file: config/regions.yaml
 products_file: config/products.yaml
@@ -12,14 +12,29 @@ products:
   mur_sst:
     enabled: true
     temporal_resolution: daily
-    variables: [analysed_sst]
+    # mask is required: MUR fills land with SST values, so land is removed by mask (pilot 2026-11-15).
+    # sea_ice_fraction dropped: always empty in these tropical waters (pilot 2026-11-15).
+    variables: [analysed_sst, analysis_error, mask]
     endpoint: discover_from_catalog
+  copernicus:
+    enabled: true
+    period: {start: '2022-06-01', end: '2026-11-14'}   # aligned with MUR; daily salinity starts 2022-06-01
+    depth: surface          # shallowest model level (0.494 m)
+    batch: region_whole_period   # one subset per region x dataset; chunks span ~155 days
+    # Zones the model grid treats as land for a dataset (no sea cell in the static mask).
+    # Decided 2026-11-15: leave these values empty and flagged; no gap filling, no proxy.
+    # Any zone without sea that is NOT listed here blocks the plan.
+    no_sea_accepted:
+      PH-PANG/lingayen_gulf_labrador: [cmems_bgc_nut, cmems_bgc_car]
+      PH-PANG/lingayen_gulf_lingayen: [cmems_bgc_nut, cmems_bgc_car]
+      PH-PANG/lingayen_gulf_binmaley: [cmems_bgc_nut, cmems_bgc_car]
 execution:
   batch: monthly
-  concurrency: 2
+  concurrency: 4            # Harmony jobs in flight during fetch
   raw_retention: discard_after_validation
   metadata_only_preflight: true
   require_approval: true
   max_download_gb: 20
   max_disk_gb: 30
+  max_request_cells: 10000   # per ROI per day; plan fails if any request needs more
   retries: 5
