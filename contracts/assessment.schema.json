@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/seagis/assessment.schema.json",
+  "title": "SEAGIS environmental assessment cell",
+  "description": "Initial contract. Scientific rule and coverage criteria remain to be defined.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["cell_id", "species_id", "assessment_kind", "valid_from", "valid_to", "grid_resolution_degrees", "stress_level", "evidence_confidence", "risk_drivers", "missing_inputs", "source_lineage", "rule_version"],
+  "properties": {
+    "cell_id": {"type": "string"},
+    "species_id": {"type": "string"},
+    "assessment_kind": {"enum": ["historical_observation", "analysis_or_nowcast", "forecast"]},
+    "valid_from": {"type": "string", "format": "date-time"},
+    "valid_to": {"type": "string", "format": "date-time"},
+    "issued_at": {"type": ["string", "null"], "format": "date-time"},
+    "grid_resolution_degrees": {"const": 0.25},
+    "stress_level": {"enum": ["favorable", "moderate", "elevated", "insufficient_data"]},
+    "evidence_confidence": {"enum": ["high", "moderate", "low", "unknown"]},
+    "risk_drivers": {"type": "array", "items": {"type": "object", "required": ["variable", "explanation", "citation_ids"], "properties": {"variable": {"type": "string"}, "explanation": {"type": "string"}, "citation_ids": {"type": "array", "items": {"type": "string"}}}}},
+    "missing_inputs": {"type": "array", "items": {"type": "string"}},
+    "source_lineage": {"type": "array", "items": {"type": "object", "required": ["provider", "product_id", "product_version", "variable"], "properties": {"provider": {"type": "string"}, "product_id": {"type": "string"}, "product_version": {"type": "string"}, "variable": {"type": "string"}, "native_resolution": {"type": "string"}, "depth": {"type": ["string", "null"]}, "units": {"type": "string"}}}},
+    "rule_version": {"type": "string"},
+    "disease_context": {"type": ["object", "null"], "properties": {"status": {"enum": ["not_assessable", "literature_context"]}, "notice": {"type": "string"}}}
+  }
+}
