@@ -176,7 +176,7 @@ Missing values are dropped, never filled with zero, so gaps are invisible in the
 ## Reproducing
 
 ```bash
-cd docs/Eca/data-access
+cd research/data-access
 python3 scripts/fetch.py         # needs curl; system Python may lack a CA bundle
 python3 scripts/tidy.py
 python3 scripts/trend.py
