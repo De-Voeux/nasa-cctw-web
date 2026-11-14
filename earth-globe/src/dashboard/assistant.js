@@ -10,7 +10,7 @@ const href = (s) => safeHref(s.url) || (s.doi ? `https://doi.org/${encodeURI(s.d
 /**
  * @returns {Promise<{ok:true, data:object} | {ok:false, reason:"unavailable"|"limited"|"error"}>}
  *   "unavailable" means the assistant is not set up, out of quota or unreachable: the caller falls
- *   back to the built-in answers, and `why` ("quota" | "down" | undefined) says which. "limited" is a rate limit: say so instead of falling back.
+ *   back to the built-in answers, and `why` ("quota" | "down" | undefined) says which (not shown to the user). "limited" is a rate limit: say so instead of falling back.
  */
 export async function askAssistant(question, { species, country } = {}, fetchImpl = fetch) {
   let res
@@ -122,12 +122,6 @@ export function renderAnswer(a) {
   }
   if (a.abstained) parts.push(`<p class="muted small">Not enough evidence in the sources we have.</p>`)
   return parts.join("")
-}
-
-/** One line shown above the built-in answer when the assistant could not be used. */
-export const FALLBACK_NOTE = {
-  quota: "The assistant has reached its daily limit, so this is a built-in answer.",
-  down: "The assistant is not reachable right now, so this is a built-in answer.",
 }
 
 export const MESSAGES = {
