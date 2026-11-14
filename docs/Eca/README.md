@@ -48,7 +48,7 @@ Species and location records collected so far remain unverified leads transcribe
 
 ### 3. Data access test
 
-I tested access to live endpoints rather than deciding from documentation. Results, variable definitions, units, schemas and failures: [data-access/README.md](data-access/README.md).
+I tested access to live endpoints rather than deciding from documentation. Results, variable definitions, units, schemas and failures: [research/data-access/README.md](../../research/data-access/README.md).
 
 What works with no account:
 
@@ -62,7 +62,7 @@ What does not work without an Earthdata account: GPM IMERG through GES DISC (HTT
 
 ### 4. Data pulled
 
-Six Southeast Asian coastal cells, 2003–2024, 18 raw files, three tidied tables and one results table. All of it is committed in [data-access/](data-access/), about 35 MB. Every value came from a live request on 2026-11-15 and was re-downloaded once to confirm it matched; [`data-access/checksums.txt`](data-access/checksums.txt) records SHA-256 hashes for all 23 data files.
+Six Southeast Asian coastal cells, 2003–2024, 18 raw files, three tidied tables and one results table. All of it is committed in [research/data-access/](../../research/data-access/), about 35 MB. Every value came from a live request on 2026-11-15 and was re-downloaded once to confirm it matched; [`research/data-access/checksums.txt`](../../research/data-access/checksums.txt) records SHA-256 hashes for all 23 data files.
 
 The six sites are not a sample of Southeast Asia. They are the specific regions the literature names for *Kappaphycus* and *Eucheuma* cultivation or ice-ice reports, reduced to one regional cell each. Other areas were not tested, and no site is a farm location.
 
@@ -79,7 +79,7 @@ Every point is a regional grid-cell centroid chosen for comparison, not a farm c
 
 ### 5. First trend results
 
-Mann-Kendall for significance and Sen's slope for magnitude, computed on annual means (n = 22) because monthly series are heavily autocorrelated. 72 combinations of site and variable, 39 significant at p < 0.05. Full table: [data-access/results/trends.csv](data-access/results/trends.csv).
+Mann-Kendall for significance and Sen's slope for magnitude, computed on annual means (n = 22) because monthly series are heavily autocorrelated. 72 combinations of site and variable, 39 significant at p < 0.05. Full table: [research/data-access/results/trends.csv](../../research/data-access/results/trends.csv).
 
 Sea surface temperature, °C per year:
 
@@ -126,7 +126,7 @@ Not done, and not to be claimed:
 - No pilot region or farm boundary is final.
 - Several primary publications have not been read directly.
 
-How to review: open [data-access/README.md](data-access/README.md), check the numbers in [data-access/results/trends.csv](data-access/results/trends.csv), and reread the scripts in `data-access/scripts/`. They are plain Python with no third-party packages, so they run anywhere.
+How to review: open [research/data-access/README.md](../../research/data-access/README.md), check the numbers in [research/data-access/results/trends.csv](../../research/data-access/results/trends.csv), and reread the scripts in `research/data-access/scripts/`. They are plain Python with no third-party packages, so they run anywhere.
 
 ## Assumptions, limitations, and blockers
 
