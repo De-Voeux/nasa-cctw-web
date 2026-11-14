@@ -148,7 +148,7 @@ test("measurements: the model gets a computed summary and may cite only what was
   assert.equal(summary.n_missing, 1)
   assert.deepEqual(summary.latest, { day: "2026-11-03", value: 31 })
   assert.equal(body.data_used[0].site_id, "maluku")
-  assert.deepEqual(body.data_used[0].products, ["MUR v4.1"])
+  assert.deepEqual(body.data_used[0].products, ["MUR"])
 })
 
 test("data_used for a series that was never fetched is rejected", () => {
@@ -299,4 +299,67 @@ test("an empty search tells the model to stop searching and answer, and the log 
     console.log = orig
   }
   assert.ok(logs.some((l) => /"event":"ask".*"model":"/.test(l)), logs.join("\n"))
+})
+
+// ------------------------------------------------------------------ site coverage and product resolution
+import { compactSites, SYSTEM_PROMPT } from "./ask.js"
+
+const COVERAGE = [
+  { variable: "analysed_sst", product: "MUR-30d", unit: "degree_C", from: "2003-01-01", to: "2024-12-08", n: 268 },
+  { variable: "PRECTOTCORR", product: "POWER-monthly", unit: "mm/day", from: "2003-01-01", to: "2024-12-01", n: 264 },
+  { variable: "T2M", product: "POWER-monthly", unit: "C", from: "2003-01-01", to: "2024-12-01", n: 264 },
+]
+
+test("compactSites folds the coverage into one entry per product and lists the units once", () => {
+  const out = compactSites([{ id: "maluku", name: "Maluku", country: "Indonesia", lat: -5.6, lon: 132.7, coverage: COVERAGE }, { id: "empty", name: "E", country: "X", lat: 0, lon: 0, coverage: [] }])
+  assert.deepEqual(out.sites[0].data, [
+    { product: "MUR-30d", from: "2003-01-01", to: "2024-12-08", variables: ["analysed_sst"] },
+    { product: "POWER-monthly", from: "2003-01-01", to: "2024-12-01", variables: ["PRECTOTCORR", "T2M"] },
+  ])
+  assert.deepEqual(out.sites[1].data, [])
+  assert.deepEqual(out.units, { analysed_sst: "degree_C", PRECTOTCORR: "mm/day", T2M: "C" })
+})
+
+test("list_sites gives the model the compact coverage, including where the data ends", async () => {
+  const { calls } = await run(
+    "question here",
+    [[use("list_sites", {})], FINAL_ABSTAIN],
+    { env_list_sites: () => [{ id: "maluku", name: "Maluku", country: "Indonesia", lat: -5.6, lon: 132.7, coverage: COVERAGE }] },
+  )
+  const toolText = calls.model[1].messages.at(-1).content
+  assert.match(toolText, /"to":"2024-12-08"/)
+  assert.match(toolText, /"units"/)
+  assert.ok(!toolText.includes('"n":268'))
+})
+
+test("get_series passes the product through and reports it", async () => {
+  const rows = [{ day: "2024-10-09", value: 28, unit: "degree_C", product: "MUR-30d", product_version: "v" }]
+  const { body, calls } = await run(
+    "question here",
+    [[use("get_series", { site_id: "maluku", variable: "analysed_sst", from: "2024-10-01", to: "2024-12-31", product: "MUR-30d" })],
+     [use("final_answer", { answer_md: "ok", claims: [], data_used: [{ site_id: "maluku", variable: "analysed_sst" }], confidence: "moderate", abstained: false })]],
+    { env_get_series: () => rows },
+  )
+  assert.equal(calls.rpc[0][1].p_product, "MUR-30d")
+  assert.deepEqual(body.data_used[0].products, ["MUR-30d"])
+})
+
+test("a variable that exists at two resolutions makes the model choose, instead of mixing them", async () => {
+  const rows = [
+    { day: "2024-01-01", value: 1, unit: "mm/day", product: "POWER-monthly", product_version: "v" },
+    { day: "2024-01-01", value: 9, unit: "mm/day", product: "POWER-daily", product_version: "v" },
+  ]
+  const { calls } = await run(
+    "question here",
+    [[use("get_series", { site_id: "maluku", variable: "PRECTOTCORR", from: "2024-01-01", to: "2024-01-31" })], FINAL_ABSTAIN],
+    { env_get_series: () => rows },
+  )
+  const toolText = calls.model[1].messages.at(-1).content
+  assert.match(toolText, /more than one product \(POWER-monthly, POWER-daily\)/)
+  assert.ok(!toolText.includes("summary"))
+})
+
+test("the prompt says the data is historical and that resolutions differ", () => {
+  assert.match(SYSTEM_PROMPT, /HISTORICAL/)
+  assert.match(SYSTEM_PROMPT, /MUR-30d is one sea-surface temperature value every 30 days/)
 })
