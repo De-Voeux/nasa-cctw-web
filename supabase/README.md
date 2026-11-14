@@ -24,10 +24,11 @@ browser ─▶ /api/ask (Cloudflare Worker, worker/) ─▶ model + tools ─▶
 
 | Where | Name | Notes |
 |---|---|---|
-| Cloudflare Worker secrets (`wrangler secret put`) | `ANTHROPIC_API_KEY` | not available to this repo's tooling; until it is set `/api/ask` answers 503 and the page uses its built-in answers |
+| Cloudflare Worker secrets (`wrangler secret put`) | `OPENROUTER_API_KEY` | the model provider. Until at least one key is set `/api/ask` answers 503 and the page uses its built-in answers |
+| | `OPENROUTER_API_KEY_2` ... `_9`, or `OPENROUTER_API_KEYS` | optional extra keys (a comma list in the second form). A request tries them in turn when one is rate-limited or refused |
 | | `SUPABASE_URL` | `https://<project-ref>.supabase.co` |
 | | `SUPABASE_SERVICE_ROLE_KEY` | the **legacy `service_role` JWT**. The `embed` function checks the role claim in the JWT, so the new `sb_secret_...` key does not work for it. This key is powerful: keep it as a secret only |
-| Worker variables (optional) | `ASK_MODEL`, `MIN_SIMILARITY` | defaults `claude-sonnet-5-5` and `0.8` |
+| Worker variables (optional) | `ASK_MODELS`, `MIN_SIMILARITY`, `LLM_BASE_URL` | `ASK_MODELS` is a comma list tried in order (default: four free OpenRouter models that advertise tool calling, listed in `worker/llm.js`; the free list changes often). `MIN_SIMILARITY` defaults to `0.8`. `LLM_BASE_URL` points at another OpenAI-compatible endpoint |
 | Your shell, for ingestion | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | same values; never commit them |
 
 ## Loading sources
@@ -43,9 +44,11 @@ A source without `verified_by` and `verified_on` is stored but never retrieved. 
 
 ## Not done and not verified
 
-- **No real model call has been made.** The Worker is tested against a fake model (21 tests across the Worker and the corpus tools). Nobody has yet asked it a real question with a real Anthropic key.
+- **No real model call has been made.** The Worker is tested against a fake model (29 tests across the Worker and the corpus tools). Nobody has yet asked it a real question with a real OpenRouter key.
+- **Free models are weaker and less predictable.** The Worker checks that every citation and number comes from what the tools returned in the same request, but it cannot check that a cited chunk actually supports the sentence next to it. A weak model can misread a real source; the evaluation set (RAG_DESIGN.md, section 8) is the control for that, and the model list should be chosen on it.
+- **Free tiers have request limits and different data terms.** OpenRouter limits free-model requests per minute and per day, and some free providers may keep or train on prompts. Check the current limits and each model's data policy; users' questions are sent to them.
 - **Retrieval quality is unknown** until real sources are loaded. gte-small is mostly an English model; the Worker makes the model write the search query in English, and Indonesian and English phrasings of one sentence scored 0.84 cosine similarity in a quick check. `MIN_SIMILARITY` (0.8) is a first guess to tune on the evaluation set.
 - **Site data (`env.sites`, `env.daily`) is not loaded.** Needs a loader from Eca's CSVs; the measurement tools return "no data" until then.
 - **Question logs** record the tools used and chunk ids only, no question text and no address. Retention is still to be decided.
-- **Rate limit:** `wrangler.jsonc` adds a 10 questions per minute per address binding (`ASK_LIMITER`), validated with `wrangler deploy --dry-run` but not yet exercised on Cloudflare. A cap on spend should also be set in the Anthropic console.
+- **Rate limit:** `wrangler.jsonc` adds a 10 questions per minute per address binding (`ASK_LIMITER`), validated with `wrangler deploy --dry-run` but not yet exercised on Cloudflare. With free models there is no spend, but each key has its own request limits; more keys spread them.
 - The migrations use `begin/commit` and are applied by hand (`supabase-rag` / the Management API). The CLI's `db push` has not been used.
