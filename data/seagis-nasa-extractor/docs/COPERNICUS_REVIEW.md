@@ -37,10 +37,30 @@ Reads go through the ARCO `geoChunked` Zarr store. A subset downloads every chun
 
 ARCO chunks are large tiles: 8°×16° for BGC and 2.7°×5.3° for salinity. The service cannot send less than a whole tile, so the bytes on the wire cover more area than the zones. Only cells inside each ROI request box are kept, and nothing else is written to disk. Region boxes touch no chunks beyond those the ROI boxes need. These rules are recorded in `plan.json` → `copernicus.fetch_guards`.
 
+## Sea cells per zone (verified with the static mask)
+
+Each model has a fixed land/sea mask (1 = sea, 0 = land). Its surface level was read for the region boxes only: BGC `cmems_mod_glo_bgc_anfc_0.25deg_static_202311--ext--mask` chunk `mask/49.0.0` (38,714 bytes) and PHY `cmems_mod_glo_phy_anfc_0.083deg_static_202211--ext--bathy` chunk `mask/49.1.3` (26,276 bytes). Both are cached in `data/raw/static/copernicus/` (gitignored), and their SHA-256 values are in `plan.json`. The plan checks that each mask grid is identical to its data grid.
+
+"Sea weight" is the sum of overlap fractions of the sea cells: roughly how many full model cells of sea the zone covers.
+
+| ROI | BGC touched | BGC sea | BGC sea weight | Salinity touched | Salinity sea | Salinity sea weight |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| PH-TAWI/bongao | 4 | 3 | 0.36 | 11 | 8 | 2.97 |
+| PH-TAWI/sitangkai | 7 | 7 | 0.86 | 20 | 16 | 5.30 |
+| PH-TAWI/sibutu | 3 | 3 | 0.49 | 15 | 11 | 3.31 |
+| ID-SOUTH-SUL/takalar | 5 | 3 | 0.68 | 20 | 18 | 7.65 |
+| ID-SOUTH-SUL/jeneponto | 6 | 3 | 0.38 | 16 | 12 | 4.04 |
+| ID-SOUTH-SUL/pangkep | 8 | 6 | 1.45 | 39 | 39 | 18.79 |
+| ID-SOUTH-SUL/selayar | 8 | 7 | 1.51 | 43 | 38 | 16.90 |
+
+- **Every zone has at least 3 sea cells for no3/po4/pH and at least 8 for salinity.** `zones_without_sea` is empty. `plan` exits with code 3 and lists the zones if any zone ever has none.
+- Land cells are dropped. Each membership table (`outputs/membership/cmems_*.csv.gz`) has a `sea` column, and fetch/process must use only the cells marked sea.
+- Bongao and Jeneponto are the weakest for BGC: the sea cells cover only about a third of one model cell in total, so their no3/po4/pH comes almost entirely from cells centred outside the zone.
+- The mask says where the model has ocean. It does not prove that every daily value is non-null; the pilot checks this.
+
 ## Scientific caveats
 
-- **Resolution vs zone width.** At 0.25° (about 28 km), the BGC grid touches only 3–8 model cells per ROI, and **no BGC cell lies mostly inside any 5 km zone**. no3, po4 and pH therefore describe the waters around the zone, not the zone itself. Salinity at 1/12° (about 9 km) touches 11–43 cells per ROI.
-- Coastal model cells may be land (fill). The count is unknown until data is read.
+- **Resolution vs zone width.** At 0.25° (about 28 km), the BGC grid touches only 3–8 model cells per ROI. Only one BGC cell (in Pangkep) lies mostly inside a 5 km zone; everywhere else no3, po4 and pH describe the waters around the zone, not the zone itself. Salinity at 1/12° (about 9 km) touches 11–43 cells per ROI.
 - Copernicus has 2026-11-14 but MUR does not (not yet published); that day is missing for SST only.
 - Analysis-forecast (ANFC) values for recent weeks are revised as the system re-analyses. The product versions are 202311 (BGC) and 202406 (PHY).
 - These are model outputs, not observations, and they should not be spliced with MUR or other sources.

@@ -107,3 +107,76 @@ def test_missing_chunk_counts_zero_bytes():
     c, ds = resolved()
     sizes = cm.head_sizes(c, ds["store"], {"no3/0.1.9.9", "no3/0.1.1.1"})
     assert sizes == {"no3/0.1.9.9": 0, "no3/0.1.1.1": 1000}
+
+
+# ---------------------------------------------------------------- static land/sea mask
+
+MSTORE = "https://s3.example/arco/P/M/static.zarr"
+# mask chunks [1, 41, 41]; sea everywhere except a land block covering lat 4.75..5.25, lon 119.75..120.25
+MASK = np.ones((3, len(LAT), len(LON)), dtype="i1")
+MASK[:, 59:62, 39:42] = 0
+MZMETA = {"metadata": {
+    "latitude/.zarray": ZMETA["metadata"]["latitude/.zarray"],
+    "longitude/.zarray": ZMETA["metadata"]["longitude/.zarray"],
+    "elevation/.zarray": ZMETA["metadata"]["elevation/.zarray"],
+    "mask/.zarray": {"shape": list(MASK.shape), "chunks": [1, 41, 41], "dtype": "|i1", "compressor": BLOSC},
+    "mask/.zattrs": {"long_name": "Land-sea mask : 1 = sea ; 0 = land"},
+}}
+
+
+class FakeWithMask(Fake):
+    def __init__(self, lat=LAT):
+        super().__init__()
+        self.lat, self.gets = lat, []
+
+    def __call__(self, method, url, timeout, headers):
+        path = urllib.parse.urlsplit(url).path
+        if "stac" in url and "/M/" in url:
+            return Response(200, {}, json.dumps({"properties": {}, "assets": {"static": {"href": MSTORE}}}).encode())
+        if "static.zarr" not in url:
+            return super().__call__(method, url, timeout, headers)
+        if path.endswith(".zmetadata"):
+            return Response(200, {}, json.dumps(MZMETA).encode())
+        name = path.split("static.zarr/")[1]
+        coords = {"latitude/0": self.lat, "longitude/0": LON, "elevation/0": ELEV}
+        if name in coords:
+            return Response(200, {}, enc(coords[name]))
+        z, y, x = map(int, name.split("/")[1].split("."))
+        self.gets.append(name)
+        chunk = np.full((1, 41, 41), -127, dtype="i1")              # Zarr v2 pads edge chunks to full size
+        part = MASK[z:z + 1, y * 41:(y + 1) * 41, x * 41:(x + 1) * 41]
+        chunk[:, :part.shape[1], :part.shape[2]] = part
+        return Response(200, {}, enc(chunk))
+
+
+MSPEC = SPEC | {"static_mask": {"dataset_id": "M"}}
+ROIS = [{"region_id": "R", "subregion_id": "land", "request": {"bbox_w_s_e_n": [119.9, 4.9, 120.1, 5.1]}},
+        {"region_id": "R", "subregion_id": "coast", "request": {"bbox_w_s_e_n": [120.1, 4.9, 120.4, 5.1]}}]
+GEOMS = {("R", "land"): box(119.9, 4.9, 120.1, 5.1), ("R", "coast"): box(120.1, 4.9, 120.4, 5.1)}
+
+
+def test_sea_mask_counts_and_flags_zone_with_only_land(tmp_path):
+    fake = FakeWithMask()
+    c = MetadataClient(transport=fake, sleep=lambda s: None)
+    sec = cm.plan_section(c, [MSPEC], {"start": "2021-11-15", "end": "2021-11-25"}, ROIS, GEOMS, 10_000,
+                          static_dir=tmp_path)
+    d = sec["datasets"][0]
+    land, coast = d["rois"]
+    assert land["sea_cells"] == 0 and land["land_cells"] == land["roi_cells"]
+    assert coast["sea_cells"] >= 1 and coast["land_cells"] >= 1          # the 120.0 column is land
+    assert all("sea" in cell for cell in coast["membership"])
+    assert sec["zones_without_sea"] == ["nut R/land"] and sec["sea_mask_checked"]
+    assert d["sea_mask"]["chunks"] and len(d["sea_mask"]["chunks"][0]["sha256"]) == 64
+    # only the surface chunk covering the region box is fetched, then reused from cache
+    assert fake.gets == ["mask/2.1.0", "mask/2.1.1"]           # lon idx 39..42 spans chunks 0 and 1
+    cm.plan_section(c, [MSPEC], {"start": "2021-11-15", "end": "2021-11-25"}, ROIS, GEOMS, 10_000,
+                    static_dir=tmp_path)
+    assert fake.gets == ["mask/2.1.0", "mask/2.1.1"]           # lon idx 39..42 spans chunks 0 and 1
+
+
+def test_sea_mask_refuses_mismatched_grid(tmp_path):
+    c = MetadataClient(transport=FakeWithMask(lat=LAT + 0.125), sleep=lambda s: None)
+    import pytest
+    with pytest.raises(ValueError, match="grid differs"):
+        cm.plan_section(c, [MSPEC], {"start": "2021-11-15", "end": "2021-11-25"}, ROIS, GEOMS, 10_000,
+                        static_dir=tmp_path)

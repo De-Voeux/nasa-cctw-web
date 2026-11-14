@@ -12,8 +12,10 @@ request, so the sum of those chunks' Content-Length is the true transfer size.
 from __future__ import annotations
 
 import datetime as dt
+import hashlib
 import json
 import math
+from pathlib import Path
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
 
@@ -178,6 +180,76 @@ def public(ds: dict) -> dict:
     return {k: v for k, v in ds.items() if not k.startswith("_")}
 
 
+# ---------------------------------------------------------------- static land/sea mask
+
+class SeaMask:
+    """Surface land/sea mask (1 = sea, 0 = land) of a model grid, from its public static Zarr store.
+
+    Only the chunks covering the region boxes are fetched (tens of KB), cached on disk with SHA-256.
+    The mask grid must equal the data grid exactly, otherwise indices would not line up.
+    """
+
+    def __init__(self, client: MetadataClient, product_id: str, dataset_id: str, ds: dict,
+                 boxes: dict[str, list[float]], cache_dir: Path):
+        stac = dataset_stac(client, product_id, dataset_id)
+        store = stac["assets"]["static"]["href"]
+        meta = zarr_metadata(client, store)
+        lat, lon = read_coord(client, store, "latitude", meta), read_coord(client, store, "longitude", meta)
+        elev = read_coord(client, store, "elevation", meta)
+        if lat.shape != ds["_lat"].shape or lon.shape != ds["_lon"].shape or not (
+                np.allclose(lat, ds["_lat"], atol=1e-4) and np.allclose(lon, ds["_lon"], atol=1e-4)):
+            raise ValueError(f"{dataset_id}: mask grid differs from data grid {ds['dataset_id']}")
+        z = int(np.argmax(elev))
+        if ds["depth"]["index"] is not None and z != ds["depth"]["index"]:
+            raise ValueError(f"{dataset_id}: surface level {z} != data surface {ds['depth']['index']}")
+        za = meta["mask/.zarray"]
+        self.chunks_shape = za["chunks"]
+        self.codec = numcodecs.get_codec(za["compressor"]) if za.get("compressor") else None
+        self.dtype = np.dtype(za["dtype"])
+        self.z = z
+        cz, cy, cx = self.chunks_shape
+        keys = set()
+        for w, s, e, n in boxes.values():
+            i0, i1 = index_range(lat, s, n)
+            j0, j1 = index_range(lon, w, e)
+            keys |= {f"mask/{z // cz}.{y}.{x}" for y in range(i0 // cy, i1 // cy + 1)
+                     for x in range(j0 // cx, j1 // cx + 1)}
+        self.arrays, self.files = {}, []
+        for k in sorted(keys):
+            path = Path(cache_dir) / dataset_id / k.replace("/", "__")
+            if not path.exists():
+                r = client.request("GET", f"{store}/{k}")
+                if r.status != 200:
+                    raise RuntimeError(f"mask chunk {k}: HTTP {r.status}")
+                path.parent.mkdir(parents=True, exist_ok=True)
+                tmp = path.with_suffix(".part")
+                tmp.write_bytes(r.body)
+                tmp.replace(path)
+            raw = path.read_bytes()
+            body = self.codec.decode(raw) if self.codec else raw
+            self.arrays[k] = np.frombuffer(body, dtype=self.dtype).reshape(self.chunks_shape)
+            self.files.append({"key": k, "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()})
+        self.info = {"product_id": product_id, "dataset_id": dataset_id, "store": store,
+                     "long_name": meta.get("mask/.zattrs", {}).get("long_name"), "surface_index": z,
+                     "grid_matches_data": True, "chunks": self.files,
+                     "bytes_downloaded": sum(f["bytes"] for f in self.files)}
+
+    def is_sea(self, i: int, j: int) -> bool:
+        cz, cy, cx = self.chunks_shape
+        a = self.arrays[f"mask/{self.z // cz}.{i // cy}.{j // cx}"]
+        return int(a[self.z % cz, i % cy, j % cx]) == 1
+
+
+def sea_summary(mask: SeaMask, table: list[dict]) -> dict:
+    """Marks each membership cell sea/land and sums what is left inside the ROI."""
+    for c in table:
+        c["sea"] = mask.is_sea(c["lat_index"], c["lon_index"])
+    sea = [c for c in table if c["sea"]]
+    return {"sea_cells": len(sea), "land_cells": len(table) - len(sea),
+            "sea_overlap_weight": round(sum(c["overlap_fraction"] for c in sea), 6),
+            "sea_cells_mostly_inside": sum(1 for c in sea if c["overlap_fraction"] >= 0.5)}
+
+
 # ---------------------------------------------------------------- plan section
 
 def region_boxes(rois: list[dict]) -> dict[str, list[float]]:
@@ -223,7 +295,7 @@ def monthly_batch_bytes(ds: dict, per_region: dict, sizes: dict) -> int:
 
 
 def plan_section(client: MetadataClient, specs: list[dict], period: dict, rois: list[dict], roi_geoms: dict,
-                 max_cells: int) -> dict:
+                 max_cells: int, static_dir: Path | None = None) -> dict:
     start, end = dt.date.fromisoformat(period["start"]), dt.date.fromisoformat(period["end"])
     out = {"period": period, "access": "Copernicus Marine Toolbox subset via ARCO geoChunked Zarr "
                                       "(service arco-geo-series); Copernicus Marine account required",
@@ -244,16 +316,21 @@ def plan_section(client: MetadataClient, specs: list[dict], period: dict, rois: 
             return None if any(sizes[k] is None for k in ks) else sum(sizes[k] for k in ks)
 
         monthly = monthly_batch_bytes(ds, per_region, sizes)
+        sm = spec.get("static_mask")
+        mask = (SeaMask(client, sm.get("product_id", spec["product_id"]), sm["dataset_id"], ds, regions, static_dir)
+                if sm and static_dir is not None else None)
 
         rows = []
         for r in rois:
             key = (r["region_id"], r["subregion_id"])
             rc = per_roi[key]
             mem = roi_membership(ds, rc, roi_geoms[key])
+            sea = sea_summary(mask, mem["table"]) if mask else None
             rows.append({"dataset": spec["key"], "region_id": r["region_id"], "subregion_id": r["subregion_id"],
                          "variables": list(ds["variables"]), "lat_index": rc["lat_index"], "lon_index": rc["lon_index"],
                          "bbox_cells": rc["cells"], "roi_cells": mem["roi_cells"],
                          "cells_mostly_inside": mem["cells_mostly_inside"],
+                         **(sea or {"sea_cells": None}),
                          "days_available": ds["available_days"], "days_requested": ds["requested_days"],
                          "chunks_if_fetched_alone": len(rc["keys"]),
                          "transfer_bytes_if_fetched_alone": total(rc["keys"]),
@@ -274,6 +351,7 @@ def plan_section(client: MetadataClient, specs: list[dict], period: dict, rois: 
             "transfer_bytes_if_monthly_batches": monthly,
             "naive_per_roi_transfer_bytes": sum((r["transfer_bytes_if_fetched_alone"] or 0) for r in rows),
             "regions": reg_rows, "rois": rows,
+            "sea_mask": mask.info if mask else None,
             "confidence": "high: transfer = sum of HEAD Content-Length of every chunk the region subsets read",
         })
     t = [d["transfer_bytes"] for d in out["datasets"]]
@@ -282,16 +360,20 @@ def plan_section(client: MetadataClient, specs: list[dict], period: dict, rois: 
     out["output_netcdf_bytes_upper_total"] = sum(r["output_netcdf_bytes_upper"] for d in out["datasets"]
                                                  for r in d["regions"].values())
     out["api_calls_est"] = sum(r["api_calls_est"] for d in out["datasets"] for r in d["regions"].values())
+    out["zones_without_sea"] = [f"{d['key']} {r['region_id']}/{r['subregion_id']}" for d in out["datasets"]
+                                for r in d["rois"] if r.get("sea_cells") == 0]
+    out["sea_mask_checked"] = all(d["sea_mask"] for d in out["datasets"])
     out["fetch_guards"] = [
         "Open each dataset once per region (surface level, region box); every chunk is read once.",
         "ARCO chunks are large tiles (BGC 8x16 deg, PHY 2.7x5.3 deg): bytes on the wire cover the tile, "
         "but only cells inside each ROI request box are kept; the rest is never written to disk.",
         "Reject a response whose coordinates fall outside the region box or whose shape differs from the plan.",
+        "Keep only membership cells marked sea in the static mask; refuse to run while zones_without_sea is non-empty.",
     ]
     out["unknowns"] = [
         "Copernicus Marine Toolbox may also read coordinate arrays and .zmetadata (a few KB per dataset).",
         "ANFC days near the present are revised; values for the last weeks may change after download.",
-        "Coarse model grid (0.25 deg BGC, 1/12 deg PHY) versus 5 km coastal zones: coastal cells may be land (fill), "
-        "and no BGC cell lies mostly inside any ROI, so BGC values describe ~28 km cells around the zone.",
+        "Coarse model grid (0.25 deg BGC, 1/12 deg PHY) versus 5 km coastal zones: at most one BGC cell lies mostly "
+        "inside a ROI, so BGC values describe ~28 km cells around the zone. Land cells are identified by the static mask.",
     ]
     return out

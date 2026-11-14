@@ -336,7 +336,8 @@ def build_plan(catalog: dict, roi_geojson: dict, cfg: dict, inputs: dict, member
                 table = r.pop("membership")
                 path = membership_dir / f"{d['key']}__{r['region_id']}__{r['subregion_id']}__v1.csv.gz"
                 with gzip.open(path, "wt", newline="") as fh:
-                    w = csv.DictWriter(fh, fieldnames=["lat_index", "lon_index", "lat", "lon", "overlap_fraction"])
+                    w = csv.DictWriter(fh, fieldnames=["lat_index", "lon_index", "lat", "lon", "overlap_fraction", "sea"],
+                                       extrasaction="raise", restval="")
                     w.writeheader()
                     w.writerows(table)
                 r["membership_table"] = path.name
@@ -414,7 +415,8 @@ def write_estimate_csv(plan: dict, path: Path) -> None:
 
 
 COPERNICUS_COLUMNS = ["dataset", "region_id", "subregion_id", "variables", "bbox_cells", "roi_cells",
-                      "cells_mostly_inside", "days_requested", "days_available", "chunks_if_fetched_alone",
+                      "cells_mostly_inside", "sea_cells", "land_cells", "sea_overlap_weight",
+                      "sea_cells_mostly_inside", "days_requested", "days_available", "chunks_if_fetched_alone",
                       "transfer_bytes_if_fetched_alone", "uncompressed_subset_bytes", "final_rows", "membership_table"]
 
 

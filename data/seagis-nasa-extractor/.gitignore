@@ -30,3 +30,7 @@ __pycache__/
 .pytest_cache/
 *.egg-info/
 .cache/
+
+# Build artefacts from non-editable install
+build/
+dist/

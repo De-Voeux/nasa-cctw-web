@@ -96,7 +96,8 @@ def cmd_plan(args) -> int:
         max_cells = int(cfg["execution"].get("max_request_cells", 10_000))
 
         def cm_fn(rois, geoms):
-            return copernicus.plan_section(MetadataClient(), specs, period, rois, geoms, max_cells)
+            return copernicus.plan_section(MetadataClient(), specs, period, rois, geoms, max_cells,
+                                           static_dir=root / "data/raw/static/copernicus")
     (out_dir / "membership").mkdir(parents=True, exist_ok=True)
     plan = estimate.build_plan(json.loads(cat_path.read_text()), json.loads(roi_path.read_text()), cfg, inputs,
                                out_dir / "membership", pilot=roi_cfg.get("pilot_subregions"), copernicus_fn=cm_fn)
@@ -111,6 +112,10 @@ def cmd_plan(args) -> int:
     (out_dir / "plan_summary.txt").write_text(text + "\n")
     print(text)
     print(f"\nWrote {plan_path}, {out_dir / 'estimate.csv'}, {out_dir / 'plan_summary.txt'}, {out_dir / 'membership'}/")
+    empty = (plan.get("copernicus") or {}).get("zones_without_sea") or []
+    if empty:
+        print("\nBLOCKING: these zones have no sea cell in the model grid: " + ", ".join(empty), file=sys.stderr)
+        return 3
     return 0
 
 
