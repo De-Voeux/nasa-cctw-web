@@ -62,48 +62,79 @@ What does not work without an Earthdata account: GPM IMERG through GES DISC (HTT
 
 ### 4. Data pulled
 
-Six Southeast Asian coastal cells, 2003–2024, 18 raw files, three tidied tables and one results table. All of it is committed in [research/data-access/](../../research/data-access/), about 35 MB. Every value came from a live request on 2026-11-15 and was re-downloaded once to confirm it matched; [`research/data-access/checksums.txt`](../../research/data-access/checksums.txt) records SHA-256 hashes for all 23 data files.
+Nineteen Southeast Asian coastal cells, 2003–2024, 57 raw files, two tidied tables and one results table. All of it is committed in [research/data-access/](../../research/data-access/), about 16 MB. Every value came from a live request on 2026-11-15, and two sites were re-downloaded from scratch afterwards to confirm they matched line for line; [`research/data-access/checksums.txt`](../../research/data-access/checksums.txt) records SHA-256 hashes for all 60 data files.
 
-The six sites are not a sample of Southeast Asia. They are the specific regions the literature names for *Kappaphycus* and *Eucheuma* cultivation or ice-ice reports, reduced to one regional cell each. Other areas were not tested, and no site is a farm location.
+The nineteen sites are the ice-ice regions listed in [research/evidence/CANDIDATE_HOST_REGIONS.md](../../research/evidence/CANDIDATE_HOST_REGIONS.md), reduced to one regional cell each. Those literature rows are still marked unverified; what is verified here is only the NASA numbers at these coordinates. No site is a farm location.
 
-| Site | Country | Latitude | Longitude |
-| --- | --- | --- | --- |
-| se-sulawesi | Indonesia | −4.0 | 123.0 |
-| s-sulawesi | Indonesia | −5.6 | 119.2 |
-| sabah | Malaysia | 4.5 | 118.8 |
-| tawi-tawi | Philippines | 5.0 | 119.9 |
-| bohol | Philippines | 10.0 | 124.5 |
-| khanh-hoa | Vietnam | 12.2 | 109.3 |
+| Site | Region | Country | Latitude | Longitude |
+| --- | --- | --- | --- | --- |
+| se-sulawesi | Southeast Sulawesi, Konawe coast | Indonesia | −4.0 | 123.0 |
+| s-sulawesi | South Sulawesi, Takalar coast | Indonesia | −5.6 | 119.2 |
+| c-sulawesi | Central Sulawesi, Banggai coast | Indonesia | −1.0 | 122.8 |
+| n-kalimantan | North Kalimantan, Tarakan coast | Indonesia | 3.3 | 117.7 |
+| maluku | Maluku, Kei Islands | Indonesia | −5.6 | 132.7 |
+| n-java-sea | North Java Sea, Jepara offshore | Indonesia | −5.8 | 110.5 |
+| wnt | West Nusa Tenggara, East Lombok | Indonesia | −8.9 | 116.5 |
+| sabah | Sabah, Semporna coast | Malaysia | 4.5 | 118.8 |
+| tawi-tawi | Tawi-Tawi, Bongao coast | Philippines | 5.0 | 119.9 |
+| bohol | Bohol Sea | Philippines | 10.0 | 124.5 |
+| ne-bohol | Northeastern Bohol, Candijay offshore | Philippines | 9.9 | 124.6 |
+| zamboanga | Zamboanga City, Basilan Strait | Philippines | 6.8 | 122.0 |
+| davao-del-norte | Davao del Norte, Davao Gulf | Philippines | 7.2 | 125.7 |
+| pangasinan | Pangasinan, Lingayen Gulf | Philippines | 16.4 | 119.8 |
+| batangas | Batangas, Calatagan coast | Philippines | 13.8 | 120.4 |
+| southern-luzon | Southern Luzon, Tayabas Bay | Philippines | 13.7 | 121.6 |
+| eastern-samar | Eastern Samar, Borongan coast | Philippines | 11.6 | 125.6 |
+| palawan | Palawan, Sulu Sea | Philippines | 9.8 | 118.3 |
+| khanh-hoa | Khanh Hoa coast | Vietnam | 12.2 | 109.3 |
 
-Every point is a regional grid-cell centroid chosen for comparison, not a farm coordinate. That distinction must survive into the product.
+Every point is a regional grid-cell centroid chosen for comparison, not a farm coordinate. Each candidate was probed against the MUR endpoint before the pull; two fell on land and were moved offshore, Palawan and Zamboanga City.
+
+Two sites are not independent samples. `bohol` and `ne-bohol` sit in the same MERRA-2 cell, so ten of the eleven POWER variables are byte-identical; only the CERES radiation series differs. Their MUR series do differ. Nineteen coordinates therefore give eighteen independent atmospheric samples, and any count must say so.
 
 ### 5. First trend results
 
-Mann-Kendall for significance and Sen's slope for magnitude, computed on annual means (n = 22) because monthly series are heavily autocorrelated. 72 combinations of site and variable, 39 significant at p < 0.05. Full table: [research/data-access/results/trends.csv](../../research/data-access/results/trends.csv).
+Mann-Kendall for significance and Sen's slope for magnitude, computed on annual means (n = 22) because monthly series are heavily autocorrelated. 228 combinations of site and variable, 114 significant at p < 0.05. Full table: [research/data-access/results/trends.csv](../../research/data-access/results/trends.csv).
 
-Sea surface temperature, °C per year:
+Sea surface temperature rises at every one of the nineteen sites. The range is +0.023 to +0.047 °C per year:
 
 | Site | Sen's slope | p |
 | --- | --- | --- |
-| sabah | +0.043 | <0.001 |
+| n-kalimantan | +0.047 | <0.001 |
+| maluku | +0.046 | 0.013 |
+| southern-luzon | +0.043 | <0.001 |
 | khanh-hoa | +0.043 | 0.013 |
+| sabah | +0.043 | <0.001 |
+| batangas | +0.040 | <0.001 |
+| pangasinan | +0.040 | <0.001 |
+| davao-del-norte | +0.036 | <0.001 |
+| palawan | +0.036 | <0.001 |
 | tawi-tawi | +0.035 | <0.001 |
+| eastern-samar | +0.032 | 0.001 |
+| ne-bohol | +0.030 | <0.001 |
+| zamboanga | +0.029 | 0.010 |
+| s-sulawesi | +0.029 | 0.071 |
+| n-java-sea | +0.028 | 0.006 |
 | se-sulawesi | +0.028 | 0.024 |
 | bohol | +0.027 | 0.002 |
-| s-sulawesi | +0.029 | 0.071 |
+| wnt | +0.023 | 0.143 |
+| c-sulawesi | +0.023 | 0.063 |
 
-Precipitation, mm/day per year, is the clearest illustration of the challenge's own point that the same process can trend in opposite directions in different regions:
+Sixteen of the nineteen are significant. The three that are not, wnt, c-sulawesi and s-sulawesi, still have positive slopes; the test simply cannot separate them from zero over 22 years.
+
+Precipitation is the variable that justifies a regional list rather than a global average, because the same process trends in opposite directions:
 
 | Site | Sen's slope | p |
 | --- | --- | --- |
 | se-sulawesi | +0.132 | 0.007 |
 | khanh-hoa | +0.116 | 0.037 |
+| maluku | +0.081 | 0.015 |
 | tawi-tawi | −0.077 | 0.032 |
-| bohol, s-sulawesi, sabah | not significant | 0.06–0.59 |
+| the other 15 sites | not significant | 0.06–0.96 |
 
-Air temperature at 2 m is significant and positive at five of six sites; wind speed is significant and negative at three.
+Air temperature at 2 m is significant and positive at seventeen of nineteen sites, and wind speed is significant and negative at eleven.
 
-Two cautions attached to these numbers. POWER is reanalysis model output on a ~55 × 69 km cell, so it describes regional air, not water at a farm. MUR here is a single 0.01° cell sampled every 30 days, with no spatial averaging.
+Two cautions attached to these numbers. POWER is reanalysis model output on a ~55 × 69 km cell, so it describes regional air, not water at a farm. MUR here is a single 0.01° cell sampled every 30 days, with no spatial averaging. And 228 tests at α = 0.05 will flag about 11 combinations by chance alone; no multiplicity correction is applied, so each p-value describes one series rather than a confirmed discovery.
 
 ### 6. Why 22 years and not 5
 
@@ -115,7 +146,7 @@ Verified:
 
 - Challenge brief, Resources tab, submission window, judging criteria.
 - Live access and real values from POWER, MUR and MODIS ocean colour.
-- Trend statistics for 72 site and variable combinations, reproducible from the committed scripts.
+- Trend statistics for 228 site and variable combinations across nineteen sites, reproducible from the committed scripts.
 
 Not done, and not to be claimed:
 
