@@ -267,6 +267,9 @@ setPanel(savedHidden === "1", false)
 panelHide.addEventListener("click", () => {
   setPanel(true)
   panelShow.focus()
+  panelShow.classList.remove("nudge")
+  void panelShow.offsetWidth // restart the animation
+  panelShow.classList.add("nudge")
 })
 panelShow.addEventListener("click", () => {
   setPanel(false)

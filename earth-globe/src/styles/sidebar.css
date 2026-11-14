@@ -43,12 +43,26 @@ html[data-panel="hidden"] .side-panel {
   transform: translateX(calc(100% + var(--gap) * 2)); visibility: hidden;
   transition: transform 0.3s ease, visibility 0s 0.3s;
 }
+/* A tab on the right edge, in the accent colour with a label: easy to see and where a drawer's handle is expected.
+   It sits below the map controls (top right) so the two never overlap. */
 .panel-show {
-  position: fixed; right: var(--gap); bottom: calc(var(--gap) * 2 + 4px); z-index: 3;
-  width: 48px; height: 48px; border-radius: 50%; place-items: center; display: none;
+  position: fixed; right: 0; z-index: 3;
+  top: min(max(46%, 316px), calc(100% - 168px));
+  display: none; flex-direction: column; align-items: center; gap: 8px;
+  padding: 14px 9px; border-radius: 16px 0 0 16px;
+  background: var(--accent); color: #fff;
+  box-shadow: -6px 6px 24px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  font-size: 13px; font-weight: 600; letter-spacing: 0.04em;
+  transition: padding 0.15s, filter 0.15s;
 }
-.panel-show svg { width: 22px; height: 22px; }
-html[data-panel="hidden"] .panel-show { display: grid; }
+.panel-show:hover { padding-right: 14px; filter: brightness(1.12); }
+.panel-show svg { width: 22px; height: 22px; stroke-width: 2.4; }
+.ps-label { writing-mode: vertical-rl; }
+html[data-panel="hidden"] .panel-show { display: flex; }
+/* Draws the eye once, right after the panel was hidden. */
+.panel-show.nudge { animation: panel-nudge 0.6s ease-in-out 3; }
+@keyframes panel-nudge { 50% { transform: translateX(-8px); } }
+@media (prefers-reduced-motion: reduce) { .panel-show.nudge { animation: none; } }
 .panel-show[hidden] { display: none !important; }
 
 /* Collapse button for the list / details (wide screens; phones use the sheet handle). */
