@@ -1,17 +1,20 @@
 import { answer } from "./ask.js"
+import { askAssistant, renderAnswer, MESSAGES } from "./assistant.js"
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c])
 
 /**
  * "Ask SEAmon" chat (bottom left). Closed, it is only the input row; after the
  * first question it opens into a glass panel with the conversation.
- * Answers come from `answer()` in ask.js (local, no AI backend yet). Each answer
- * can carry "Show …" buttons that select a place on the globe.
+ * Questions go to the assistant (POST /api/ask: verified sources and site data, with
+ * citations). While it is not set up or cannot be reached, `answer()` in ask.js gives the
+ * built-in local answers, which can carry "Show …" buttons that select a place on the globe.
  *
  * @param {HTMLElement} root
- * @param {{locations:any[], onShow:(loc:any)=>void}} opts
+ * @param {{locations:any[], onShow:(loc:any)=>void, getContext?:()=>{species?:string, country?:string|null}}} opts
+ *   getContext: the species and country selected in the panel, sent with the question
  */
-export function mountChat(root, { locations, onShow }) {
+export function mountChat(root, { locations, onShow, getContext = () => ({}) }) {
   const log = root.querySelector("#chat-log")
   const form = root.querySelector("#ask")
   const input = root.querySelector("#ask-input")
@@ -31,19 +34,38 @@ export function mountChat(root, { locations, onShow }) {
     return el
   }
 
-  form.addEventListener("submit", (e) => {
+  let asking = false
+
+  form.addEventListener("submit", async (e) => {
     e.preventDefault()
     const q = input.value.trim()
     if (!q) return input.focus()
+    if (asking) return
+    asking = true
     setOpen(true)
     push("user", esc(q))
-    const res = answer(q, locations)
-    const actions = (res.actions || [])
-      .map((a) => `<button type="button" class="show-btn" data-goto="${a.loc.id}">${esc(a.label)}</button>`)
-      .join("")
-    push("bot", res.html + (actions ? `<div class="msg-actions">${actions}</div>` : ""))
     input.value = ""
-    if (res.focus && res.autoShow) onShow(res.focus)
+    const bubble = push("bot", `<p class="thinking" aria-live="polite">Thinking…</p>`)
+    try {
+      const reply = await askAssistant(q, getContext())
+      if (reply.ok) {
+        bubble.innerHTML = renderAnswer(reply.data)
+        return
+      }
+      if (reply.reason !== "unavailable") {
+        bubble.innerHTML = MESSAGES[reply.reason]
+        return
+      }
+      const res = answer(q, locations)
+      const actions = (res.actions || [])
+        .map((a) => `<button type="button" class="show-btn" data-goto="${a.loc.id}">${esc(a.label)}</button>`)
+        .join("")
+      bubble.innerHTML = res.html + (actions ? `<div class="msg-actions">${actions}</div>` : "")
+      if (res.focus && res.autoShow) onShow(res.focus)
+    } finally {
+      asking = false
+      log.scrollTop = log.scrollHeight
+    }
   })
 
   log.addEventListener("click", (e) => {

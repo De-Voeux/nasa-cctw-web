@@ -43,6 +43,6 @@ export function answer(question, locations) {
   }
 
   return {
-    html: `<p>I can't answer that yet. Try “Which area has the most ice-ice case?” or a place like “Tawi-Tawi”.</p>`,
+    html: `<p>I can't answer that yet. Try “Which area has the most ice-ice case?” or “Area in Indonesia that produce cottoni”.</p>`,
   }
 }

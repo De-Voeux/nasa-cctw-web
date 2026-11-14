@@ -180,6 +180,17 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .msg.bot { align-self: flex-start; background: rgba(255, 255, 255, 0.1); }
 .msg .small { font-size: 12.5px; }
 .msg-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+
+/* Assistant answers (dashboard/assistant.js): claims with source numbers, the data used, the source list. */
+.msg { overflow-wrap: anywhere; }
+.msg .claims { margin: 6px 0 0; padding-left: 18px; }
+.msg .claims li { margin: 3px 0; }
+.msg .cite { color: #a9c4ff; font-size: 0.75em; margin-left: 2px; }
+.msg .data-used { margin-top: 8px; font-size: 12.5px; color: var(--text-muted); }
+.msg .sources { margin: 8px 0 0; padding-left: 20px; font-size: 12.5px; color: var(--text-muted); }
+.msg .sources li { margin: 2px 0; }
+.msg .sources .link, .msg .link { color: #a9c4ff; text-decoration: underline; }
+.msg .thinking { color: var(--text-muted); font-style: italic; }
 .show-btn { padding: 6px 12px; border-radius: var(--radius-pill); font-size: 13px; font-weight: 600; background: rgba(255, 255, 255, 0.14); }
 .show-btn:hover { background: rgba(255, 255, 255, 0.22); }
 

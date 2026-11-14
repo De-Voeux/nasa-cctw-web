@@ -7,7 +7,7 @@
   "scripts": {
     "start": "parcel src/index.html src/demo.html --port 1235 --no-autoinstall",
     "build": "parcel build src/index.html src/demo.html --public-url ./",
-    "test": "node --test src/earth/geo.test.mjs"
+    "test": "node --test src/earth/geo.test.mjs src/dashboard/assistant.test.mjs"
   },
   "dependencies": {
     "three": "0.156.1"

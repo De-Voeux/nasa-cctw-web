@@ -253,7 +253,11 @@ handle.addEventListener("touchend", (e) => {
 
 // --------------------------------------------------------------- chat
 
-mountChat($("chat"), { locations: LOCATIONS, onShow: (loc) => select(loc.id) })
+mountChat($("chat"), {
+  locations: LOCATIONS,
+  onShow: (loc) => select(loc.id),
+  getContext: () => ({ species: state.species, country: state.country }),
+})
 
 // --------------------------------------------------------------- controls
 
