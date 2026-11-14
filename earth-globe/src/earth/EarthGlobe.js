@@ -1,7 +1,7 @@
 import * as THREE from "three"
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js"
 import { latLonToXYZ, xyzToLatLon, clampLat, altitudeToDistance, distanceToAltitude } from "./geo.mjs"
-import { atmosphereVertex, atmosphereFragment, patchEarthMaterial } from "./shaders.js"
+import { atmosphereVertex, atmosphereFragment, patchEarthMaterial, applyTerminatorSoftness } from "./shaders.js"
 
 /**
  * @typedef {Object} EarthTextures  URLs (or any string TextureLoader accepts).
@@ -11,7 +11,9 @@ import { atmosphereVertex, atmosphereFragment, patchEarthMaterial } from "./shad
  * @property {string} [ocean]  white over water, black over land
  * @property {string} [clouds] see `cloudsFormat`
  * @property {string} [lights] city lights, only used when effects.nightLights
- * @property {string} [sky]    equirectangular star field for the background
+ * @property {string} [sky]    background image, loaded after `ready`. A 2:1 image is wrapped
+ *   around the viewer (equirectangular); any other ratio is a flat backdrop that covers
+ *   the canvas at its original proportions, cropped evenly, never stretched.
  *
  * @typedef {Object} EarthGlobeOptions
  * @property {EarthTextures} textures
@@ -24,9 +26,17 @@ import { atmosphereVertex, atmosphereFragment, patchEarthMaterial } from "./shad
  *   on by default. Stops on any user interaction, then resumes after
  *   `resumeAfterMs` (default 5000; null = never resume).
  * @property {{clouds?:boolean,atmosphere?:boolean,nightLights?:boolean,oceanReflection?:boolean}} [effects]
- * @property {"headlight"|"fixed"} [lighting="headlight"]  headlight keeps the visible
- *   hemisphere lit (what an atlas wants); fixed uses `sunDirection`.
- * @property {[number,number,number]} [sunDirection]
+ * @property {"camera"|"fixed"} [lighting="camera"]  the sun is a directional light.
+ *   "camera" holds it at a fixed angle from the viewing direction, so the globe always
+ *   shows a day side and a night side like the article's demo, however the user rotates.
+ *   "fixed" pins it in world space at `sunDirection`.
+ * @property {number} [sunAzimuth=-59]  degrees off the viewing axis, negative = left ("camera" mode)
+ * @property {number} [sunElevation=0]  degrees above the viewing axis ("camera" mode)
+ * @property {[number,number,number]} [sunDirection]  world direction toward the sun ("fixed" mode)
+ * @property {number} [ambient=0]  ambient light; 0 leaves the night side black, as in the article
+ * @property {number} [nightLightsIntensity=3]  brightness of the city lights (see DEFAULTS)
+ * @property {number} [terminatorSoftness=0.3]  width of the dusk band between day and night
+ *   (wrap lighting); 0 gives a hard edge
  * @property {string|number|null} [background="#02040a"]  null = transparent canvas
  * @property {number} [maxPixelRatio=2]
  * @property {"auto"|"low"|"high"} [quality="auto"]
@@ -38,9 +48,21 @@ const DEFAULTS = {
   minAltitude: 0.15,
   maxAltitude: 8,
   autoRotate: { enabled: true, speed: 0.5, resumeAfterMs: 5000 },
-  effects: { clouds: true, atmosphere: true, nightLights: false, oceanReflection: true },
-  lighting: "headlight",
+  effects: { clouds: true, atmosphere: true, nightLights: true, oceanReflection: true },
+  lighting: "camera",
+  // The article puts the sun at (-50, 0, 30) for a camera at (0, 0, 30): 59° to the
+  // left of the viewing axis, level with the camera.
+  sunAzimuth: -59,
+  sunElevation: 0,
   sunDirection: [-1, 0.2, 0.6],
+  ambient: 0,
+  // The article's city-lights map is 16384x8192. We ship it at 4096x2048, which blurs the
+  // small points of light and dims them, so they are boosted to look similar. Use 1 with
+  // the full-size map.
+  nightLightsIntensity: 3,
+  // 0 = hard terminator (stock three.js). Around 0.3 gives a twilight band like the
+  // atmosphere makes on the real Earth; light then fades out gradually past the terminator.
+  terminatorSoftness: 0.3,
   background: "#02040a",
   maxPixelRatio: 2,
   quality: "auto",
@@ -48,8 +70,13 @@ const DEFAULTS = {
 
 // Vertical field of view (degrees) in landscape containers.
 const BASE_FOV = 45
+// Same sun strength as the article's demo.
+const SUN_INTENSITY = 1.8
 // Relative cloud drift over the ground, radians per second.
 const CLOUD_DRIFT = 0.01
+// The article uses bumpScale 0.03 on a sphere of radius 10. three.js evaluates
+// bump in object-space units, so the equivalent for our radius-1 sphere is 0.003.
+const BUMP_SCALE = 0.003
 // Atmosphere shell radius / cloud shell radius, in Earth radii.
 const ATMOS_RADIUS = 1.25
 const CLOUD_RADIUS = 1.005
@@ -223,6 +250,7 @@ export class EarthGlobe {
     const base = THREE.MathUtils.degToRad(BASE_FOV)
     this.camera.fov = aspect < 1 ? THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(base / 2) / aspect)) : BASE_FOV
     this.camera.updateProjectionMatrix()
+    this._fitSky()
   }
 
   /** Release GPU resources and listeners. Safe to call twice. */
@@ -268,19 +296,30 @@ export class EarthGlobe {
     if (this.opts.background !== null) this.scene.background = new THREE.Color(this.opts.background)
 
     this.camera = new THREE.PerspectiveCamera(BASE_FOV, 1, 0.01, 100)
-    this.scene.add(this.camera) // needed so a camera-parented headlight is rendered
 
-    const sun = new THREE.DirectionalLight(0xffffff, 1.8)
-    if (this.opts.lighting === "headlight") {
-      sun.position.set(-2, 1, 3) // camera-local: upper-left of the viewer
-      this.camera.add(sun)
-    } else {
-      const d = new THREE.Vector3(...this.opts.sunDirection).normalize().multiplyScalar(10)
-      sun.position.copy(d)
-      this.scene.add(sun)
-    }
-    this.scene.add(new THREE.AmbientLight(0xffffff, 0.25))
+    // The sun is a directional light aimed at the Earth's centre.
+    this._sun = new THREE.DirectionalLight(0xffffff, SUN_INTENSITY)
+    this.scene.add(this._sun)
+    const az = THREE.MathUtils.degToRad(this.opts.sunAzimuth)
+    const el = THREE.MathUtils.degToRad(this.opts.sunElevation)
+    // Unit vector toward the sun in camera-aligned axes centred on the Earth, where
+    // +z points from the Earth toward the camera. With azimuth -59° and elevation 0 this
+    // is the article's light direction, whatever the camera distance.
+    this._sunLocal = new THREE.Vector3(Math.sin(az) * Math.cos(el), Math.sin(el), Math.cos(az) * Math.cos(el))
+    this._sunFixed = new THREE.Vector3(...this.opts.sunDirection).normalize()
+    this._sunTmp = new THREE.Vector3()
+    this._updateSun()
+    if (this.opts.ambient > 0) this.scene.add(new THREE.AmbientLight(0xffffff, this.opts.ambient))
     this.resize()
+  }
+
+  /** Re-aim the sun. In "camera" mode it follows the camera's orientation. */
+  _updateSun() {
+    const dir =
+      this.opts.lighting === "fixed"
+        ? this._sunFixed
+        : this._sunTmp.copy(this._sunLocal).applyQuaternion(this.camera.quaternion)
+    this._sun.position.copy(dir).multiplyScalar(10)
   }
 
   _initControls() {
@@ -368,14 +407,13 @@ export class EarthGlobe {
     const wantOcean = fx.oceanReflection && !!t.ocean
     const cloudsAsAlpha = this.opts.cloudsFormat === "alpha"
 
-    const [albedo, normal, bump, ocean, clouds, lights, sky] = await Promise.all([
+    const [albedo, normal, bump, ocean, clouds, lights] = await Promise.all([
       this._loadTexture(t.albedo, { srgb: true }),
       t.normal ? this._loadTexture(t.normal) : null,
       !t.normal && t.bump ? this._loadTexture(t.bump) : null,
       wantOcean ? this._loadTexture(t.ocean) : null,
       wantClouds ? this._loadTexture(t.clouds, { srgb: cloudsAsAlpha, repeatX: true }) : null,
       wantLights ? this._loadTexture(t.lights, { srgb: true }) : null,
-      t.sky ? this._loadTexture(t.sky, { srgb: true }) : null,
     ])
     if (this._disposed) return
 
@@ -388,13 +426,14 @@ export class EarthGlobe {
       map: albedo,
       normalMap: normal || null,
       bumpMap: bump || null,
-      bumpScale: 0.03,
+      bumpScale: BUMP_SCALE,
       roughness: 1,
       metalness: ocean ? 0.1 : 0,
       roughnessMap: ocean || null,
       metalnessMap: ocean || null,
       emissiveMap: lights || null,
       emissive: lights ? new THREE.Color(0xffff88) : new THREE.Color(0x000000),
+      emissiveIntensity: this.opts.nightLightsIntensity,
     })
     patchEarthMaterial(earthMat, {
       uvXOffset: this._uvXOffset,
@@ -403,6 +442,7 @@ export class EarthGlobe {
       nightLights: !!lights,
       fresnel: fx.atmosphere,
       oceanRoughness: !!ocean,
+      terminatorSoftness: this.opts.terminatorSoftness,
     })
     this._earth = new THREE.Mesh(new THREE.SphereGeometry(1, seg, seg), earthMat)
     this.scene.add(this._earth)
@@ -414,6 +454,8 @@ export class EarthGlobe {
           ? { map: clouds, transparent: true, depthWrite: false }
           : { alphaMap: clouds, transparent: true, depthWrite: false },
       )
+      // Same soft terminator as the ground, or the clouds would vanish before the land does.
+      applyTerminatorSoftness(cloudMat, this.opts.terminatorSoftness)
       this._clouds = new THREE.Mesh(new THREE.SphereGeometry(CLOUD_RADIUS, seg, seg), cloudMat)
       this.scene.add(this._clouds)
     }
@@ -438,10 +480,39 @@ export class EarthGlobe {
       this.scene.add(this._atmos)
     }
 
-    if (sky) {
-      sky.mapping = THREE.EquirectangularReflectionMapping
-      this.scene.background = sky
-    }
+    if (t.sky) this._loadSky(t.sky)
+  }
+
+  /** Load the background without delaying `ready`; a failure is only reported via "error". */
+  _loadSky(url) {
+    this._loadTexture(url, { srgb: true }).then(
+      (sky) => {
+        if (this._disposed) return
+        const ratio = sky.image.width / sky.image.height
+        if (Math.abs(ratio - 2) < 0.05) {
+          // 2:1 is an equirectangular map: wrap it around the viewer.
+          sky.mapping = THREE.EquirectangularReflectionMapping
+          this._skyAspect = null
+        } else {
+          // Any other ratio is a flat backdrop that keeps its own proportions (see _fitSky).
+          sky.generateMipmaps = false
+          sky.minFilter = THREE.LinearFilter
+          this._skyAspect = ratio
+        }
+        this.scene.background = sky
+        this._fitSky()
+      },
+      (err) => this._emit("error", err),
+    )
+  }
+
+  /** "Cover" fit for a flat backdrop: fill the canvas, crop the overflow evenly, never stretch. */
+  _fitSky() {
+    const bg = this.scene.background
+    if (!this._skyAspect || !bg || !bg.isTexture) return
+    const f = this._skyAspect / this.camera.aspect
+    bg.repeat.set(f > 1 ? 1 / f : 1, f > 1 ? 1 : f)
+    bg.offset.set(f > 1 ? (1 - 1 / f) / 2 : 0, f > 1 ? 0 : (1 - f) / 2)
   }
 
   _safeCurrentView() {
@@ -496,6 +567,7 @@ export class EarthGlobe {
       this._atmosUniforms.atmOpacity.value = ATMOS_BASE.opacity * k
     }
 
+    this._updateSun()
     this.renderer.render(this.scene, this.camera)
   }
 }

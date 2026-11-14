@@ -1,3 +1,5 @@
+import { ShaderChunk } from "three"
+
 // GLSL for the Earth globe. Technique follows Franky Hung's "Make Your Own
 // Earth in Three.js" (atmosphere rim shader, cloud-shadow "negative light map",
 // ocean roughness inversion, night lights). Adapted for a world-fixed Earth
@@ -33,14 +35,46 @@ void main() {
 }
 `
 
-const NIGHT_LIGHTS_BLOCK = /* glsl */ `
+// City lights fade in across [lo, hi] of N·L. With a hard terminator that is a hair's width
+// around 0; with a soft terminator it spans the twilight band, where the ground is dim.
+const nightLightsBlock = (lo, hi) => /* glsl */ `
 #ifdef USE_EMISSIVEMAP
   vec4 emissiveColor = texture2D( emissiveMap, vEmissiveMapUv );
   // Show city lights only where the surface faces away from the sun.
-  emissiveColor *= 1.0 - smoothstep( -0.02, 0.0, dot( geometryNormal, directionalLights[0].direction ) );
+  emissiveColor *= 1.0 - smoothstep( ${lo.toFixed(3)}, ${hi.toFixed(3)}, dot( geometryNormal, directionalLights[0].direction ) );
   totalEmissiveRadiance *= emissiveColor.rgb;
 #endif
 `
+
+const DIRECT_NL = "float dotNL = saturate( dot( geometry.normal, directLight.direction ) );"
+
+/**
+ * three.js clamps N·L to exactly 0 at the terminator, so the lit side ends in a hard edge
+ * (a real sunset is gradual because the atmosphere scatters light past it). "Wrap" lighting
+ * remaps N·L to (N·L + w) / (1 + w), so light fades out gradually past the terminator.
+ * Returns the stock chunk unchanged if three.js no longer contains the line we rewrite.
+ */
+function wrappedPhysicalLights(softness) {
+  const src = ShaderChunk.lights_physical_pars_fragment
+  if (!src.includes(DIRECT_NL)) {
+    console.warn("EarthGlobe: three.js lighting chunk changed; terminator softening skipped")
+    return src
+  }
+  const w = softness.toFixed(3)
+  return src.replace(DIRECT_NL, `float dotNL = saturate( ( dot( geometry.normal, directLight.direction ) + ${w} ) / ( 1.0 + ${w} ) );`)
+}
+
+/** Give any MeshStandardMaterial the same soft terminator (used for the cloud shell). */
+export function applyTerminatorSoftness(material, softness) {
+  if (!(softness > 0)) return
+  material.customProgramCacheKey = () => `wrap:${softness}`
+  material.onBeforeCompile = (shader) => {
+    shader.fragmentShader = shader.fragmentShader.replace(
+      "#include <lights_physical_pars_fragment>",
+      wrappedPhysicalLights(softness),
+    )
+  }
+}
 
 // Cloud shadow: for a ground point at uv X, sample the cloud texture at the uv
 // of the cloud directly above it. The cloud sphere is rotated by `alpha`
@@ -77,16 +111,18 @@ float roughnessFactor = roughness;
  * @param {boolean} cfg.nightLights
  * @param {boolean} cfg.fresnel
  * @param {boolean} cfg.oceanRoughness
+ * @param {number} [cfg.terminatorSoftness] wrap-lighting amount, 0 = hard terminator
  */
 export function patchEarthMaterial(material, cfg) {
   const { uvXOffset, cloudsTexture, cloudChannel, nightLights, fresnel, oceanRoughness } = cfg
+  const softness = cfg.terminatorSoftness > 0 ? cfg.terminatorSoftness : 0
   const useClouds = !!cloudsTexture
 
   // three.js keys its program cache on the onBeforeCompile source text, which is
   // identical for every globe. Without this, two globes with different effects
   // would silently share one compiled program.
   material.customProgramCacheKey = () =>
-    `earth:${useClouds ? cloudChannel : "-"}:${nightLights ? 1 : 0}${fresnel ? 1 : 0}${oceanRoughness ? 1 : 0}`
+    `earth:${useClouds ? cloudChannel : "-"}:${nightLights ? 1 : 0}${fresnel ? 1 : 0}${oceanRoughness ? 1 : 0}:${softness}`
 
   material.onBeforeCompile = (shader) => {
     if (useClouds) {
@@ -98,8 +134,20 @@ export function patchEarthMaterial(material, cfg) {
       )
     }
 
+    if (softness > 0) {
+      shader.fragmentShader = shader.fragmentShader.replace(
+        "#include <lights_physical_pars_fragment>",
+        wrappedPhysicalLights(softness),
+      )
+    }
+
+    const bound = Math.max(0.02, softness * 0.4)
     const emissive = [
-      nightLights ? NIGHT_LIGHTS_BLOCK : "#include <emissivemap_fragment>",
+      nightLights
+        ? softness > 0
+          ? nightLightsBlock(-bound, bound)
+          : nightLightsBlock(-0.02, 0.0)
+        : "#include <emissivemap_fragment>",
       useClouds ? cloudShadowBlock(cloudChannel) : "",
       fresnel ? FRESNEL_BLOCK : "",
     ].join("\n")
