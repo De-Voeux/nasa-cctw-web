@@ -37,6 +37,22 @@ Reads go through the ARCO `geoChunked` Zarr store. A subset downloads every chun
 
 ARCO chunks are large tiles: 8°×16° for BGC and 2.7°×5.3° for salinity. The service cannot send less than a whole tile, so the bytes on the wire cover more area than the zones. Only cells inside each ROI request box are kept, and nothing else is written to disk. Region boxes touch no chunks beyond those the ROI boxes need. These rules are recorded in `plan.json` → `copernicus.fetch_guards`.
 
+## Update 2026-11-15: all 47 zones
+
+| Dataset | Per region | With shared chunk cache |
+| --- | ---: | ---: |
+| no3 + po4 | 758 MiB | 332 MiB |
+| pH | 266 MiB | 117 MiB |
+| salinity | 466 MiB | 354 MiB |
+| **Total** | **1.46 GiB** | **803 MiB** |
+
+- **Why the two columns differ.** BGC chunks are 8°×16° tiles, so one tile serves several regions; Tawi-Tawi, Sabah and Zamboanga, for example, share tiles. Reading every chunk once, through a shared chunk cache, is the cheaper path, and fetch should be built that way.
+- **Sea cells per zone:**
+  - no3/po4/pH: median 5, maximum 25.
+  - salinity: minimum 2, median 19, maximum 112.
+- **Accepted exceptions.** Labrador, Lingayen and Binmaley (PH-PANG) have **no sea cell for BGC** because the inner Lingayen Gulf is land at 0.25°. They are listed in `config/extraction.yaml` → `no_sea_accepted` and recorded in `plan.json` → `copernicus.unavailable_by_decision`. Their no3/po4/pH are left empty, with no filling and no proxy. Any other zone without sea still blocks `plan`.
+- The tables below describe the first 7 zones.
+
 ## Sea cells per zone (verified with the static mask)
 
 Each model has a fixed land/sea mask (1 = sea, 0 = land). Its surface level was read for the region boxes only: BGC `cmems_mod_glo_bgc_anfc_0.25deg_static_202311--ext--mask` chunk `mask/49.0.0` (38,714 bytes) and PHY `cmems_mod_glo_phy_anfc_0.083deg_static_202211--ext--bathy` chunk `mask/49.1.3` (26,276 bytes). Both are cached in `data/raw/static/copernicus/` (gitignored), and their SHA-256 values are in `plan.json`. The plan checks that each mask grid is identical to its data grid.

@@ -19,6 +19,13 @@ products:
     period: {start: '2022-06-01', end: '2026-11-14'}   # aligned with MUR; daily salinity starts 2022-06-01
     depth: surface          # shallowest model level (0.494 m)
     batch: region_whole_period   # one subset per region x dataset; chunks span ~155 days
+    # Zones the model grid treats as land for a dataset (no sea cell in the static mask).
+    # Decided 2026-11-15: leave these values empty and flagged; no gap filling, no proxy.
+    # Any zone without sea that is NOT listed here blocks the plan.
+    no_sea_accepted:
+      PH-PANG/lingayen_gulf_labrador: [cmems_bgc_nut, cmems_bgc_car]
+      PH-PANG/lingayen_gulf_lingayen: [cmems_bgc_nut, cmems_bgc_car]
+      PH-PANG/lingayen_gulf_binmaley: [cmems_bgc_nut, cmems_bgc_car]
 execution:
   batch: monthly
   concurrency: 2

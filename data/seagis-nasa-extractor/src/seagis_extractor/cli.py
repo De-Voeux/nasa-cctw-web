@@ -97,7 +97,8 @@ def cmd_plan(args) -> int:
 
         def cm_fn(rois, geoms):
             return copernicus.plan_section(MetadataClient(), specs, period, rois, geoms, max_cells,
-                                           static_dir=root / "data/raw/static/copernicus")
+                                           static_dir=root / "data/raw/static/copernicus",
+                                           no_sea_accepted=cm_cfg.get("no_sea_accepted"))
     (out_dir / "membership").mkdir(parents=True, exist_ok=True)
     plan = estimate.build_plan(json.loads(cat_path.read_text()), json.loads(roi_path.read_text()), cfg, inputs,
                                out_dir / "membership", pilot=roi_cfg.get("pilot_subregions"), copernicus_fn=cm_fn)

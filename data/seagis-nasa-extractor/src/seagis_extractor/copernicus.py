@@ -295,7 +295,7 @@ def monthly_batch_bytes(ds: dict, per_region: dict, sizes: dict) -> int:
 
 
 def plan_section(client: MetadataClient, specs: list[dict], period: dict, rois: list[dict], roi_geoms: dict,
-                 max_cells: int, static_dir: Path | None = None) -> dict:
+                 max_cells: int, static_dir: Path | None = None, no_sea_accepted: dict | None = None) -> dict:
     start, end = dt.date.fromisoformat(period["start"]), dt.date.fromisoformat(period["end"])
     out = {"period": period, "access": "Copernicus Marine Toolbox subset via ARCO geoChunked Zarr "
                                       "(service arco-geo-series); Copernicus Marine account required",
@@ -349,6 +349,7 @@ def plan_section(client: MetadataClient, specs: list[dict], period: dict, rois: 
             "head_requests": len(sizes), "unknown_chunks": unknown,
             "transfer_bytes": None if unknown else sum(r["transfer_bytes"] for r in reg_rows.values()),
             "transfer_bytes_if_monthly_batches": monthly,
+            "transfer_bytes_unique_all_regions": total(set().union(*(rc["keys"] for rc in per_region.values()))),
             "naive_per_roi_transfer_bytes": sum((r["transfer_bytes_if_fetched_alone"] or 0) for r in rows),
             "regions": reg_rows, "rois": rows,
             "sea_mask": mask.info if mask else None,
@@ -356,12 +357,25 @@ def plan_section(client: MetadataClient, specs: list[dict], period: dict, rois: 
         })
     t = [d["transfer_bytes"] for d in out["datasets"]]
     out["transfer_bytes_total"] = None if any(x is None for x in t) else sum(t)
+    u = [d["transfer_bytes_unique_all_regions"] for d in out["datasets"]]
+    out["transfer_bytes_total_unique_chunks"] = None if any(x is None for x in u) else sum(u)
     out["final_rows_total"] = sum(r["final_rows"] for d in out["datasets"] for r in d["rois"])
     out["output_netcdf_bytes_upper_total"] = sum(r["output_netcdf_bytes_upper"] for d in out["datasets"]
                                                  for r in d["regions"].values())
     out["api_calls_est"] = sum(r["api_calls_est"] for d in out["datasets"] for r in d["regions"].values())
-    out["zones_without_sea"] = [f"{d['key']} {r['region_id']}/{r['subregion_id']}" for d in out["datasets"]
-                                for r in d["rois"] if r.get("sea_cells") == 0]
+    accepted = {(z, k) for z, ks in (no_sea_accepted or {}).items() for k in ks}
+    no_sea = [(f"{r['region_id']}/{r['subregion_id']}", d["key"]) for d in out["datasets"]
+              for r in d["rois"] if r.get("sea_cells") == 0]
+    out["zones_without_sea"] = [f"{k} {z}" for z, k in no_sea if (z, k) not in accepted]
+    out["unavailable_by_decision"] = [{"zone": z, "dataset": k,
+                                       "reason": "no sea cell in the model's static land/sea mask; left empty, not filled"}
+                                      for z, k in no_sea if (z, k) in accepted]
+    for d in out["datasets"]:
+        for r in d["rois"]:
+            r["available"] = r.get("sea_cells") != 0
+            if not r["available"]:
+                r["final_rows"] = 0
+    out["final_rows_total"] = sum(r["final_rows"] for d in out["datasets"] for r in d["rois"])
     out["sea_mask_checked"] = all(d["sea_mask"] for d in out["datasets"])
     out["fetch_guards"] = [
         "Open each dataset once per region (surface level, region box); every chunk is read once.",
@@ -369,6 +383,7 @@ def plan_section(client: MetadataClient, specs: list[dict], period: dict, rois: 
         "but only cells inside each ROI request box are kept; the rest is never written to disk.",
         "Reject a response whose coordinates fall outside the region box or whose shape differs from the plan.",
         "Keep only membership cells marked sea in the static mask; refuse to run while zones_without_sea is non-empty.",
+        "Write no rows for zone x dataset pairs in unavailable_by_decision; record them as unavailable in the output.",
     ]
     out["unknowns"] = [
         "Copernicus Marine Toolbox may also read coordinate arrays and .zmetadata (a few KB per dataset).",

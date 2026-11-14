@@ -88,13 +88,18 @@ def load_source(root: Path, src: dict, verify: bool = True) -> gpd.GeoDataFrame:
     return gdf
 
 
-def select_units(gdf: gpd.GeoDataFrame, region_id: str, spec: dict, source_key: str) -> list[Unit]:
+def select_units(gdf: gpd.GeoDataFrame, region_id: str, spec: dict, source_key: str,
+                 parent: shapely.Geometry | None = None) -> list[Unit]:
+    """`parent` (an admin polygon, e.g. the province) disambiguates duplicate names: a feature
+    qualifies only if its representative point lies inside it."""
     prop = spec.get("match_property", "shapeName")
     units = []
     for sub_id, wanted in spec["subregions"].items():
         hits = gdf[gdf[prop] == wanted]
         if within := spec.get("within_bbox"):
             hits = hits[hits.intersects(shapely.box(*within))]
+        if parent is not None:
+            hits = hits[shapely.within(hits.geometry.representative_point().values, parent)]
         if len(hits) != 1:
             raise LookupError(f"{region_id}/{sub_id}: {prop}=={wanted!r} matched {len(hits)} features")
         row = hits.iloc[0]
@@ -165,7 +170,16 @@ def build(root: Path, sources: dict, roi_cfg: dict, regions_cfg: dict, buffer_km
         if src_key not in loaded:
             loaded[src_key] = load_source(root, src, verify)
         gdf = loaded[src_key]
-        units = select_units(gdf, region_id, spec, src_key)
+        parent = None
+        if wu := spec.get("within_unit"):
+            if wu["source"] not in loaded:
+                loaded[wu["source"]] = load_source(root, sources["sources"][wu["source"]], verify)
+            pg = loaded[wu["source"]]
+            ph = pg[pg[spec.get("match_property", "shapeName")] == wu["name"]]
+            if len(ph) != 1:
+                raise LookupError(f"{region_id}: within_unit {wu['name']!r} matched {len(ph)} features")
+            parent = ph.geometry.iloc[0]
+        units = select_units(gdf, region_id, spec, src_key, parent)
         dropped_parts, part_notes = [], {}
         for u in units:
             km = (spec.get("keep_parts_within_km_of_main") or {}).get(u.subregion_id)

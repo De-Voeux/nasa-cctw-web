@@ -180,3 +180,17 @@ def test_sea_mask_refuses_mismatched_grid(tmp_path):
     with pytest.raises(ValueError, match="grid differs"):
         cm.plan_section(c, [MSPEC], {"start": "2021-11-15", "end": "2021-11-25"}, ROIS, GEOMS, 10_000,
                         static_dir=tmp_path)
+
+
+def test_accepted_no_sea_zone_is_recorded_not_blocking(tmp_path):
+    c = MetadataClient(transport=FakeWithMask(), sleep=lambda s: None)
+    sec = cm.plan_section(c, [MSPEC], {"start": "2021-11-15", "end": "2021-11-25"}, ROIS, GEOMS, 10_000,
+                          static_dir=tmp_path, no_sea_accepted={"R/land": ["nut"]})
+    assert sec["zones_without_sea"] == []
+    assert sec["unavailable_by_decision"][0]["zone"] == "R/land"
+    land = sec["datasets"][0]["rois"][0]
+    assert land["available"] is False and land["final_rows"] == 0
+    # accepting a different dataset does not excuse this one
+    sec = cm.plan_section(c, [MSPEC], {"start": "2021-11-15", "end": "2021-11-25"}, ROIS, GEOMS, 10_000,
+                          static_dir=tmp_path, no_sea_accepted={"R/land": ["other"]})
+    assert sec["zones_without_sea"] == ["nut R/land"]

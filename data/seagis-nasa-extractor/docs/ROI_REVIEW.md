@@ -37,3 +37,32 @@ Built with `seagis-extract regions build` for the two pilot regions. All ROIs ha
 - Parent-level (province) ROIs are not built yet. The other 16 regions still need unit names, boundary files (MY, VN), and sources for the study-specific coasts.
 - Reprojection leaves land/zone slivers of tens of m², far below one MUR cell (~1 km²).
 - Visual review: fill in `review_status`, `reviewer` and `review_date` in the review sheet.
+
+
+## All regions (added 2026-11-15)
+
+Built with the rules agreed on 2026-11-15:
+
+- Names are matched exactly as written in the research (no Buton/Muna/Konawe variants).
+- Gulfs and islands are mapped to the admin units that hold their coast:
+  - Tomini Gulf → Parigi Moutong, Poso, Tojo Una-Una
+  - Lingayen Gulf → Pangasinan shore municipalities
+  - Seram → Seram Bagian Barat + Timur
+  - Kei → Maluku Tenggara + Kota Tual
+  - Aru → Kepulauan Aru
+  - Nha Trang Bay → Nha Trang city
+- Regions with no named site use the whole provincial or city coast and are marked **PROVISIONAL**: NE Bohol, Zamboanga City, Davao del Norte, Eastern Samar and Batangas.
+- Southern Luzon stays **pending** because it is not an administrative unit.
+
+New boundary files: geoBoundaries MYS ADM2 and VNM ADM2, pinned to commit 9469f09 with their SHA-256 in `config/boundary_sources.yaml`. Philippine municipalities with duplicate names (Roxas, Taytay, Anda) are matched inside their province polygon, not by coordinates. The full mapping and notes per region are in `config/roi_sources.yaml`.
+
+Result: 47 zones, listed in `outputs/qa/roi_review_manifest.csv` with maps in `outputs/qa/roi_<region>.png`. All are `candidate` / `pending_visual_review`.
+
+Points to review:
+
+- **Mangaldan** was removed from Lingayen Gulf. Its admin polygon gets no sea of its own after the nearest-coast split.
+- **Davao del Norte** includes the Island Garden City of Samal, which the research notes as administratively separate.
+- **Sebatik** has no separate zone. The Indonesian half lies inside the Nunukan regency polygon.
+- **Seram Bagian Barat** includes small islets near 1.5° S, far north of Seram. Check whether they belong to the study.
+- **Kepulauan Aru** includes the channels between the Aru islands, which count as sea in the admin data.
+- **Labrador, Lingayen and Binmaley** have no sea cell in the 0.25° Copernicus BGC grid, so their no3/po4/pH are left empty and flagged (decision 2026-11-15). SST and salinity are available.

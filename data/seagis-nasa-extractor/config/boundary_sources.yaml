@@ -34,6 +34,29 @@ sources:
     upstream: Badan Pusat Statistik (BPS), World Food Programme, OCHA ROAP
     year_represented: 2020
     features: 519
+  MYS-ADM2:
+    name: geoBoundaries gbOpen MYS
+    level: ADM2 (Districts)
+    url: https://github.com/wmgeolab/geoBoundaries/raw/9469f09/releaseData/gbOpen/MYS/ADM2/geoBoundaries-MYS-ADM2.geojson
+    path: data/boundaries/geoboundaries/MYS-ADM2/geoBoundaries-MYS-ADM2.geojson
+    bytes: 1932621
+    sha256: 1a7db3b44563073171b02eba59b109fc1bc6256ab0b011531ea6d5053515e550
+    license: CC BY 3.0
+    upstream: geoBoundaries, citypopulation.de
+    year_represented: 2020
+    features: 160
+  VNM-ADM2:
+    name: geoBoundaries gbOpen VNM
+    level: ADM2 (Districts)
+    url: https://github.com/wmgeolab/geoBoundaries/raw/9469f09/releaseData/gbOpen/VNM/ADM2/geoBoundaries-VNM-ADM2.geojson
+    path: data/boundaries/geoboundaries/VNM-ADM2/geoBoundaries-VNM-ADM2.geojson
+    bytes: 44002988
+    sha256: 17db305257c1794fb5f3f4ff3c4f747a07cc5525774b8edb395d53f65219fc33
+    license: CC BY 3.0 IGO
+    upstream: OCHA ROAP, Government of Viet Nam
+    year_represented: 2020
+    features: 708
 attribution: >-
   Boundaries: geoBoundaries (Runfola et al. 2020, PLoS ONE 15(4): e0231866), CC BY 3.0 IGO;
-  upstream NAMRIA/PSA/OCHA (PH) and BPS/WFP/OCHA ROAP (ID).
+  upstream NAMRIA/PSA/OCHA (PH), BPS/WFP/OCHA ROAP (ID),
+  citypopulation.de (MY, CC BY 3.0) and OCHA ROAP / Government of Viet Nam (VN).

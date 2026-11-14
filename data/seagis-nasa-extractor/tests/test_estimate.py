@@ -160,5 +160,27 @@ def test_plan_records_request_per_roi_and_rows(tmp_path):
     plan = _fixture(tmp_path)
     for roi in plan["rois"]:
         assert roi["request"]["expected_cells"] == roi["bbox_cells"]
+        assert roi["n_requests"] == len(roi["mur_requests"]) == 1
     assert all(r["request_bbox"] is not None for r in plan["rows"])
     assert any("Reject" in g for g in plan["fetch_guards"])
+
+
+def test_large_roi_is_tiled_tight_and_complete():
+    import shapely
+    # an L-shaped coastal strip ~2.0 x 1.5 deg: one bbox would be ~30,000 cells
+    roi = shapely.union(box(119.0, 4.0, 121.0, 4.1), box(120.9, 4.0, 121.0, 5.5))
+    m = estimate.membership(GRID, roi)
+    assert m["bbox_cells"] > 10_000
+    reqs = estimate.request_tiles(GRID, roi, m, ["analysed_sst"], 10_000)
+    assert len(reqs) > 1 and all(r["expected_cells"] <= 10_000 for r in reqs)
+    assert sum(r["expected_cells"] for r in reqs) < m["bbox_cells"] / 2       # empty corner never requested
+    estimate.check_tiles(roi, reqs, m, 10_000)                                # covers every ROI cell, no overlap
+    with pytest.raises(estimate.RequestGuardError):
+        estimate.check_tiles(roi, reqs[1:], m, 10_000)                        # dropping a tile is caught
+
+
+def test_small_roi_keeps_single_request():
+    roi = box(119.6911, 4.9603, 119.8975, 5.2040)
+    m = estimate.membership(GRID, roi)
+    reqs = estimate.request_tiles(GRID, roi, m, ["analysed_sst"], 10_000)
+    assert len(reqs) == 1 and reqs[0]["expected_cells"] == m["bbox_cells"]

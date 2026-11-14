@@ -2,11 +2,13 @@
 
 `seagis-extract plan` (metadata and local geometry only, **0 science bytes**). Outputs (gitignored, reproducible): `outputs/plan.json`, `outputs/estimate.csv` (one row per ROI × month, 511 rows), `outputs/plan_summary.txt`, and `outputs/membership/*.csv.gz` (grid-cell weight table per ROI).
 
-**PLAN SHA256: `fae26edaac8e42f6f4bd5845fa8af8d51e9b81a4fbb8e97d7d19a620ad755ac0`**
+**PLAN SHA256: `85f62d82722154f277094cf0b8fd330d6118eed5283d36c5018ff6a5746bdbc7`**
 
 The hash covers the plan contents and the SHA-256 of every input (catalog, ROI GeoJSON, configs). Timestamps are excluded, so re-running `plan` on unchanged inputs gives the same hash. Any change to the ROIs, the period, or the limits gives a new hash.
 
 > **Updated 2026-11-15:** all sources now start **2022-06-01**, the first day of daily Copernicus salinity. The plan also covers the Copernicus Marine datasets no3, po4, pH and salinity. Their transfer is exact, 129.4 MiB; see [COPERNICUS_REVIEW.md](COPERNICUS_REVIEW.md). Combined transfer is about 481 MiB. The tables below are the MUR part.
+>
+> **Updated 2026-11-15 (all regions):** the plan now covers **47 zones in 17 regions** (Southern Luzon pending: not an administrative unit). Totals for 2022-06-01 .. 2026-11-14: MUR 1.39 / **3.78** / 9.02 GiB (LOW / EXPECTED / HIGH), Copernicus **803 MiB** with a shared chunk cache (1.46 GiB if each region is fetched separately). Grand total about **4.6 GiB**, within the 20 GB download limit. Zones wider than 1° are split into tiles of at most 10,000 cells/day: **73 MUR boxes** for 47 zones, each tied to its zone, with tiles checked for full coverage and no overlap. Estimated API calls: about 146,000, mostly one download per daily file per box. The per-ROI tables below still describe the first 7 zones; the full list is in `outputs/estimate.csv` and `plan.json`.
 >
 > **Updated 2026-11-15 (sea check):** the Copernicus static land/sea masks (65 KB, public) confirm every zone has sea cells in every Copernicus dataset (3–7 for no3/po4/pH, 8–39 for salinity); see the table in COPERNICUS_REVIEW.md. The hash changed because the mask checksums and per-zone sea counts are now part of the plan. The MUR numbers did not change. MUR's own land mask can only be checked in the pilot.
 
@@ -81,7 +83,7 @@ Shared fetch: per-ROI bboxes overlap very little (PH 2946 → 2829 unique cells;
 After the pilot is built and run, the command will be:
 
 ```bash
-.venv/bin/seagis-extract pilot --plan outputs/plan.json --approve-plan fae26edaac8e42f6f4bd5845fa8af8d51e9b81a4fbb8e97d7d19a620ad755ac0
+.venv/bin/seagis-extract pilot --plan outputs/plan.json --approve-plan 85f62d82722154f277094cf0b8fd330d6118eed5283d36c5018ff6a5746bdbc7
 ```
 
 Backfill (`fetch`) needs a **new** plan, re-generated after the pilot updates the calibration, and its own approval.

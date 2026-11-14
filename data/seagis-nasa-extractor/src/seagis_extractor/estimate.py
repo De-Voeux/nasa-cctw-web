@@ -128,11 +128,58 @@ def request_for(grid: MurGrid, geom: shapely.Geometry, m: dict, variables: list[
             "expected_extent_w_s_e_n": extent, "grid_index_range": {"lat": [m["i0"], m["i1"]], "lon": [m["j0"], m["j1"]]}}
 
 
+def request_tiles(grid: MurGrid, geom: shapely.Geometry, m: dict, variables: list[str], max_cells: int) -> list[dict]:
+    """MUR requests for one ROI. One box if the ROI's own bbox fits `max_cells`; otherwise square
+    tiles of at most `max_cells` cells, keeping only tiles that touch the ROI, each shrunk to the
+    bbox of (ROI ∩ tile). Every request is tied to the ROI; nothing outside its bbox is asked for."""
+    if m["bbox_cells"] <= max_cells:
+        return [request_for(grid, geom, m, variables) | {"tile": [0, 0], "piece_bounds": list(geom.bounds)}]
+    side = int(math.isqrt(max_cells))
+    out = []
+    for ti, a in enumerate(range(m["i0"], m["i1"] + 1, side)):
+        for tj, b in enumerate(range(m["j0"], m["j1"] + 1, side)):
+            h = grid.step / 2
+            tile = shapely.box(float(grid.lon(b)) - h, float(grid.lat(a)) - h,
+                               float(grid.lon(min(b + side - 1, m["j1"]))) + h,
+                               float(grid.lat(min(a + side - 1, m["i1"]))) + h)
+            piece = shapely.intersection(geom, tile)
+            if piece.is_empty or piece.area == 0:
+                continue
+            i0, i1, j0, j1 = grid.bbox_indices(*piece.bounds)
+            # keep tiles disjoint: never step into the neighbouring tile's rows/columns
+            i0, i1 = max(i0, a), min(i1, a + side - 1, m["i1"])
+            j0, j1 = max(j0, b), min(j1, b + side - 1, m["j1"])
+            pm = {"i0": i0, "i1": i1, "j0": j0, "j1": j1, "bbox_cells": (i1 - i0 + 1) * (j1 - j0 + 1)}
+            r = request_for(grid, piece, pm, variables)
+            r["grid_index_range"] = {"lat": [i0, i1], "lon": [j0, j1]}
+            out.append(r | {"tile": [ti, tj], "piece_bounds": list(piece.bounds)})
+    return out
+
+
+def check_tiles(geom: shapely.Geometry, reqs: list[dict], m: dict, max_cells: int, step: float = 0.01) -> None:
+    """Every tile obeys the single-request guard for its piece, tiles never overlap, and together
+    they cover every ROI cell in the membership table."""
+    for r in reqs:
+        check_request(shapely.box(*r["piece_bounds"]), r, max_cells, step)
+    if len(reqs) > 1:
+        cells = set()
+        for r in reqs:
+            (a, b), (c, d) = r["grid_index_range"]["lat"], r["grid_index_range"]["lon"]
+            tile = {(i, j) for i in range(a, b + 1) for j in range(c, d + 1)}
+            if cells & tile:
+                raise RequestGuardError("MUR tiles overlap")
+            cells |= tile
+        missing = sum(1 for i, j in zip(m["lat_index"], m["lon_index"]) if (int(i), int(j)) not in cells)
+        if missing:
+            raise RequestGuardError(f"MUR tiles miss {missing} ROI cells")
+
+
 def check_request(geom: shapely.Geometry, req: dict, max_cells: int, step: float = 0.01) -> None:
     """Fail closed if a request is not tightly tied to its ROI."""
     minx, miny, maxx, maxy = geom.bounds
     w, s_, e, n = req["bbox_w_s_e_n"]
-    if not (w <= minx and s_ <= miny and e >= maxx and n >= maxy):
+    eps = 1e-7   # ~1 cm: float noise at tile edges, not a real gap
+    if not (w <= minx + eps and s_ <= miny + eps and e >= maxx - eps and n >= maxy - eps):
         raise RequestGuardError(f"request {req['bbox_w_s_e_n']} does not cover ROI bounds {geom.bounds}")
     if w < minx - step or s_ < miny - step or e > maxx + step or n > maxy + step:
         raise RequestGuardError(f"request {req['bbox_w_s_e_n']} extends more than one grid cell beyond ROI {geom.bounds}")
@@ -177,14 +224,19 @@ def row_estimate(roi: dict, m: dict, month: str, first: dt.date, last: dt.date, 
                  var_bytes: dict, ratios: dict, concurrency: int, full_sizes: dict) -> dict:
     days = [first + dt.timedelta(n) for n in range((last - first).days + 1)]
     avail = [d for d in days if d.isoformat() in available]
-    cells = m["bbox_cells"]
-    per_day_unc = cells * sum(var_bytes.values()) + 4 * (m["n_lat"] + m["n_lon"]) + 8
+    reqs = roi.get("mur_requests") or [{"expected_cells": m["bbox_cells"],
+                                        "grid_index_range": {"lat": [m["i0"], m["i1"]], "lon": [m["j0"], m["j1"]]}}]
+    cells = sum(r["expected_cells"] for r in reqs)
+    coords = sum((r["grid_index_range"]["lat"][1] - r["grid_index_range"]["lat"][0] + 1)
+                 + (r["grid_index_range"]["lon"][1] - r["grid_index_range"]["lon"][0] + 1) for r in reqs)
+    files = len(reqs)
+    per_day_unc = cells * sum(var_bytes.values()) + 4 * coords + 8 * files
     unc = per_day_unc * len(avail)
     oh = ASSUMPTIONS["file_overhead_bytes"]
     t = {}
     for k, idx in (("low", 0), ("expected", 1), ("high", 2)):
         ratio = ratios[k]
-        t[k] = None if ratio is None else int(per_day_unc * ratio * len(avail) + oh[idx] * len(avail))
+        t[k] = None if ratio is None else int(per_day_unc * ratio * len(avail) + oh[idx] * files * len(avail))
     n_out = len(ASSUMPTIONS["output_variables"])
     rows = len(avail) * n_out
     scratch = cells * 4 * len(var_bytes) * len(avail)
@@ -194,10 +246,11 @@ def row_estimate(roi: dict, m: dict, month: str, first: dt.date, last: dt.date, 
         "subregion_id": roi["subregion_id"], "month": month,
         "bbox": [round(x, 4) for x in roi["bbox"]],
         "request_bbox": roi["request"]["bbox_w_s_e_n"] if "request" in roi else None,
+        "n_requests": files,
         "n_time": len(avail), "n_lat": m["n_lat"], "n_lon": m["n_lon"], "n_variables": len(var_bytes),
         "days_in_month_period": len(days), "days_available": len(avail),
         "missing_dates": [d.isoformat() for d in days if d.isoformat() not in available],
-        "bbox_cells": cells, "roi_ocean_cells": m["roi_cells"],
+        "bbox_cells": m["bbox_cells"], "requested_cells": cells, "roi_ocean_cells": m["roi_cells"],
         "mask_efficiency": round(m["roi_cells"] / cells, 4) if cells else None,
         "uncompressed_bytes": unc,
         "transfer_bytes_low": t["low"], "transfer_bytes_expected": t["expected"], "transfer_bytes_high": t["high"],
@@ -208,7 +261,7 @@ def row_estimate(roi: dict, m: dict, month: str, first: dt.date, last: dt.date, 
         "final_rows": rows,
         "final_parquet_bytes_expected": rows * ASSUMPTIONS["parquet_bytes_per_row"][1],
         "final_csv_bytes_expected": rows * ASSUMPTIONS["csv_bytes_per_row"][1],
-        "api_calls": (1 + ASSUMPTIONS["harmony_status_polls_per_job"] + len(avail)) if avail else 0,
+        "api_calls": files * (1 + ASSUMPTIONS["harmony_status_polls_per_job"] + len(avail)) if avail else 0,
         "confidence": {"days": "high (CMR inventory)", "grid": "medium (assumed grid origin)",
                        "transfer": "low (no calibration sample; HOSS compression unknown)",
                        "final_size": "low (schema model)"},
@@ -272,13 +325,16 @@ def build_plan(catalog: dict, roi_geojson: dict, cfg: dict, inputs: dict, member
         roi = {"region_id": p["region_id"], "subregion_id": p["subregion_id"], "bbox": list(geom.bounds),
                "geometry_version": p["geometry_version"], "status": p["status"]}
         m = membership(grid, geom)
-        req = request_for(grid, geom, m, list(variables))
-        check_request(geom, req, int(cfg["execution"].get("max_request_cells", 10_000)))
-        roi["request"] = req
+        max_cells = int(cfg["execution"].get("max_request_cells", 10_000))
+        roi["request"] = request_for(grid, geom, m, list(variables))     # the ROI's whole bbox (also used by Copernicus)
+        roi["mur_requests"] = request_tiles(grid, geom, m, list(variables), max_cells)
+        check_tiles(geom, roi["mur_requests"], m, max_cells)
         mpath = membership_dir / f"mur_sst__{p['region_id']}__{p['subregion_id']}__{p['geometry_version']}.csv.gz"
         write_membership(m, mpath)
         rois_m.append((roi, m))
         roi_summ.append({**roi, "n_lat": m["n_lat"], "n_lon": m["n_lon"], "bbox_cells": m["bbox_cells"],
+                         "requested_cells": sum(r["expected_cells"] for r in roi["mur_requests"]),
+                         "n_requests": len(roi["mur_requests"]),
                          "roi_cells": m["roi_cells"], "roi_cells_centre_inside": m["roi_cells_centre_inside"],
                          "roi_area_weighted_km2": round(m["roi_area_weighted_km2"], 2),
                          "grid_index_range": {"lat": [m["i0"], m["i1"]], "lon": [m["j0"], m["j1"]]},
@@ -308,9 +364,10 @@ def build_plan(catalog: dict, roi_geojson: dict, cfg: dict, inputs: dict, member
         "execution": {k: cfg["execution"][k] for k in ("batch", "concurrency", "raw_retention", "max_download_gb",
                                                        "max_disk_gb", "retries", "max_request_cells") if k in cfg["execution"]},
         "fetch_guards": [
-            "Only the per-ROI requests listed in rois[].request may be sent; no global or unlisted bbox.",
-            "Reject (and do not keep) any response whose lat/lon lie outside request.expected_extent_w_s_e_n.",
-            "Reject any response whose cell count per day differs from request.expected_cells.",
+            "Only the MUR requests listed in rois[].mur_requests may be sent; no global or unlisted bbox. "
+            "Large ROIs are split into tiles of at most max_request_cells, each tied to the ROI.",
+            "Reject (and do not keep) any response whose lat/lon lie outside that request's expected_extent_w_s_e_n.",
+            "Reject any response whose cell count per day differs from that request's expected_cells.",
             "Only pixels in the ROI membership table enter the daily aggregates; the rest of the rectangle is discarded.",
         ],
         "inputs": inputs,
@@ -478,8 +535,9 @@ def summary(plan: dict) -> str:
     L.append("Shared fetch (cells/day): " + "; ".join(f"{r} per-ROI {v['naive_bbox_cells']}, unique {v['unique_bbox_cells']}, one region bbox {v['single_region_bbox_cells']}"
                                                          for r, v in sf.items()))
     miss = sorted({d for r in plan["rows"] for d in r["missing_dates"]})
-    L.append("Download scope: only the per-ROI boxes in plan.json rois[].request (see outputs/qa/requests_*.png); "
-             "largest box " + str(max(r["request"]["expected_cells"] for r in plan["rois"])) + " cells/day, "
+    L.append("Download scope: only the boxes in plan.json rois[].mur_requests (see outputs/qa/requests_*.png); "
+             f"{sum(r['n_requests'] for r in plan['rois'])} boxes for {len(plan['rois'])} ROIs, largest "
+             + str(max(q["expected_cells"] for r in plan["rois"] for q in r["mur_requests"])) + " cells/day, "
              "limit " + str(plan["execution"].get("max_request_cells", 10000)))
     L.append(f"Missing dates (not published): {', '.join(miss) or 'none'}")
     L.append("Confidence: days HIGH, grid MEDIUM, transfer LOW, final size LOW. See plan.json assumptions/unknowns.")
@@ -492,24 +550,32 @@ def summary(plan: dict) -> str:
     if cm:
         L.append("")
         L.append(f"COPERNICUS MARINE  {cm['period']['start']} .. {cm['period']['end']}  surface level, exact chunk sizes via HEAD")
-        h2 = f"{'DATASET':16} {'VARS':10} {'GRID':>7} {'DAYS':>9} {'PH-TAWI':>11} {'ID-SOUTH-SUL':>13} {'TRANSFER':>11} {'IF MONTHLY':>11}"
+        h2 = f"{'DATASET':16} {'VARS':10} {'GRID':>7} {'DAYS':>9} {'PER REGION':>11} {'IF MONTHLY':>11} {'UNIQUE':>11}"
         L += [h2, "-" * len(h2)]
         for d in cm["datasets"]:
             g = d["grid"]["lat_step"]
-            reg = {k: human(v["transfer_bytes"]) for k, v in d["regions"].items()}
             L.append(f"{d['key']:16} {','.join(d['variables']):10} {g:>6.3f}° {d['available_days']:>4}/{d['requested_days']:<4} "
-                     f"{reg.get('PH-TAWI', '-'):>11} {reg.get('ID-SOUTH-SUL', '-'):>13} {human(d['transfer_bytes']):>11} "
-                     f"{human(d['transfer_bytes_if_monthly_batches']):>11}")
-        L.append(f"{'TOTAL COPERNICUS':16} {'':10} {'':>7} {'':>9} {'':>11} {'':>13} {human(cm['transfer_bytes_total']):>11}")
+                     f"{human(d['transfer_bytes']):>11} {human(d['transfer_bytes_if_monthly_batches']):>11} "
+                     f"{human(d.get('transfer_bytes_unique_all_regions')):>11}")
+            L.append("    by region: " + ", ".join(f"{k} {human(v['transfer_bytes'])}" for k, v in d["regions"].items()))
+        L.append(f"{'TOTAL COPERNICUS':16} {'':10} {'':>7} {'':>9} {human(cm['transfer_bytes_total']):>11} {'':>11} "
+                 f"{human(cm.get('transfer_bytes_total_unique_chunks')):>11}")
+        L.append("  PER REGION = one subset per region (chunks shared by regions re-read); "
+                 "UNIQUE = every chunk read once (fetch with a shared chunk cache).")
+        if cm.get("zones_without_sea"):
+            L.append("  BLOCKING zones without sea cells: " + ", ".join(cm["zones_without_sea"]))
         for d in cm["datasets"]:
             if d["missing_dates"]:
                 L.append(f"  {d['key']}: {len(d['missing_dates'])} days not in dataset ({d['missing_dates'][0]} .. {d['missing_dates'][-1]})")
-        cells = "; ".join(f"{d['key']} " + ",".join(f"{r['subregion_id']}={r['roi_cells']}" for r in d["rois"]) for d in cm["datasets"])
-        L.append(f"  Model cells touching each ROI: {cells}")
+        for d in cm["datasets"]:
+            sc = [r.get("sea_cells") for r in d["rois"]]
+            if all(x is not None for x in sc):
+                L.append(f"  {d['key']}: sea cells per ROI min {min(sc)} / median {sorted(sc)[len(sc) // 2]} / max {max(sc)}")
         L.append(f"  Outputs: {cm['final_rows_total']} daily rows, NetCDF subsets <= {human(cm['output_netcdf_bytes_upper_total'])}, "
                  f"~{cm['api_calls_est']} requests. Account: Copernicus Marine (free) needed for fetch.")
-        both = (g_t := plan["totals"]["grand"]["transfer_bytes_expected"]) + (cm["transfer_bytes_total"] or 0)
-        L.append(f"GRAND TOTAL TRANSFER (MUR expected + Copernicus exact): {human(both)}")
+        g_t = plan["totals"]["grand"]["transfer_bytes_expected"]
+        L.append(f"GRAND TOTAL TRANSFER (MUR expected + Copernicus): {human(g_t + (cm['transfer_bytes_total'] or 0))} per-region, "
+                 f"{human(g_t + (cm.get('transfer_bytes_total_unique_chunks') or 0))} with shared chunk cache")
     L.append("")
     L.append(f"PLAN SHA256: {plan['plan_sha256']}")
     L.append("No historical data downloaded. Run fetch only after reviewing and approving the plan.")
@@ -533,14 +599,16 @@ def request_maps(plan: dict, roi_geojson: dict, qa_dir: Path) -> list[Path]:
             g = geoms[(roi["region_id"], roi["subregion_id"])]
             import geopandas as gpd
             gpd.GeoSeries([g]).plot(ax=ax, color="#2a7ab0", alpha=0.55, lw=0)   # keeps land holes empty
+            for q in roi["mur_requests"]:
+                w, s_, e, n = q["expected_extent_w_s_e_n"]
+                ax.add_patch(Rectangle((w, s_), e - w, n - s_, fill=False, ec="#d1495b", lw=0.9))
             w, s_, e, n = roi["request"]["expected_extent_w_s_e_n"]
-            ax.add_patch(Rectangle((w, s_), e - w, n - s_, fill=False, ec="#d1495b", lw=1.2))
-            ax.annotate(roi["subregion_id"], (w, n), fontsize=7, color="#d1495b", va="bottom")
+            ax.annotate(roi["subregion_id"], (w, n), fontsize=6, color="#d1495b", va="bottom")
 
     fig, ax = plt.subplots(figsize=(9, 7))
     draw(ax, plan["rois"])
-    ax.set_xlim(95, 141)
-    ax.set_ylim(-11, 21)
+    ax.set_xlim(104, 137)
+    ax.set_ylim(-10, 18)
     ax.set_aspect("equal")
     ax.grid(lw=0.3)
     ax.set_title("Requested MUR boxes (red) vs candidate zones (blue): only these boxes are downloaded", fontsize=9)
