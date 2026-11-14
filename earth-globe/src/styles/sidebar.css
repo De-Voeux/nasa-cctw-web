@@ -29,6 +29,22 @@
 .search:focus-within { border-color: rgba(143, 180, 255, 0.6); }
 
 .panel-body { flex: 1; overflow-y: auto; padding: 8px 16px 20px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.2) transparent; }
+/* Collapse button for the list / details (wide screens; phones use the sheet handle). */
+.body-collapse {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  margin: 2px 18px 0; padding: 7px 10px; border-radius: 10px;
+  color: var(--text-muted); font-size: 12.5px; font-weight: 500;
+}
+.body-collapse:hover { background: var(--fill-subtle); color: var(--text); }
+.body-collapse svg { width: 16px; height: 16px; transition: transform 0.2s; }
+.side-panel[data-body="collapsed"] .body-collapse svg { transform: rotate(180deg); }
+.bc-label::before { content: "Hide "; }
+.bc-label::after { content: "list"; }
+.side-panel[data-body="collapsed"] .bc-label::before { content: "Show "; }
+.side-panel[data-mode="detail"] .bc-label::after { content: "details"; }
+/* Collapsed: the panel shrinks to its controls. Overflow stays visible so the filter menus can still open below it. */
+.side-panel[data-body="collapsed"] { bottom: auto; overflow: visible; }
+.side-panel[data-body="collapsed"] .panel-body { display: none; }
 .panel-head { padding: 8px 8px 4px; }
 .panel-head h1 { font-size: 18px; margin: 0 0 4px; font-weight: 650; }
 .eyebrow { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); margin: 0 0 6px; }
@@ -168,6 +184,9 @@
 /* ---------------------------------------------------------------- phones (bottom sheet) */
 
 @media (max-width: 600px), (orientation: portrait) and (max-width: 900px) {
+  .body-collapse { display: none; }
+  .side-panel[data-body="collapsed"] { bottom: 0; overflow-y: auto; }
+  .side-panel[data-body="collapsed"] .panel-body { display: block; }
   .search { margin: 2px 16px 4px; }
   .panel-body { flex: none; overflow: visible; }
   .panel-tools { padding: 2px 14px 4px; }

@@ -132,6 +132,7 @@ const panel = new SidePanel($("panel-body"), {
 function select(id) {
   const loc = byId.get(id)
   if (!loc) return
+  setBody(false, false) // a place was picked: show its details, but keep the remembered choice
   setSheet(true)
   setPressed(id)
   panel.showLocation(loc, assessments.get(id))
@@ -221,6 +222,28 @@ $("search").addEventListener("input", (e) => {
 offerRegions()
 paintPins()
 panel.showList(rows())
+
+// Collapse button: hides the list / details so more of the map shows. The choice is remembered
+// in this browser only; storage may be blocked, so it is optional.
+const sidePanelEl = document.querySelector(".side-panel")
+const bodyBtn = $("body-collapse")
+function setBody(collapsed, remember = true) {
+  sidePanelEl.dataset.body = collapsed ? "collapsed" : "open"
+  bodyBtn.setAttribute("aria-expanded", String(!collapsed))
+  bodyBtn.setAttribute("aria-label", `${collapsed ? "Show" : "Hide"} ${sidePanelEl.dataset.mode === "detail" ? "details" : "list"}`)
+  if (!remember) return
+  try {
+    localStorage.setItem("seamon.panelBody", collapsed ? "collapsed" : "open")
+  } catch {}
+}
+let savedBody = null
+try {
+  savedBody = localStorage.getItem("seamon.panelBody")
+} catch {}
+setBody(savedBody === "collapsed", false)
+bodyBtn.addEventListener("click", () => setBody(sidePanelEl.dataset.body !== "collapsed"))
+// The label says "list" or "details" depending on what the panel shows.
+new MutationObserver(() => setBody(sidePanelEl.dataset.body === "collapsed", false)).observe(sidePanelEl, { attributes: true, attributeFilter: ["data-mode"] })
 
 // --------------------------------------------------------------- bottom sheet (phones)
 
