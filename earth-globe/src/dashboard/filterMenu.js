@@ -103,6 +103,7 @@ export class FilterMenu {
     this.isOpen = true
     openMenu = this
     this.menu.hidden = false
+    this.menu.scrollIntoView({ block: "nearest" }) // inside a scrolling sheet it may open below the fold
     this.btn.setAttribute("aria-expanded", "true")
     this.list.querySelector("input")?.focus()
   }
