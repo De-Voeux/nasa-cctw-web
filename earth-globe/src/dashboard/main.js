@@ -246,14 +246,14 @@ bodyBtn.addEventListener("click", () => setBody(sidePanelEl.dataset.body !== "co
 // The label says "list" or "details" depending on what the panel shows.
 new MutationObserver(() => setBody(sidePanelEl.dataset.body === "collapsed", false)).observe(sidePanelEl, { attributes: true, attributeFilter: ["data-mode"] })
 
-// Hide the whole panel (wide screens) to see the full globe; a round button at the edge brings it back.
-const panelHide = $("panel-hide")
-const panelShow = $("panel-show")
-panelShow.hidden = false // the CSS shows it only while the panel is hidden
+// One handle hides the whole panel (wide screens) and brings it back; it travels with the panel and its
+// arrow turns around (see .panel-toggle in sidebar.css).
+const panelToggle = $("panel-toggle")
 function setPanel(hidden, remember = true) {
   document.documentElement.dataset.panel = hidden ? "hidden" : "open"
-  panelHide.setAttribute("aria-expanded", String(!hidden))
-  panelShow.setAttribute("aria-expanded", String(!hidden))
+  panelToggle.setAttribute("aria-expanded", String(!hidden))
+  panelToggle.setAttribute("aria-label", hidden ? "Show panel" : "Hide panel")
+  panelToggle.title = hidden ? "Show locations panel" : "Hide panel"
   if (!remember) return
   try {
     localStorage.setItem("seamon.panelHidden", hidden ? "1" : "0")
@@ -264,16 +264,14 @@ try {
   savedHidden = localStorage.getItem("seamon.panelHidden")
 } catch {}
 setPanel(savedHidden === "1", false)
-panelHide.addEventListener("click", () => {
-  setPanel(true)
-  panelShow.focus()
-  panelShow.classList.remove("nudge")
-  void panelShow.offsetWidth // restart the animation
-  panelShow.classList.add("nudge")
-})
-panelShow.addEventListener("click", () => {
-  setPanel(false)
-  panelHide.focus()
+panelToggle.addEventListener("click", () => {
+  const hide = document.documentElement.dataset.panel !== "hidden"
+  setPanel(hide)
+  panelToggle.classList.remove("nudge")
+  if (hide) {
+    void panelToggle.offsetWidth // restart the animation
+    panelToggle.classList.add("nudge")
+  }
 })
 
 // --------------------------------------------------------------- bottom sheet (phones)
