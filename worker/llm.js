@@ -36,7 +36,13 @@ export function collectKeys(env) {
 
 export const modelList = (env) => (split(env.ASK_MODELS).length ? split(env.ASK_MODELS) : DEFAULT_MODELS)
 
-export class LlmError extends Error {}
+/** kind: "quota" when a key hit its daily or credit limit, otherwise "down". */
+export class LlmError extends Error {
+  constructor(message, kind = "down") {
+    super(message)
+    this.kind = kind
+  }
+}
 
 const isOpenRouter = (base) => /(^|\/\/)([^/]*\.)?openrouter\.ai(\/|$)/.test(base)
 const keyLimit = /per[- ]?day|daily|credit|quota|insufficient|balance/i
@@ -75,6 +81,7 @@ export function createLlm(env, fetchImpl = fetch, { timeoutMs = 25000, maxAttemp
   const deadKeys = new Set()
   const deadModels = new Set()
   let attempts = 0
+  let quotaHit = false
 
   async function once(model, key, payload) {
     const ctl = new AbortController()
@@ -113,13 +120,14 @@ export function createLlm(env, fetchImpl = fetch, { timeoutMs = 25000, maxAttemp
       if (deadModels.has(model)) continue
       for (const key of keys) {
         if (deadKeys.has(key)) continue
-        if (++attempts > maxAttempts) throw new LlmError("attempt budget used up")
+        if (++attempts > maxAttempts) throw new LlmError("attempt budget used up", quotaHit ? "quota" : "down")
         const r = await once(model, key, { messages, tools, tool_choice: "auto", max_tokens: 1200, temperature: 0.2 })
         if (r.message) {
           const toolCalls = (r.message.tool_calls ?? []).map((tc) => ({ id: tc.id, name: tc.function?.name, input: parseArgs(tc.function?.arguments) }))
           return { message: r.message, toolCalls, model }
         }
         console.log(JSON.stringify({ event: "llm_fallback", model, status: r.status, detail: r.detail }))
+        if (r.status === 402 || (r.status === 429 && keyLimit.test(r.detail ?? ""))) quotaHit = true
         if ([401, 402, 403].includes(r.status)) deadKeys.add(key)
         else if (r.status === 429 && keyLimit.test(r.detail ?? "")) deadKeys.add(key)
         else if ([400, 404, 429].includes(r.status)) {
@@ -128,7 +136,7 @@ export function createLlm(env, fetchImpl = fetch, { timeoutMs = 25000, maxAttemp
         }
       }
     }
-    throw new LlmError("no model answered")
+    throw new LlmError("no model answered", quotaHit ? "quota" : "down")
   }
 
   return { chat, configured: keys.length > 0 && models.length > 0 }

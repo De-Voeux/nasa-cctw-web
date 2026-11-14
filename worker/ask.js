@@ -5,7 +5,7 @@
 // backed by what those tools returned in THIS request; validateAnswer() rejects anything
 // else, and an answer with nothing behind it becomes an explicit "not enough evidence".
 
-import { createLlm } from "./llm.js"
+import { createLlm, LlmError } from "./llm.js"
 import { smalltalkReply } from "./smalltalk.js"
 
 const MAX_MODEL_TURNS = 5
@@ -372,7 +372,10 @@ export async function handleAsk(request, env, { fetchImpl = fetch } = {}) {
       messages.push(...results)
     }
   } catch (e) {
-    console.log(JSON.stringify({ event: "ask_error", message: String(e.message).slice(0, 200), ms: Date.now() - started }))
+    console.log(JSON.stringify({ event: "ask_error", message: String(e.message).slice(0, 200), kind: e.kind, ms: Date.now() - started }))
+    // No model could answer (daily limit spent, or the providers are down): say so with a 503,
+    // so the page falls back to its built-in answers and can tell the user why.
+    if (e instanceof LlmError) return json(503, { error: "assistant_unavailable", reason: e.kind })
     return json(502, { error: "assistant_failed" })
   }
 

@@ -1,5 +1,5 @@
 import { answer } from "./ask.js"
-import { askAssistant, renderAnswer, MESSAGES } from "./assistant.js"
+import { askAssistant, renderAnswer, MESSAGES, FALLBACK_NOTE } from "./assistant.js"
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c])
 
@@ -60,7 +60,8 @@ export function mountChat(root, { locations, onShow, getContext = () => ({}) }) 
       const actions = (res.actions || [])
         .map((a) => `<button type="button" class="show-btn" data-goto="${a.loc.id}">${esc(a.label)}</button>`)
         .join("")
-      bubble.innerHTML = res.html + (actions ? `<div class="msg-actions">${actions}</div>` : "")
+      const note = FALLBACK_NOTE[reply.why] ? `<p class="muted small">${FALLBACK_NOTE[reply.why]}</p>` : ""
+      bubble.innerHTML = note + res.html + (actions ? `<div class="msg-actions">${actions}</div>` : "")
       if (res.focus && res.autoShow) onShow(res.focus)
     } finally {
       asking = false

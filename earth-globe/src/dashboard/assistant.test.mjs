@@ -32,8 +32,9 @@ test("an abstained answer says so", () => {
 })
 
 test("client maps statuses: 503, 404 and network errors fall back; 429 does not", async () => {
-  assert.deepEqual(await askAssistant("q", {}, resp(503, { error: "assistant_unavailable" })), { ok: false, reason: "unavailable" })
-  assert.deepEqual(await askAssistant("q", {}, resp(404)), { ok: false, reason: "unavailable" })
+  assert.deepEqual(await askAssistant("q", {}, resp(503, { error: "assistant_unavailable" })), { ok: false, reason: "unavailable", why: undefined })
+  assert.deepEqual(await askAssistant("q", {}, resp(503, { error: "assistant_unavailable", reason: "quota" })), { ok: false, reason: "unavailable", why: "quota" })
+  assert.deepEqual(await askAssistant("q", {}, resp(404)), { ok: false, reason: "unavailable", why: undefined })
   assert.deepEqual(await askAssistant("q", {}, async () => { throw new TypeError("offline") }), { ok: false, reason: "unavailable" })
   assert.deepEqual(await askAssistant("q", {}, resp(429, {})), { ok: false, reason: "limited" })
   assert.deepEqual(await askAssistant("q", {}, resp(502, {})), { ok: false, reason: "error" })

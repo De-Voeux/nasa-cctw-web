@@ -9,8 +9,8 @@ const href = (s) => safeHref(s.url) || (s.doi ? `https://doi.org/${encodeURI(s.d
 
 /**
  * @returns {Promise<{ok:true, data:object} | {ok:false, reason:"unavailable"|"limited"|"error"}>}
- *   "unavailable" means the assistant is not set up (503) or unreachable: the caller falls back
- *   to the built-in answers. "limited" is a rate limit: say so instead of falling back.
+ *   "unavailable" means the assistant is not set up, out of quota or unreachable: the caller falls
+ *   back to the built-in answers, and `why` ("quota" | "down" | undefined) says which. "limited" is a rate limit: say so instead of falling back.
  */
 export async function askAssistant(question, { species, country } = {}, fetchImpl = fetch) {
   let res
@@ -24,7 +24,14 @@ export async function askAssistant(question, { species, country } = {}, fetchImp
     return { ok: false, reason: "unavailable" }
   }
   if (res.status === 429) return { ok: false, reason: "limited" }
-  if (res.status === 503 || res.status === 404 || res.status === 405) return { ok: false, reason: "unavailable" }
+  if (res.status === 503 || res.status === 404 || res.status === 405) {
+    // 503 may say why: "quota" (daily limit spent) or "down" (providers unreachable).
+    let why
+    try {
+      why = (await res.json())?.reason
+    } catch {}
+    return { ok: false, reason: "unavailable", why }
+  }
   if (!res.ok) return { ok: false, reason: "error" }
   try {
     return { ok: true, data: await res.json() }
@@ -115,6 +122,12 @@ export function renderAnswer(a) {
   }
   if (a.abstained) parts.push(`<p class="muted small">Not enough evidence in the sources we have.</p>`)
   return parts.join("")
+}
+
+/** One line shown above the built-in answer when the assistant could not be used. */
+export const FALLBACK_NOTE = {
+  quota: "The assistant has reached its daily limit, so this is a built-in answer.",
+  down: "The assistant is not reachable right now, so this is a built-in answer.",
 }
 
 export const MESSAGES = {
