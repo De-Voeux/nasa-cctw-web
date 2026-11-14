@@ -29,6 +29,28 @@
 .search:focus-within { border-color: rgba(143, 180, 255, 0.6); }
 
 .panel-body { flex: 1; overflow-y: auto; padding: 8px 16px 20px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.2) transparent; }
+/* Hide the whole panel to see the full globe. The panel slides out; --panel-offset goes to 0 so the
+   globe re-centres and the map controls move to the edge. */
+.panel-hide {
+  position: absolute; top: 8px; right: 12px; z-index: 2; width: 32px; height: 32px; border-radius: 50%;
+  display: grid; place-items: center; color: var(--text-muted);
+}
+.panel-hide:hover { background: var(--fill-hover); color: var(--text); }
+.panel-hide svg { width: 20px; height: 20px; }
+.side-panel { transition: transform 0.3s ease, visibility 0s; }
+html[data-panel="hidden"] { --panel-offset: 0px; }
+html[data-panel="hidden"] .side-panel {
+  transform: translateX(calc(100% + var(--gap) * 2)); visibility: hidden;
+  transition: transform 0.3s ease, visibility 0s 0.3s;
+}
+.panel-show {
+  position: fixed; right: var(--gap); bottom: calc(var(--gap) * 2 + 4px); z-index: 3;
+  width: 48px; height: 48px; border-radius: 50%; place-items: center; display: none;
+}
+.panel-show svg { width: 22px; height: 22px; }
+html[data-panel="hidden"] .panel-show { display: grid; }
+.panel-show[hidden] { display: none !important; }
+
 /* Collapse button for the list / details (wide screens; phones use the sheet handle). */
 .body-collapse {
   display: flex; align-items: center; justify-content: center; gap: 6px;
@@ -184,7 +206,9 @@
 /* ---------------------------------------------------------------- phones (bottom sheet) */
 
 @media (max-width: 600px), (orientation: portrait) and (max-width: 900px) {
-  .body-collapse { display: none; }
+  .body-collapse, .panel-hide, .panel-show { display: none !important; }
+  html[data-panel="hidden"] { --panel-offset: var(--panel-w); }
+  html[data-panel="hidden"] .side-panel { transform: none; visibility: visible; }
   .side-panel[data-body="collapsed"] { bottom: 0; overflow-y: auto; }
   .side-panel[data-body="collapsed"] .panel-body { display: block; }
   .search { margin: 2px 16px 4px; }
