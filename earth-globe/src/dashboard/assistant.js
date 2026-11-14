@@ -33,11 +33,58 @@ export async function askAssistant(question, { species, country } = {}, fetchImp
   }
 }
 
-const paragraphs = (text) =>
-  String(text)
-    .split(/\n\s*\n/)
-    .map((p) => `<p>${esc(p.trim())}</p>`)
-    .join("")
+/**
+ * A small, safe subset of Markdown for model answers: paragraphs, line breaks, `-`/`*`/`•`
+ * and `1.` lists, `#` headings (shown as bold), **bold** and `code`. Everything is escaped
+ * FIRST and the markers are turned into tags afterwards, so no text from the server can
+ * become markup, and there are no links or images. Anything else (tables, nested lists,
+ * HTML) stays as plain text.
+ */
+export function renderMarkdown(text) {
+  const inline = (line) =>
+    esc(line)
+      .replace(/`([^`\n]+)`/g, "<code>$1</code>")
+      .replace(/\*\*([^*\n]+?)\*\*/g, "<strong>$1</strong>")
+  const out = []
+  let para = []
+  let list = null // { tag: "ul" | "ol", items: [] }
+  const flushPara = () => {
+    if (para.length) out.push(`<p>${para.map(inline).join("<br>")}</p>`)
+    para = []
+  }
+  const flushList = () => {
+    if (list) out.push(`<${list.tag}>${list.items.map((i) => `<li>${inline(i)}</li>`).join("")}</${list.tag}>`)
+    list = null
+  }
+  for (const raw of String(text).split(/\r?\n/)) {
+    const line = raw.trimEnd()
+    let m
+    if (!line.trim()) {
+      flushPara()
+      flushList()
+    } else if ((m = /^\s*[-*•]\s+(.*)$/.exec(line))) {
+      flushPara()
+      if (list?.tag !== "ul") (flushList(), (list = { tag: "ul", items: [] }))
+      list.items.push(m[1])
+    } else if ((m = /^\s*\d{1,2}[.)]\s+(.*)$/.exec(line))) {
+      flushPara()
+      if (list?.tag !== "ol") (flushList(), (list = { tag: "ol", items: [] }))
+      list.items.push(m[1])
+    } else if ((m = /^#{1,4}\s+(.*)$/.exec(line))) {
+      flushPara()
+      flushList()
+      out.push(`<p><strong>${inline(m[1])}</strong></p>`)
+    } else {
+      flushList()
+      para.push(line.trim())
+    }
+  }
+  flushPara()
+  flushList()
+  return out.join("")
+}
+
+const paragraphs = renderMarkdown
 
 /** Bubble HTML for an answer from the server. */
 export function renderAnswer(a) {

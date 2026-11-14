@@ -183,6 +183,10 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 
 /* Assistant answers (dashboard/assistant.js): claims with source numbers, the data used, the source list. */
 .msg { overflow-wrap: anywhere; }
+.msg ul, .msg ol { margin: 6px 0 0; padding-left: 20px; }
+.msg li { margin: 2px 0; }
+.msg code { font-size: 0.9em; padding: 1px 5px; border-radius: 6px; background: rgba(255, 255, 255, 0.12); }
+.msg strong { font-weight: 650; }
 .msg .claims { margin: 6px 0 0; padding-left: 18px; }
 .msg .claims li { margin: 3px 0; }
 .msg .cite { color: #a9c4ff; font-size: 0.75em; margin-left: 2px; }

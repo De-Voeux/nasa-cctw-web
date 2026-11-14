@@ -39,3 +39,38 @@ test("client maps statuses: 503, 404 and network errors fall back; 429 does not"
   assert.deepEqual(await askAssistant("q", {}, resp(502, {})), { ok: false, reason: "error" })
   assert.deepEqual(await askAssistant("q", {}, resp(200, { answer_md: "a" })), { ok: true, data: { answer_md: "a" } })
 })
+
+import { renderMarkdown } from "./assistant.js"
+
+test("markdown: bold, lists, headings and line breaks become tags", () => {
+  const html = renderMarkdown("Intro line\nsecond line\n\n**Summary:**\n- Min: 25.97 °C\n- Max: 30.04 °C\n\n1. First\n2. Second\n\n## Heading\nUse `x` here.")
+  assert.equal(
+    html,
+    "<p>Intro line<br>second line</p><p><strong>Summary:</strong></p><ul><li>Min: 25.97 °C</li><li>Max: 30.04 °C</li></ul><ol><li>First</li><li>Second</li></ol><p><strong>Heading</strong></p><p>Use <code>x</code> here.</p>",
+  )
+})
+
+test("markdown: nothing from the text can become markup", () => {
+  const nasty = [
+    "<img src=x onerror=alert(1)>",
+    "**<script>alert(1)</script>**",
+    "- <b onmouseover=x>item</b>",
+    "[click](javascript:alert(1))",
+    "![x](https://e.org/x.png)",
+    "`</code><img src=x onerror=1>`",
+    "# <iframe src=//e.org>",
+  ].join("\n\n")
+  const html = renderMarkdown(nasty)
+  // Every "<" in the output must open or close one of the few tags we generate, with no attributes.
+  assert.ok(!/<(?!\/?(p|strong|code|ul|ol|li|br)>)/.test(html), html)
+  // Links and images are not supported: the source text stays visible as inert text.
+  assert.ok(html.includes("[click](javascript:alert(1))") && html.includes("![x](https://e.org/x.png)"), html)
+  assert.ok(html.includes("&lt;img src=x onerror=alert(1)&gt;"), html)
+})
+
+test("markdown: unmatched markers and tables stay as text", () => {
+  assert.equal(renderMarkdown("a ** b"), "<p>a ** b</p>")
+  assert.equal(renderMarkdown("| a | b |\n|---|---|"), "<p>| a | b |<br>|---|---|</p>")
+  assert.equal(renderMarkdown(""), "")
+  assert.equal(renderMarkdown("one\n\n\n\ntwo"), "<p>one</p><p>two</p>")
+})
