@@ -27,12 +27,17 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,500&display=swap" />
     <link rel="stylesheet" href="./styles/tokens.css" />
     <link rel="stylesheet" href="./styles/dashboard.css" />
+    <!-- The redesign (brand, species, flags, filters, region cards, layers, chat). Loaded last on purpose. -->
+    <link rel="stylesheet" href="./styles/redesign.css" />
   </head>
   <body>
     <div id="globe" class="globe" aria-hidden="true"></div>
     <div id="overlay" class="overlay"></div>
 
-    <!-- Date pills (top left) -->
+    <!-- Brand (top left, wide screens) -->
+    <a class="brand" href="./" aria-label="SEAmon home">SEAmon</a>
+
+    <!-- Date pills (top, beside the map controls on wide screens) -->
     <nav class="glass date-bar" aria-label="Date">
       <div id="dates" class="date-pills" role="group"></div>
     </nav>
@@ -51,7 +56,7 @@
     </div>
 
     <!-- Side panel (right; a bottom sheet on narrow screens) -->
-    <aside class="glass side-panel" aria-label="Locations">
+    <aside class="glass side-panel" aria-label="Locations" data-mode="list">
       <button id="sheet-toggle" class="sheet-toggle" type="button" aria-expanded="true" aria-controls="panel-body">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
         Locations
@@ -60,19 +65,48 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
         <input id="search" type="search" placeholder="Search country, island, or region" autocomplete="off" />
       </label>
+
+      <!-- Species, country flags and filters (hidden while a place's detail is open) -->
+      <div class="panel-tools">
+        <label class="species-card">
+          <span class="species-label">Species</span>
+          <select id="species" class="species-select" aria-label="Species"></select>
+          <svg class="species-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+        </label>
+        <div id="flags" class="flags" role="group" aria-label="Country"></div>
+        <div class="chips">
+          <div id="regions-chip"></div>
+          <div id="levels-chip"></div>
+          <button id="sort-btn" class="sort-btn" type="button" aria-label="Sort order: lowest risk first">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16M7 4 3 8M7 4l4 4M17 20V4M17 20l-4-4M17 20l4-4" /></svg>
+            <span id="sort-label">Lowest Risk</span>
+          </button>
+        </div>
+      </div>
+
       <div id="panel-body" class="panel-body" aria-live="polite"></div>
     </aside>
 
-    <!-- Ask bar (bottom left) -->
-    <form id="ask" class="ask-bar" autocomplete="off">
-      <div class="glass ask-input">
-        <svg class="ask-plus" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
-        <input id="ask-input" type="text" aria-label="Ask about the atlas" placeholder="Which area has the most ice-ice reports?" />
-      </div>
-      <button class="glass send-btn" type="submit" aria-label="Send">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 3 10 14" /><path d="m21 3-7 18-4-7-7-4 18-7Z" /></svg>
-      </button>
-    </form>
+    <!-- Ask bar (bottom left): the conversation opens above the input -->
+    <div id="ask-bar" class="ask-bar">
+      <section id="chat" class="chat" hidden aria-label="Conversation">
+        <button id="chat-close" class="chat-close" type="button" aria-label="Close conversation">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+        </button>
+        <div id="chat-log" class="chat-log" aria-live="polite"></div>
+      </section>
+      <form id="ask" class="ask-row" autocomplete="off">
+        <div class="glass ask-input">
+          <input id="ask-input" type="text" aria-label="Ask SEAmon about the atlas" placeholder="Ask SEAmon" />
+          <button class="mic" type="button" disabled aria-label="Voice input is not available yet" title="Voice input is not available yet">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /><path d="M12 19v3" /></svg>
+          </button>
+        </div>
+        <button class="glass send-btn" type="submit" aria-label="Send">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 3 10 14" /><path d="m21 3-7 18-4-7-7-4 18-7Z" /></svg>
+        </button>
+      </form>
+    </div>
 
     <p class="credit">Surface: NASA Earth Observatory, Blue Marble Next Generation · Ocean, relief, lights: NASA, via franky-adl/threejs-earth · Locations: unverified research leads</p>
 

@@ -29,7 +29,7 @@
   --radius-md: 14px;
   --radius-pill: 999px;
   --gap: 12px;
-  --panel-w: clamp(300px, 28vw, 400px);
+  --panel-w: clamp(380px, 26vw, 480px);
 
   /* mobile bottom sheet (the side panel turns into a sheet under 860px) */
   --sheet-h: 42vh;
