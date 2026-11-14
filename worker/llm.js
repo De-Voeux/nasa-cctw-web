@@ -5,6 +5,11 @@
 //   401/402/403  that key is bad or out of credit: skip it for the rest of this request
 //   400/404      this model does not accept the request (for example no tool calling): skip it
 //   429/5xx/timeout/network   try the next key, then the next model
+// A 429 is read twice: if its message says a daily/credit/quota limit, the KEY is spent and is
+// skipped; otherwise the MODEL is busy upstream (free models are shared) and the next model is
+// tried with the same key, not the next key.
+// Keys that cannot be OpenRouter keys (no `sk-or-` prefix) are never sent to OpenRouter, so a
+// key for another provider is not handed to a third party by mistake.
 // A total attempt budget keeps a bad day from turning into a long wait.
 
 const DEFAULT_BASE = "https://openrouter.ai/api/v1"
@@ -30,6 +35,25 @@ export const modelList = (env) => (split(env.ASK_MODELS).length ? split(env.ASK_
 
 export class LlmError extends Error {}
 
+const isOpenRouter = (base) => /(^|\/\/)([^/]*\.)?openrouter\.ai(\/|$)/.test(base)
+const keyLimit = /per[- ]?day|daily|credit|quota|insufficient|balance/i
+
+/** Keys that may be sent to this endpoint. For OpenRouter only `sk-or-` keys qualify. */
+export function usableKeys(env, base) {
+  const all = collectKeys(env)
+  return isOpenRouter(base) ? all.filter((k) => k.startsWith("sk-or-")) : all
+}
+
+/** The provider's own error message, short, for the log. Never contains our key. */
+function errorText(text) {
+  try {
+    const e = JSON.parse(text)?.error
+    return String(e?.message ?? e ?? text).slice(0, 160)
+  } catch {
+    return String(text).slice(0, 160)
+  }
+}
+
 const parseArgs = (s) => {
   if (s && typeof s === "object") return s
   try {
@@ -39,10 +63,12 @@ const parseArgs = (s) => {
   }
 }
 
-export function createLlm(env, fetchImpl = fetch, { timeoutMs = 25000, maxAttempts = 6 } = {}) {
-  const keys = collectKeys(env)
-  const models = modelList(env)
+export function createLlm(env, fetchImpl = fetch, { timeoutMs = 25000, maxAttempts = 8 } = {}) {
   const base = (env.LLM_BASE_URL || DEFAULT_BASE).replace(/\/$/, "")
+  const keys = usableKeys(env, base)
+  const skipped = collectKeys(env).length - keys.length
+  if (skipped > 0) console.log(JSON.stringify({ event: "llm_keys_skipped", count: skipped, reason: "not an OpenRouter key (no sk-or- prefix)" }))
+  const models = modelList(env)
   const deadKeys = new Set()
   const deadModels = new Set()
   let attempts = 0
@@ -63,10 +89,10 @@ export function createLlm(env, fetchImpl = fetch, { timeoutMs = 25000, maxAttemp
         body: JSON.stringify({ model, ...payload }),
       })
       const text = await res.text()
-      if (!res.ok) return { status: res.status }
+      if (!res.ok) return { status: res.status, detail: errorText(text) }
       const data = JSON.parse(text)
       const message = data?.choices?.[0]?.message
-      if (data?.error || !message) return { status: data?.error?.code ?? 502 } // a 200 with an error body
+      if (data?.error || !message) return { status: data?.error?.code ?? 502, detail: errorText(text) } // a 200 with an error body
       return { message }
     } catch {
       return { status: 0 } // timeout or network
@@ -90,9 +116,10 @@ export function createLlm(env, fetchImpl = fetch, { timeoutMs = 25000, maxAttemp
           const toolCalls = (r.message.tool_calls ?? []).map((tc) => ({ id: tc.id, name: tc.function?.name, input: parseArgs(tc.function?.arguments) }))
           return { message: r.message, toolCalls, model }
         }
-        console.log(JSON.stringify({ event: "llm_fallback", model, status: r.status }))
+        console.log(JSON.stringify({ event: "llm_fallback", model, status: r.status, detail: r.detail }))
         if ([401, 402, 403].includes(r.status)) deadKeys.add(key)
-        else if ([400, 404].includes(r.status)) {
+        else if (r.status === 429 && keyLimit.test(r.detail ?? "")) deadKeys.add(key)
+        else if ([400, 404, 429].includes(r.status)) {
           deadModels.add(model)
           break
         }
