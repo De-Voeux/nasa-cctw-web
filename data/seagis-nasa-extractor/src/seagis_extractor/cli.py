@@ -1,4 +1,4 @@
-"""seagis-extract command line: catalog, regions build, plan, pilot (fetch/process/validate/export pending)."""
+"""seagis-extract command line: catalog, regions build, plan, pilot, fetch (process/validate/export pending)."""
 from __future__ import annotations
 
 import argparse
@@ -100,8 +100,15 @@ def cmd_plan(args) -> int:
                                            static_dir=root / "data/raw/static/copernicus",
                                            no_sea_accepted=cm_cfg.get("no_sea_accepted"))
     (out_dir / "membership").mkdir(parents=True, exist_ok=True)
+    pilot_report = None
+    rep_path = out_dir / "pilot" / "pilot_report.json"
+    if rep_path.exists() and not args.no_calibration:
+        pilot_report = json.loads(rep_path.read_text())
+        inputs["pilot_report"] = {"path": str(rep_path.relative_to(root)), "sha256": estimate.file_sha256(rep_path)}
+        print(f"Calibrating MUR transfer from {rep_path.relative_to(root)} (pilot {pilot_report.get('status')})")
     plan = estimate.build_plan(json.loads(cat_path.read_text()), json.loads(roi_path.read_text()), cfg, inputs,
-                               out_dir / "membership", pilot=roi_cfg.get("pilot_subregions"), copernicus_fn=cm_fn)
+                               out_dir / "membership", pilot=roi_cfg.get("pilot_subregions"), copernicus_fn=cm_fn,
+                               pilot_report=pilot_report)
     plan_path = out_dir / "plan.json"
     tmp = plan_path.with_suffix(".json.part")
     tmp.write_text(json.dumps(plan, indent=1, default=str))
@@ -155,6 +162,50 @@ def cmd_pilot(args) -> int:
     return 0 if report["status"] == "PASS" else 4
 
 
+def cmd_fetch(args) -> int:
+    import json
+
+    from . import auth, backfill, pilot
+
+    cfg = load_config(Path(args.config))
+    root = cfg["_root"]
+    plan_path = Path(args.plan) if args.plan else root / "outputs/plan.json"
+    plan = json.loads(plan_path.read_text())
+    units = backfill.build_units(plan, cfg, regions=args.region, sources=args.source)
+    if args.dry_run:
+        mur = [u for u in units if u["kind"] == "mur"]
+        jobs = sum(len(u["roi"]["mur_requests"]) for u in mur)
+        files = sum(len(u["roi"]["mur_requests"]) * len(u["expected"]) for u in mur)
+        print(f"FETCH DRY RUN (nothing is requested): {len(units)} units = {len(mur)} MUR ROI-months "
+              f"({jobs} Harmony jobs, {files} daily files) + {len(units) - len(mur)} Copernicus dataset-regions")
+        for u in units[:5] + ([{"key": "..."}] if len(units) > 5 else []):
+            print("  " + u["key"])
+        cal = (plan.get("transfer_ratios") or {}).get("calibration")
+        print(f"Calibrated: {'yes' if cal else 'NO (fetch will refuse)'}; budget {plan['execution'].get('max_download_gb')} GB; "
+              f"concurrency {plan['execution'].get('concurrency')}")
+        return 0
+    try:
+        backfill.verify_fetch_plan(plan, args.approve_plan, root)
+    except pilot.PlanGateError as e:
+        print(f"REFUSED: {e}", file=sys.stderr)
+        return 2
+    names = auth.apply_env(root / ".env")
+    if names:
+        print("Loaded from .env: " + ", ".join(sorted(names)) + " (values not shown)")
+    try:
+        bf = backfill.Backfill(root, cfg, plan, out_dir=root / "outputs/fetch", raw_dir=root / "data/raw/fetch",
+                               processed_dir=root / "data/processed", membership_dir=root / "outputs/membership")
+        summary = bf.run(units, max_units=args.max_units)
+    except pilot.FetchGuardError as e:
+        print(f"ABORTED by download guard: {e}", file=sys.stderr)
+        return 5
+    except (auth.AuthError, pilot.FetchError) as e:
+        print(f"FAILED: {e}", file=sys.stderr)
+        return 4
+    print(json.dumps(summary, indent=1))
+    return 0 if not summary["failed"] else 4
+
+
 def _not_yet(name):
     def run(_args):
         print(f"`{name}` is not implemented yet (see TASK.md).", file=sys.stderr)
@@ -178,6 +229,7 @@ def main(argv=None) -> int:
     pl.add_argument("--config", default="config/extraction.yaml")
     pl.add_argument("--calibrate", action="store_true", help="(not implemented) approved small calibration sample")
     pl.add_argument("--max-sample-mb", type=float, default=None)
+    pl.add_argument("--no-calibration", action="store_true", help="ignore outputs/pilot/pilot_report.json")
     pl.set_defaults(func=cmd_plan)
     pi = sub.add_parser("pilot", help="approved 7-day calibration run for the plan's pilot subregions")
     pi.add_argument("--config", default="config/extraction.yaml")
@@ -185,7 +237,16 @@ def main(argv=None) -> int:
     pi.add_argument("--approve-plan", default=None, help="the PLAN SHA256 you reviewed (required)")
     pi.add_argument("--dry-run", action="store_true", help="print the exact requests; send nothing")
     pi.set_defaults(func=cmd_pilot)
-    for name in ("fetch", "process", "validate", "export"):
+    fe = sub.add_parser("fetch", help="approved full backfill (needs a pilot-calibrated plan)")
+    fe.add_argument("--config", default="config/extraction.yaml")
+    fe.add_argument("--plan", default=None, help="default outputs/plan.json")
+    fe.add_argument("--approve-plan", default=None, help="the PLAN SHA256 you reviewed (required)")
+    fe.add_argument("--region", action="append", help="limit to region id (repeatable)")
+    fe.add_argument("--source", choices=["all", "mur", "copernicus"], default="all")
+    fe.add_argument("--max-units", type=int, default=None, help="stop after N units (e.g. to measure speed)")
+    fe.add_argument("--dry-run", action="store_true", help="count the work; send nothing")
+    fe.set_defaults(func=cmd_fetch)
+    for name in ("process", "validate", "export"):
         sp = sub.add_parser(name, help="not implemented yet")
         sp.add_argument("rest", nargs="*")
         sp.set_defaults(func=_not_yet(name))

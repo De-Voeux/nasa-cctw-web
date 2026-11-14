@@ -21,7 +21,8 @@ from pathlib import Path
 
 from . import auth, estimate, process, validate
 from .catalog import granule_date
-from .fetch import ByteBudget, FetchError, FetchGuardError, HarmonyClient, copernicus_open, harmony_url
+from .fetch import (ByteBudget, FetchError, FetchGuardError, HarmonyClient, copernicus_open, crop_to_cells,
+                    harmony_url)
 from .manifest import Manifest
 
 MIB = 1 << 20
@@ -176,7 +177,7 @@ def run_pilot(root: Path, cfg: dict, plan: dict, *, out_dir: Path, raw_dir: Path
                 validate.copernicus_guard(ds, bbox, d_plan["grid"]["lat_step"], d_plan["grid"]["lon_step"])
             except FetchGuardError:
                 raise
-            ds = ds.load()
+            ds = crop_to_cells(ds, bbox, d_plan["grid"]["lat_step"], d_plan["grid"]["lon_step"]).load()
             if "depth" in ds.dims:
                 ds = ds.isel(depth=0, drop=False)
             dest = raw_dir / "copernicus" / spec["key"] / key[0] / f"{key[1]}.nc"

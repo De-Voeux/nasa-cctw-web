@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import datetime as dt
 import hashlib
+import threading
 import time
 import urllib.error
 import urllib.parse
@@ -42,11 +43,13 @@ class FetchGuardError(FetchError):
 class ByteBudget:
     limit: int
     used: int = 0
+    _lock: threading.Lock = field(default_factory=threading.Lock, repr=False, compare=False)
 
     def add(self, n: int) -> None:
-        self.used += n
-        if self.used > self.limit:
-            raise FetchGuardError(f"download budget exceeded: {self.used} > {self.limit} bytes")
+        with self._lock:
+            self.used += n
+            if self.used > self.limit:
+                raise FetchGuardError(f"download budget exceeded: {self.used} > {self.limit} bytes")
 
 
 # ---------------------------------------------------------------- transports (injectable for tests)
@@ -126,7 +129,20 @@ class HarmonyClient:
     def submit(self, collection_id: str, variables: list[str], bbox: list[float], start: dt.date, end: dt.date) -> str:
         if tuple(bbox) not in self.allowed_boxes:
             raise FetchGuardError(f"request box {bbox} is not in the approved plan")
-        job = self._json(harmony_url(collection_id, variables, bbox, start, end))
+        url = harmony_url(collection_id, variables, bbox, start, end)
+        self.calls += 1
+        r = self.transport("GET", url, _auth_for(url, self.token), self.timeout)
+        if r.status in (301, 302, 303, 307, 308):
+            # async requests answer "303 See Other -> /jobs/<jobID>" (seen live 2026-11-15)
+            loc = urllib.parse.urlsplit(r.header("Location") or "").path
+            if loc.startswith("/jobs/") and len(loc) > len("/jobs/"):
+                return urllib.parse.unquote(loc[len("/jobs/"):].strip("/"))
+            raise FetchError(f"Harmony redirected to an unexpected location {redact(loc)}")
+        if r.status in (401, 403):
+            raise FetchError(f"Harmony refused credentials (HTTP {r.status}) for {redact(url)}")
+        if r.status != 200:
+            raise FetchError(f"GET {redact(url)} -> HTTP {r.status}: {r.body[:300]!r}")
+        job = r.json()
         if "jobID" not in job:
             raise FetchError(f"Harmony did not return a job: keys {sorted(job)}")
         return job["jobID"]
@@ -196,8 +212,21 @@ def copernicus_open(spec: dict, bbox: list[float], start: dt.date, end: dt.date,
         import copernicusmarine
         opener = copernicusmarine.open_dataset
     w, s, e, n = bbox
-    return opener(dataset_id=spec["dataset_id"], variables=list(spec["variables"]),
+    base, _, ver = spec["dataset_id"].rpartition("_")
+    version = {}
+    if base and len(ver) == 6 and ver.isdigit():           # e.g. ..._P1D-m_202311 -> id + dataset_version
+        version = {"dataset_id": base, "dataset_version": ver}
+    return opener(**({"dataset_id": spec["dataset_id"]} | version), variables=list(spec["variables"]),
                   minimum_longitude=w, maximum_longitude=e, minimum_latitude=s, maximum_latitude=n,
-                  minimum_depth=0.0, maximum_depth=1.0,   # selects only the 0.494 m surface level
+                  minimum_depth=0.49, maximum_depth=0.5,   # only the 0.494 m surface level
                   start_datetime=f"{start.isoformat()}T00:00:00", end_datetime=f"{end.isoformat()}T00:00:00",
                   coordinates_selection_method="outside", service="arco-geo-series")
+
+
+def crop_to_cells(ds, bbox: list[float], step_lat: float, step_lon: float):
+    """Keep exactly the cells whose extent intersects `bbox` (the plan's index_range rule).
+    The toolbox's "outside" selection can add one more row/column on each side."""
+    w, s, e, n = bbox
+    lat, lon = ds["latitude"], ds["longitude"]
+    return ds.sel(latitude=lat[(lat + step_lat / 2 >= s) & (lat - step_lat / 2 <= n)],
+                  longitude=lon[(lon + step_lon / 2 >= w) & (lon - step_lon / 2 <= e)])

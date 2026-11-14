@@ -48,9 +48,11 @@ def make_plan(tmp_path, days=3):
     return plan, mdir
 
 
-def mur_bytes(req, date, shift_lon=0.0, land_cells=0):
+def mur_bytes(req, date, shift_lon=0.0, land_cells=0, extra_cols=0):
     (i0, i1), (j0, j1) = req["grid_index_range"]["lat"], req["grid_index_range"]["lon"]
-    lat, lon = GRID.lat(np.arange(i0, i1 + 1)), GRID.lon(np.arange(j0, j1 + 1)) + shift_lon
+    # float32 like real MUR files (exact edges are not representable)
+    lat = GRID.lat(np.arange(i0, i1 + 1)).astype("float32")
+    lon = (GRID.lon(np.arange(j0, j1 + 1 + extra_cols)) + shift_lon).astype("float32")
     shape = (1, lat.size, lon.size)
     mask = np.ones(shape, "i1")
     mask.reshape(-1)[:land_cells] = 2
@@ -92,10 +94,12 @@ class FakeHarmony:
 
 def cm_opener(**kw):
     t = [np.datetime64(f"2022-06-0{d}T00:00") for d in (1, 2, 3)]
-    assert kw["minimum_depth"] == 0.0 and kw["maximum_depth"] == 1.0
-    return xr.Dataset({"no3": (("time", "depth", "latitude", "longitude"), np.full((3, 1, 1, 1), 0.5),
+    assert kw["minimum_depth"] == 0.49 and kw["maximum_depth"] == 0.5
+    # like the real toolbox ("outside"): one extra row/column around the plan's single cell
+    return xr.Dataset({"no3": (("time", "depth", "latitude", "longitude"), np.full((3, 1, 3, 3), 0.5),
                                {"units": "mmol m-3"})},
-                      coords={"time": t, "depth": [0.494], "latitude": [5.0], "longitude": [119.75]})
+                      coords={"time": t, "depth": [0.494], "latitude": [4.75, 5.0, 5.25],
+                              "longitude": [119.5, 119.75, 120.0]})
 
 
 def run(tmp_path, plan, mdir, fake):
@@ -116,6 +120,8 @@ def test_pilot_end_to_end_pass_rows_and_resume(tmp_path):
     no3 = [r for r in rows if r["variable"] == "no3"]
     assert len(no3) == 3 and float(no3[0]["mean"]) == pytest.approx(0.5)
     assert (tmp_path / "out/pilot_report.json").exists() and fake.downloads == 3
+    saved = xr.open_dataset(tmp_path / "raw/copernicus/nut/PH-T/a.nc", engine="h5netcdf")
+    assert saved.sizes["latitude"] == 1 and saved.sizes["longitude"] == 1      # cropped to the plan's cells
     run(tmp_path, plan, mdir, fake)                         # resume: verified files are not fetched again
     assert fake.downloads == 3
 
@@ -134,6 +140,12 @@ def test_response_outside_approved_box_aborts_and_is_deleted(tmp_path):
     assert not list((tmp_path / "raw").rglob("*.nc4"))
     log = (tmp_path / "out/pilot_manifest.jsonl").read_text()
     assert '"status": "rejected"' in log
+
+
+def test_one_extra_column_outside_box_aborts(tmp_path):
+    plan, mdir = make_plan(tmp_path)
+    with pytest.raises(fetch.FetchGuardError, match="outside approved extent"):
+        run(tmp_path, plan, mdir, FakeHarmony(plan, 3, extra_cols=1))
 
 
 def test_unexpected_granule_is_not_downloaded(tmp_path):

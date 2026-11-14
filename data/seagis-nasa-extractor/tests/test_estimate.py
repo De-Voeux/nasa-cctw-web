@@ -80,7 +80,7 @@ def test_plan_rows_ranges_and_hash(tmp_path):
         overhead = estimate.ASSUMPTIONS["file_overhead_bytes"][1] * r["n_time"]
         assert r["transfer_bytes_expected"] - overhead < r["uncompressed_bytes"]   # never equate the two
         assert 0 < r["mask_efficiency"] <= 1
-        assert r["final_rows"] == r["n_time"] * 3
+        assert r["final_rows"] == r["n_time"] * len(estimate.ASSUMPTIONS["output_variables"])
     assert plan["transfer_ratios"]["low"] == pytest.approx(0.1, rel=1e-6)
     assert plan["transfer_ratios"]["expected"] == pytest.approx(0.2, rel=1e-6)
     sf = plan["shared_fetch"]["PH-T"]
@@ -184,3 +184,29 @@ def test_small_roi_keeps_single_request():
     m = estimate.membership(GRID, roi)
     reqs = estimate.request_tiles(GRID, roi, m, ["analysed_sst"], 10_000)
     assert len(reqs) == 1 and reqs[0]["expected_cells"] == m["bbox_cells"]
+
+
+def test_calibration_from_pilot_files():
+    rois = [{"region_id": "R", "subregion_id": s, "mur_requests": [{"expected_cells": c}]} for s, c in (("a", 500), ("b", 1500))]
+    files = [{"source": "mur_sst", "roi": "R/a", "bytes": 59_000 + 500}] * 3 + \
+            [{"source": "mur_sst", "roi": "R/b", "bytes": 59_000 + 1500}] * 3
+    cal = estimate.calibrate_from_pilot({"status": "PASS", "files": files}, rois)
+    assert cal["bytes_per_file"] == pytest.approx(59_000, rel=1e-6) and cal["bytes_per_cell"] == pytest.approx(1.0)
+    with pytest.raises(ValueError):
+        estimate.calibrate_from_pilot({"status": "FAIL", "files": files}, rois)
+
+
+def test_calibrated_plan_uses_measured_bytes(tmp_path):
+    import json as _j
+    plan = _fixture(tmp_path)
+    cal = {"bytes_per_file": 50_000, "bytes_per_cell": 2.0, "low_factor": 0.9, "high_factor": 1.25}
+    r = plan["rows"][0]
+    roi = next(x for x in plan["rois"] if x["subregion_id"] == r["subregion_id"])
+    m = {"bbox_cells": roi["bbox_cells"], "roi_cells": roi["roi_cells"], "n_lat": roi["n_lat"], "n_lon": roi["n_lon"],
+         "i0": 0, "i1": 0, "j0": 0, "j1": 0}
+    row = estimate.row_estimate(roi, m, r["month"], dt.date(2020, 1, 30), dt.date(2020, 1, 31), {"2020-01-30", "2020-01-31"},
+                                {"analysed_sst": 2}, {"low": 0.1, "expected": 0.2, "high": 1.0, "calibration": cal}, 1,
+                                {"2020-01-30": 0, "2020-01-31": 0})
+    cells = sum(q["expected_cells"] for q in roi["mur_requests"])
+    assert row["transfer_bytes_expected"] == int((50_000 * len(roi["mur_requests"]) + 2.0 * cells) * 2)
+    assert row["transfer_bytes_high"] > row["transfer_bytes_expected"] > row["transfer_bytes_low"]

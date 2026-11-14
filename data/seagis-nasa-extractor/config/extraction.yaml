@@ -12,7 +12,9 @@ products:
   mur_sst:
     enabled: true
     temporal_resolution: daily
-    variables: [analysed_sst]
+    # mask is required: MUR fills land with SST values, so land is removed by mask (pilot 2026-11-15).
+    # sea_ice_fraction dropped: always empty in these tropical waters (pilot 2026-11-15).
+    variables: [analysed_sst, analysis_error, mask]
     endpoint: discover_from_catalog
   copernicus:
     enabled: true
@@ -28,7 +30,7 @@ products:
       PH-PANG/lingayen_gulf_binmaley: [cmems_bgc_nut, cmems_bgc_car]
 execution:
   batch: monthly
-  concurrency: 2
+  concurrency: 4            # Harmony jobs in flight during fetch
   raw_retention: discard_after_validation
   metadata_only_preflight: true
   require_approval: true

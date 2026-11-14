@@ -2,11 +2,20 @@
 
 `seagis-extract plan` (metadata and local geometry only, **0 science bytes**). Outputs (gitignored, reproducible): `outputs/plan.json`, `outputs/estimate.csv` (one row per ROI × month, 511 rows), `outputs/plan_summary.txt`, and `outputs/membership/*.csv.gz` (grid-cell weight table per ROI).
 
-**PLAN SHA256: `85f62d82722154f277094cf0b8fd330d6118eed5283d36c5018ff6a5746bdbc7`**
+**PLAN SHA256: `b5a03161b2de7b911aa5b576be54545c651a4cea7e08341412bd5456a40d371e`** (calibrated backfill plan; the pilot ran under `85f62d82…`)
 
 The hash covers the plan contents and the SHA-256 of every input (catalog, ROI GeoJSON, configs). Timestamps are excluded, so re-running `plan` on unchanged inputs gives the same hash. Any change to the ROIs, the period, or the limits gives a new hash.
 
 > **Updated 2026-11-15:** all sources now start **2022-06-01**, the first day of daily Copernicus salinity. The plan also covers the Copernicus Marine datasets no3, po4, pH and salinity. Their transfer is exact, 129.4 MiB; see [COPERNICUS_REVIEW.md](COPERNICUS_REVIEW.md). Combined transfer is about 481 MiB. The tables below are the MUR part.
+>
+> **Updated 2026-11-15 (calibrated backfill plan):** this plan is re-generated from the pilot. MUR transfer comes from a fit of the pilot's 14 files: 58,790 bytes per file + 1.07 bytes per cell, with a maximum residual of 0.1%. LOW/HIGH are 0.9× and 1.25× of the fit.
+>
+> - **MUR** requests only `analysed_sst`, `analysis_error` and `mask`. `sea_ice_fraction` is dropped because it is always empty here.
+> - **MUR transfer:** 6.23 / **6.92** / 8.65 GiB (LOW / EXPECTED / HIGH).
+> - **Copernicus** is fetched per region: 1.46 GiB.
+> - **Total about 8.4 GiB**, within the 20 GB limit.
+> - **Work:** 2,589 units = 2,538 MUR ROI-months (3,942 Harmony jobs, 118,771 daily files) + 51 Copernicus dataset × region units.
+> - **Final output:** 152,938 MUR daily rows in Parquet (~7 MiB) plus the Copernicus rows.
 >
 > **Updated 2026-11-15 (all regions):** the plan now covers **47 zones in 17 regions** (Southern Luzon pending: not an administrative unit). Totals for 2022-06-01 .. 2026-11-14: MUR 1.39 / **3.78** / 9.02 GiB (LOW / EXPECTED / HIGH), Copernicus **803 MiB** with a shared chunk cache (1.46 GiB if each region is fetched separately). Grand total about **4.6 GiB**, within the 20 GB download limit. Zones wider than 1° are split into tiles of at most 10,000 cells/day: **73 MUR boxes** for 47 zones, each tied to its zone, with tiles checked for full coverage and no overlap. Estimated API calls: about 146,000, mostly one download per daily file per box. The per-ROI tables below still describe the first 7 zones; the full list is in `outputs/estimate.csv` and `plan.json`.
 >
@@ -113,6 +122,54 @@ Exit codes: 0 PASS, 2 refused by the gate, 4 a check FAILED or an auth/HTTP erro
 
 **Not yet verified live.** Two Harmony details are only covered by fakes in tests: the comma-separated `variable=` parameter, and the job/link format. The pilot is what verifies them.
 
+## 7b. Pilot result (run 2026-11-15, plan 85f62d82…) — PASS
+
+Run with the user's approval for 2022-06-01 .. 2022-06-07 on PH-TAWI/bongao and ID-SOUTH-SUL/takalar. Outputs are in `outputs/pilot/` (98 daily rows), and the raw files (~1 MB) are in `data/raw/pilot/`.
+
+| Check | Result |
+| --- | --- |
+| MUR grid origin and order | **Confirmed.** Cells sit within 4e-6° of the assumed grid, latitude is ascending, and the index ranges equal the plan exactly. |
+| MUR cell count, units, timestamps, value range | All PASS (kelvin, 09:00 UTC, 7/7 days for each zone). |
+| MUR coastline vs mask | WARN, as expected. 54/318 Bongao cells and 72/669 Takalar cells are land/lake in MUR's own mask, and they are dropped. **MUR fills land with SST values** (fill fraction 0), so excluding land by mask, not by NaN, is required. |
+| `sea_ice_fraction` | Always empty in these waters. Candidate to drop from the outputs. |
+| Copernicus | All PASS after the fix: dates, surface depth 0.494 m, every sea cell valid, land cells empty. The toolbox returns one extra row/column around the box, which is now cropped to the plan's cells before saving. |
+
+Pilot values for 1–7 June 2022:
+
+| | Bongao | Takalar |
+| --- | --- | --- |
+| SST | 29.4–29.6 °C | 29.3–30.2 °C |
+| pH | 8.03 | 8.02 |
+| Salinity | 33.5–33.8 | 33.3–33.4 |
+| no3 | 0.007–0.009 mmol m-3 | 0.010–0.013 mmol m-3 |
+| po4 | 0.054–0.063 mmol m-3 | 0.112–0.119 mmol m-3 |
+
+**Calibration.** MUR files are about 59 KB each, of which about 58.8 KB is fixed overhead per file plus about 1 byte per cell. The plan's EXPECTED estimate (439 KB for the pilot) was low; actual was 840 KB, within HIGH (939 KB). For the full backfill as planned (73 boxes × 1,627 days = 118,771 files), that gives **about 6.9 GiB of MUR**, against the plan's 3.78 EXPECTED and 9.02 HIGH. Because the cost is per file, not per cell, the number of boxes drives both size and API calls.
+
+**Fixed during the pilot** (each failure stopped safely before or without keeping data):
+
+- Harmony needs one `variable=` per variable.
+- Async submits answer with `303 → /jobs/<id>`.
+- The MUR extent guard compared float32 coordinates too strictly. It now compares grid indices; one extra column outside the box is still rejected (tested).
+
+## 7c. Fetch (implemented, not run)
+
+`seagis-extract fetch` uses the same gate as the pilot. It also refuses a plan that is not calibrated from a PASSing pilot.
+
+**Units, all resumable** (`outputs/fetch/fetch_manifest.jsonl`):
+
+- **MUR**, per ROI × month. Up to `concurrency` (4) Harmony jobs run in parallel. Every file is guarded and checked. Each day is aggregated over the ROI's MUR-mask sea cells. The month is written to `data/processed/mur_sst/<region>/<zone>/<YYYY-MM>.parquet`, and then the raw NetCDF is deleted.
+- **Copernicus**, per dataset × region, whole period. Each zone is cropped to its plan cells and written to `data/processed/<dataset>/<region>/<zone>.parquet`.
+
+**Order.** Pilot regions come first. A guard violation stops the run. Other unit errors are retried (`retries`), then recorded as failed while the run continues. A rerun skips finished units.
+
+**Options:**
+
+- `--dry-run` counts the work.
+- `--max-units N` stops after N units, for example to measure speed.
+- `--region` (repeatable) limits the run to given regions.
+- `--source mur|copernicus` limits the run to one source.
+
 ## 8. Approval
 
 Preview the exact requests first. This sends nothing:
@@ -127,4 +184,12 @@ Run the pilot. Credentials are read from the gitignored `.env`, and values are n
 .venv/bin/seagis-extract pilot --approve-plan 85f62d82722154f277094cf0b8fd330d6118eed5283d36c5018ff6a5746bdbc7
 ```
 
-Backfill (`fetch`) needs a **new** plan, re-generated after the pilot updates the calibration, and its own approval.
+Backfill, after reviewing this calibrated plan:
+
+```bash
+.venv/bin/seagis-extract fetch --dry-run
+```
+
+```bash
+.venv/bin/seagis-extract fetch --approve-plan b5a03161b2de7b911aa5b576be54545c651a4cea7e08341412bd5456a40d371e
+```

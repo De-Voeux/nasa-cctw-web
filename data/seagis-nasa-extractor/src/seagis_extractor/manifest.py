@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import threading
 from pathlib import Path
 
 
@@ -13,6 +14,7 @@ class Manifest:
     def __init__(self, path: Path):
         self.path = Path(path)
         self.items: dict[str, dict] = {}
+        self._lock = threading.Lock()
         if self.path.exists():
             for line in self.path.read_text().splitlines():
                 if line.strip():
@@ -21,11 +23,16 @@ class Manifest:
 
     def record(self, key: str, **fields) -> dict:
         rec = {"key": key, **fields}
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        with self.path.open("a") as f:
-            f.write(json.dumps(rec, default=str) + "\n")
-        self.items[key] = rec
+        with self._lock:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            with self.path.open("a") as f:
+                f.write(json.dumps(rec, default=str) + "\n")
+            self.items[key] = rec
         return rec
+
+    def unit_done(self, key: str) -> dict | None:
+        """A finished unit whose output file is still intact."""
+        return self.done(key)
 
     def done(self, key: str) -> dict | None:
         rec = self.items.get(key)

@@ -5,10 +5,12 @@
 - `catalog` has been run against live NASA metadata ([docs/CATALOG_REVIEW.md](docs/CATALOG_REVIEW.md)).
 - `regions build` has produced 47 candidate zones in 17 regions ([docs/ROI_REVIEW.md](docs/ROI_REVIEW.md)).
 - `plan` has produced a metadata-only preflight ([docs/PLAN_REVIEW.md](docs/PLAN_REVIEW.md)).
-- `pilot` is built and tested against fakes, but has **not been run**: it needs the user's `--approve-plan`.
-- `fetch`, `process`, `validate` and `export` are not implemented.
+- `pilot` was run with the user's approval and PASSED (7 days, 2 zones).
+- `plan` was re-generated with the pilot calibration.
+- `fetch` is built and tested against fakes, but the full backfill has not been run.
+- `process`, `validate` and `export` (to the database) are not implemented.
 
-No science data has been downloaded. Pilot dependencies install with `uv pip install --python .venv '.[fetch]'`. Full specification: [TASK.md](TASK.md).
+Only pilot data (~1 MB) has been downloaded. Pilot/fetch dependencies install with `uv pip install --python .venv '.[fetch]'`. Full specification: [TASK.md](TASK.md).
 
 ```bash
 uv venv .venv && uv pip install --python .venv '.[dev]'   # reinstall after code changes

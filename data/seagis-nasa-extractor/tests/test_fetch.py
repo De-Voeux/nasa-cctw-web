@@ -89,3 +89,20 @@ def test_budget_aborts_and_leaves_no_partial_file(tmp_path):
     with pytest.raises(fetch.FetchGuardError, match="budget"):
         client(stream=stream, limit=1000).download("https://harmony.earthdata.nasa.gov/r/a.nc4", tmp_path / "a.nc4")
     assert list(tmp_path.iterdir()) == []
+
+
+def test_submit_accepts_303_redirect_to_job():
+    def transport(method, url, headers, timeout):
+        return Response(303, {"Location": "/jobs/93d52a5c-02c6-443e-a5c3-08bce5ee4e47"}, b"See Other")
+    c = client(transport)
+    assert c.submit("C1", ["analysed_sst"], BOX, dt.date(2022, 6, 1), dt.date(2022, 6, 7)) == \
+        "93d52a5c-02c6-443e-a5c3-08bce5ee4e47"
+
+
+def test_copernicus_open_splits_version_and_asks_surface_only():
+    seen = {}
+    fetch.copernicus_open({"dataset_id": "cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m_202311", "variables": ["no3"]},
+                          BOX, dt.date(2022, 6, 1), dt.date(2022, 6, 7), opener=lambda **kw: seen.update(kw))
+    assert seen["dataset_id"] == "cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m" and seen["dataset_version"] == "202311"
+    assert (seen["minimum_depth"], seen["maximum_depth"]) == (0.49, 0.5)
+    assert seen["minimum_longitude"] == BOX[0] and seen["maximum_latitude"] == BOX[3]

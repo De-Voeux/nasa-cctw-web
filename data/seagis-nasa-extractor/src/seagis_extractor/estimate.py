@@ -38,7 +38,7 @@ ASSUMPTIONS = {
     "job_granularity": "one Harmony job per ROI x month (temporal + bbox + variable subset).",
     "concurrency_in_flight_batches": "execution.concurrency ROI-month batches at HIGH size, plus their .part copies.",
     "processing_scratch": "one batch of masked float32 arrays per in-flight batch (uncompressed, 4 bytes/cell/variable).",
-    "output_variables": ["analysed_sst", "analysis_error", "sea_ice_fraction"],
+    "output_variables": ["analysed_sst", "analysis_error"],
     "csv_bytes_per_row": [180, 240, 320],
     "parquet_bytes_per_row": [25, 45, 90],
     "row_size_why": "schema-based model of the daily aggregate table (see FINAL_SCHEMA); no calibration sample yet.",
@@ -234,9 +234,14 @@ def row_estimate(roi: dict, m: dict, month: str, first: dt.date, last: dt.date, 
     unc = per_day_unc * len(avail)
     oh = ASSUMPTIONS["file_overhead_bytes"]
     t = {}
-    for k, idx in (("low", 0), ("expected", 1), ("high", 2)):
-        ratio = ratios[k]
-        t[k] = None if ratio is None else int(per_day_unc * ratio * len(avail) + oh[idx] * files * len(avail))
+    cal = ratios.get("calibration")
+    if cal:   # measured in the pilot: fixed bytes per output file + bytes per requested cell
+        exp = (cal["bytes_per_file"] * files + cal["bytes_per_cell"] * cells) * len(avail)
+        t = {"low": int(exp * cal["low_factor"]), "expected": int(exp), "high": int(exp * cal["high_factor"])}
+    else:
+        for k, idx in (("low", 0), ("expected", 1), ("high", 2)):
+            ratio = ratios[k]
+            t[k] = None if ratio is None else int(per_day_unc * ratio * len(avail) + oh[idx] * files * len(avail))
     n_out = len(ASSUMPTIONS["output_variables"])
     rows = len(avail) * n_out
     scratch = cells * 4 * len(var_bytes) * len(avail)
@@ -262,8 +267,10 @@ def row_estimate(roi: dict, m: dict, month: str, first: dt.date, last: dt.date, 
         "final_parquet_bytes_expected": rows * ASSUMPTIONS["parquet_bytes_per_row"][1],
         "final_csv_bytes_expected": rows * ASSUMPTIONS["csv_bytes_per_row"][1],
         "api_calls": files * (1 + ASSUMPTIONS["harmony_status_polls_per_job"] + len(avail)) if avail else 0,
+        "harmony_jobs": files if avail else 0,
         "confidence": {"days": "high (CMR inventory)", "grid": "medium (assumed grid origin)",
-                       "transfer": "low (no calibration sample; HOSS compression unknown)",
+                       "transfer": ("medium (calibrated from pilot files)" if ratios.get("calibration")
+                                    else "low (no calibration sample; HOSS compression unknown)"),
                        "final_size": "low (schema model)"},
     }
 
@@ -301,15 +308,38 @@ def shared_fetch(rois_m: list[tuple[dict, dict]]) -> dict:
     return out
 
 
+def calibrate_from_pilot(report: dict, rois: list[dict]) -> dict:
+    """Least-squares fit of MUR file size = a + b * cells over the pilot's downloaded files."""
+    cells = {f"{r['region_id']}/{r['subregion_id']}": [q["expected_cells"] for q in r["mur_requests"]] for r in rois}
+    pts = [(cells[f["roi"]][0], f["bytes"]) for f in report["files"]
+           if f["source"] == "mur_sst" and len(cells.get(f["roi"], [])) == 1]
+    if report.get("status") != "PASS" or len(pts) < 2 or len({c for c, _ in pts}) < 2:
+        raise ValueError("pilot report cannot calibrate (needs PASS and files from 2 ROIs of different size)")
+    x = np.array([c for c, _ in pts], float)
+    y = np.array([b for _, b in pts], float)
+    b, a = np.polyfit(x, y, 1)
+    resid = float(np.max(np.abs(y - (a + b * x)) / y))
+    return {"bytes_per_file": round(float(a), 1), "bytes_per_cell": round(float(max(b, 0.0)), 4),
+            "n_files": len(pts), "max_relative_residual": round(resid, 4),
+            "low_factor": 0.9, "high_factor": 1.25,
+            "variables_in_pilot": "analysed_sst, analysis_error, mask, sea_ice_fraction (backfill requests fewer, "
+                                  "so per-file sizes are a slight overestimate)",
+            "plan_sha256": report.get("plan_sha256")}
+
+
 def build_plan(catalog: dict, roi_geojson: dict, cfg: dict, inputs: dict, membership_dir: Path,
-               pilot: dict | None = None, pilot_days: int = 7, copernicus_fn=None) -> dict:
+               pilot: dict | None = None, pilot_days: int = 7, copernicus_fn=None,
+               pilot_report: dict | None = None) -> dict:
     """copernicus_fn(rois, roi_geoms) -> plan section (network HEADs); None skips Copernicus."""
     prod = next(p for p in catalog["products"] if p["key"] == "mur_sst")
     start = dt.date.fromisoformat(str(cfg["period"]["start"]))
     end = dt.date.fromisoformat(str(cfg["period"]["end"]))
     if catalog["period"] != {"start": start.isoformat(), "end": end.isoformat()}:
         raise ValueError(f"catalog period {catalog['period']} != config period {start}..{end}; rerun catalog")
-    variables = prod["variables"]
+    want = (cfg.get("products", {}).get("mur_sst", {}) or {}).get("variables")
+    variables = {k: v for k, v in prod["variables"].items() if not want or k in want}
+    if want and "mask" not in variables:
+        raise ValueError("products.mur_sst.variables must include `mask` (MUR fills land with SST values)")
     var_bytes = {k: DTYPE_BYTES[v["dtype"]] for k, v in variables.items()}
     grid = MurGrid()
     ratios = transfer_ratios(prod["granules"], sum(var_bytes.values()), grid.nlat * grid.nlon)
@@ -339,6 +369,10 @@ def build_plan(catalog: dict, roi_geojson: dict, cfg: dict, inputs: dict, member
                          "roi_area_weighted_km2": round(m["roi_area_weighted_km2"], 2),
                          "grid_index_range": {"lat": [m["i0"], m["i1"]], "lon": [m["j0"], m["j1"]]},
                          "membership_table": str(mpath.name)})
+
+    if pilot_report is not None:
+        ratios = ratios | {"calibration": calibrate_from_pilot(pilot_report, [r for r, _ in rois_m])}
+    for roi, m in rois_m:
         for month, first, last in months(start, end):
             rows.append(row_estimate(roi, m, month, first, last, available, var_bytes, ratios, conc, full_sizes))
 
