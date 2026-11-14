@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SEAGIS Globe Atlas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.6.0/dist/maplibre-gl.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js" } }
+</script>
+<style>
+:root{
+  --bg:#05080d; --panel:rgba(14,20,28,.92); --panel-solid:#0e141c; --line:rgba(255,255,255,.08);
+  --text:#e8eef5; --muted:#8a98a8; --accent:#3ddbb0;
+  --fav:#9fdcc8; --mod:#f2b544; --elev:#e4572e; --na:#6b7684;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:13px/1.4 Inter,system-ui,sans-serif;overflow:hidden}
+#map{position:absolute;inset:0}
+button{font:inherit;color:inherit;cursor:pointer}
+.topbar{position:absolute;top:12px;left:12px;right:12px;display:flex;align-items:center;gap:10px;pointer-events:none;z-index:5}
+.brand,.chip,.tabs{pointer-events:auto;background:var(--panel);backdrop-filter:blur(10px);border:1px solid var(--line);border-radius:999px;padding:7px 14px;display:flex;align-items:center;gap:8px}
+.brand b{letter-spacing:.06em}
+.logo{width:16px;height:16px;display:grid;grid-template-columns:1fr 1fr;gap:2px}
+.logo i{background:var(--accent);border-radius:2px}.logo i:nth-child(2){background:#2b8fd6}.logo i:nth-child(3){background:#f2b544}
+.tabs{gap:2px;padding:4px}
+.tabs button{background:none;border:0;padding:4px 10px;border-radius:999px;color:var(--muted)}
+.tabs button.on{background:rgba(255,255,255,.1);color:var(--text)}
+.chip.sample{margin-left:auto;color:#f2b544;border-color:rgba(242,181,68,.4);font-size:11px}
+
+/* left panel */
+.side{position:absolute;top:64px;left:12px;bottom:84px;width:330px;background:var(--panel);backdrop-filter:blur(12px);border:1px solid var(--line);border-radius:16px;display:flex;flex-direction:column;z-index:4;overflow:hidden}
+.side-head{padding:14px;border-bottom:1px solid var(--line);display:grid;gap:10px}
+.search{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.06);border-radius:10px;padding:8px 10px}
+.search input{flex:1;background:none;border:0;color:var(--text);outline:none;font:inherit}
+select{width:100%;background:rgba(255,255,255,.06);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font:inherit}
+.label{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.list{overflow:auto;padding:6px}
+.region{display:flex;gap:10px;padding:10px;border-radius:10px;width:100%;text-align:left;background:none;border:0}
+.region:hover{background:rgba(255,255,255,.05)}
+.sw{width:14px;height:14px;border-radius:3px;flex:none;margin-top:2px}
+.region .n{font-weight:600}.region .s{color:var(--muted);font-size:12px}
+.status{font-size:11px;font-weight:600}
+
+/* right controls */
+.rail{position:absolute;top:64px;right:12px;display:grid;gap:8px;z-index:4}
+.rail button{width:52px;height:52px;border-radius:12px;background:var(--panel);border:1px solid var(--line);font-size:9px;letter-spacing:.06em;color:var(--muted);display:grid;place-items:center;gap:0;padding:6px}
+.rail button.on{color:var(--text);border-color:var(--accent)}
+.rail svg{width:18px;height:18px}
+
+.drawer{position:absolute;top:64px;right:76px;bottom:84px;width:340px;background:var(--panel);backdrop-filter:blur(12px);border:1px solid var(--line);border-radius:16px;z-index:4;overflow:auto;padding:16px;display:none}
+.drawer.open{display:block}
+.drawer h3{margin:0 0 4px;font-size:18px}
+.x{float:right;background:rgba(255,255,255,.06);border:0;border-radius:8px;width:28px;height:28px}
+.opt{display:flex;gap:10px;padding:9px;border-radius:10px;cursor:pointer}
+.opt:hover{background:rgba(255,255,255,.05)}
+.opt input{accent-color:var(--accent);margin-top:2px}
+.opt small{display:block;color:var(--muted)}
+.sec{margin:14px 0 6px}
+.badge{display:inline-block;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;color:#111}
+.card{background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0}
+.kv{display:flex;justify-content:space-between;align-items:baseline}
+.kv b{font-size:18px}
+.note{color:var(--muted);font-size:11.5px}
+.warn{background:rgba(228,87,46,.12);border:1px solid rgba(228,87,46,.35)}
+
+/* legend + time */
+.legend{position:absolute;left:356px;bottom:84px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;z-index:3;width:230px}
+.legend .row{display:flex;align-items:center;gap:8px;margin:4px 0}
+.ramp{height:10px;border-radius:4px;margin:6px 0 2px}
+.hatch{background:repeating-linear-gradient(45deg,#6b7684 0 2px,transparent 2px 5px)}
+.time{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:8px 10px;z-index:4;display:flex;gap:14px;align-items:flex-end}
+.tg .label{margin:0 0 4px 4px}
+.tg div{display:flex;gap:2px}
+.time button{background:none;border:0;border-radius:8px;padding:6px 8px;color:var(--muted);min-width:30px}
+.time button.on{background:var(--accent);color:#04211a;font-weight:700}
+.time button.fc{border:1px dashed rgba(255,255,255,.18)}
+.hud{position:absolute;top:64px;left:356px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;z-index:3;max-width:300px}
+.hud b{display:block}
+.loading{position:absolute;inset:0;display:grid;place-items:center;z-index:10;background:var(--bg);color:var(--muted);transition:opacity .5s}
+.maplibregl-ctrl-attrib{font-size:10px}
+
+@media (max-width:760px){
+  .tabs{display:none}
+  .side{top:auto;left:0;right:0;bottom:0;width:auto;height:42vh;border-radius:16px 16px 0 0}
+  .legend,.hud{display:none}
+  .time{bottom:calc(42vh + 10px);max-width:calc(100% - 24px);overflow:auto}
+  .drawer{left:0;right:0;top:auto;bottom:0;width:auto;height:60vh;border-radius:16px 16px 0 0;z-index:6}
+  .rail{top:64px}
+}
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div class="loading" id="loading">Loading globe…</div>
+
+<div class="topbar">
+  <div class="brand"><span class="logo"><i></i><i></i><i></i><i></i></span><b>SEAGIS</b></div>
+  <div class="tabs"><button class="on">Atlas</button><button>Species</button><button>Methodology</button><button>Data sources</button></div>
+  <div class="chip sample">Sample stress data · layout only</div>
+</div>
+
+<aside class="side">
+  <div class="side-head">
+    <div class="search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="q" placeholder="Search country, island or region"></div>
+    <div>
+      <div class="label" style="margin-bottom:4px">Species</div>
+      <select id="species">
+        <option value="kalv">Kappaphycus alvarezii — 3 stressors (sample)</option>
+        <option disabled>Kappaphycus striatus — rules pending review</option>
+        <option disabled>Eucheuma denticulatum — rules pending review</option>
+        <option disabled>Gracilaria spp. — rules pending review</option>
+      </select>
+    </div>
+    <div class="kv"><span class="label">Coastal regions · Southeast Asia</span><span class="note">Highest stress ↓</span></div>
+  </div>
+  <div class="list" id="regions"></div>
+</aside>
+
+<div class="hud" id="hud"><span class="label">Composite environmental stress</span><b id="hudTitle">Kappaphycus alvarezii · 14 Nov 2026</b><span class="note" id="hudNote">Daily · 0.25° cells (~28 km) · regional, not farm-level</span></div>
+
+<div class="rail">
+  <button id="bLayers" title="Layers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3 9 5-9 5-9-5 9-5Z"/><path d="m3 13 9 5 9-5"/></svg>LAYERS</button>
+  <button id="bReset" title="Reset view"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg>GLOBE</button>
+  <button id="bBeacon" class="on" title="three.js beacons"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v14"/><ellipse cx="12" cy="19" rx="7" ry="3"/></svg>3D</button>
+</div>
+
+<div class="drawer" id="layersDrawer">
+  <button class="x" data-close>✕</button>
+  <h3>Layers</h3>
+  <div class="label sec">Assessment · 0.25° grid</div>
+  <label class="opt"><input type="radio" name="layer" value="composite" checked><span>Composite stress<small>Kappaphycus alvarezii · sample rules (unreviewed)</small></span></label>
+  <div class="label sec">Environmental data · native resolution (live NASA GIBS)</div>
+  <label class="opt"><input type="radio" name="layer" value="sst"><span>Sea surface temperature<small>NASA GHRSST MUR L4 · 0.01° · daily · observed</small></span></label>
+  <label class="opt"><input type="radio" name="layer" value="ssta"><span>SST anomaly<small>NASA GHRSST MUR L4 anomaly · 0.01°</small></span></label>
+  <label class="opt" style="opacity:.5"><input type="radio" disabled><span>Salinity · Currents<small>Copernicus Global Ocean Physics · 0.083° · needs backend</small></span></label>
+  <label class="opt" style="opacity:.5"><input type="radio" disabled><span>Rainfall<small>NASA GPM IMERG · Open-Meteo forecast · needs backend</small></span></label>
+  <div class="label sec">Overlays</div>
+  <label class="opt"><input type="checkbox" id="oGrid" checked><span>0.25° assessment grid outline</span></label>
+  <label class="opt"><input type="checkbox" id="oLabels" checked><span>Coastline and place names</span></label>
+  <label class="opt"><input type="checkbox" id="oBeacon" checked><span>3D elevated-stress beacons<small>three.js custom layer</small></span></label>
+  <p class="note">Each data layer keeps its source's own resolution. Only the composite stress layer is averaged onto the 0.25° grid.</p>
+</div>
+
+<div class="drawer" id="cellDrawer"></div>
+
+<div class="legend" id="legend"></div>
+
+<div class="time" id="time"></div>
+
+<script type="module">
+import * as THREE from 'three';
+
+/* ---------- constants ---------- */
+const BBOX = {w:92, e:135, s:-12, n:22};
+const CELL = 0.25;
+const COLORS = {favorable:'#9fdcc8', moderate:'#f2b544', elevated:'#e4572e', insufficient:'#6b7684'};
+const LABEL = {favorable:'Favorable', moderate:'Moderate stress', elevated:'Elevated stress', insufficient:'Insufficient data'};
+const DAYS = [8,9,10,11,12,13,14,15,16,17].map(d=>({d, kind: d<14?'history':d===14?'now':'forecast'}));
+let dayIdx = 6;
+const GIBS = id => `https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/${id}/default/default/GoogleMapsCompatible_Level7/{z}/{y}/{x}.png`;
+
+/* Sample hotspots — NOT real assessments */
+const HOT = [
+  {lon:116.25,lat:-8.95,a:1.0,s:.4, p:0},   // south Lombok
+  {lon:115.5, lat:-8.75,a:.6, s:.3, p:1.3}, // Nusa Penida
+  {lon:117.6, lat:-8.6, a:.55,s:.5, p:2.1}, // Sumbawa
+  {lon:118.6, lat:4.45, a:.85,s:.5, p:.7},  // Semporna
+  {lon:119.9, lat:5.05, a:.7, s:.6, p:2.6}, // Tawi-Tawi
+  {lon:119.4, lat:-5.6, a:.55,s:.6, p:1.8}, // S Sulawesi
+  {lon:123.4, lat:-10.2,a:.45,s:.7, p:.3},  // Kupang
+  {lon:121.2, lat:-4.9, a:.4, s:.6, p:3.1}, // SE Sulawesi
+  {lon:106.5, lat:-6.0, a:.5, s:.9, p:1.1}, // Java Sea (west)
+  {lon:123.8, lat:10.2, a:.5, s:.8, p:2.2}, // Visayas
+];
+const REGIONS = [
+  {name:'South Lombok coast', sub:'Lombok, Indonesia', lon:116.25,lat:-8.95,r:.6},
+  {name:'Nusa Penida & Badung Strait', sub:'Bali, Indonesia', lon:115.5,lat:-8.72,r:.45},
+  {name:'South Sumbawa bays', sub:'Sumbawa, Indonesia', lon:117.6,lat:-8.7,r:.6},
+  {name:'Semporna', sub:'Sabah, Malaysia', lon:118.6,lat:4.45,r:.6},
+  {name:'Tawi-Tawi', sub:'BARMM, Philippines', lon:119.9,lat:5.05,r:.6},
+  {name:'Takalar & Jeneponto', sub:'South Sulawesi, Indonesia', lon:119.5,lat:-5.6,r:.6},
+  {name:'Kupang Bay', sub:'NTT, Indonesia', lon:123.5,lat:-10.15,r:.6},
+  {name:'Bohol', sub:'Central Visayas, Philippines', lon:124.2,lat:9.9,r:.6},
+  {name:'Wakatobi', sub:'SE Sulawesi, Indonesia', lon:123.6,lat:-5.4,r:.6},
+];
+
+const hash = (i,j,k=0)=>{let h=(i*374761393+j*668265263+k*2147483647)|0;h=(h^(h>>>13))*1274126177|0;return((h^(h>>>16))>>>0)/4294967295};
+
+/* ---------- land mask from Natural Earth (world-atlas) ---------- */
+async function buildCells(){
+  const topo = await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/land-50m.json').then(r=>r.json());
+  const land = topojson.feature(topo, topo.objects.land);
+  const R = 0.05, W = Math.round((BBOX.e-BBOX.w)/R), H = Math.round((BBOX.n-BBOX.s)/R);
+  const cv = new OffscreenCanvas(W,H), ctx = cv.getContext('2d');
+  ctx.fillStyle='#fff';
+  const polys = land.features.flatMap(f=> f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometry.coordinates);
+  for(const poly of polys){
+    ctx.beginPath();
+    for(const ring of poly){ ring.forEach(([x,y],k)=>{const px=(x-BBOX.w)/R, py=(BBOX.n-y)/R; k?ctx.lineTo(px,py):ctx.moveTo(px,py)}); ctx.closePath(); }
+    ctx.fill('evenodd');
+  }
+  const img = ctx.getImageData(0,0,W,H).data;
+  const isLand=(px,py)=> px<0||py<0||px>=W||py>=H?0: img[(py*W+px)*4+3]>127;
+  const NI=(BBOX.e-BBOX.w)/CELL, NJ=(BBOX.n-BBOX.s)/CELL, sub=CELL/R;
+  const frac = new Float32Array(NI*NJ);
+  for(let i=0;i<NI;i++)for(let j=0;j<NJ;j++){
+    let c=0; const px0=i*sub, py0=Math.round((BBOX.n-(BBOX.s+(j+1)*CELL))/R);
+    for(let a=0;a<sub;a++)for(let b=0;b<sub;b++) c+=isLand(px0+a,py0+b);
+    frac[i*NJ+j]=c/(sub*sub);
+  }
+  const cells=[];
+  for(let i=0;i<NI;i++)for(let j=0;j<NJ;j++){
+    const lf=frac[i*NJ+j]; if(lf>=0.98) continue;            // land cell: no ocean risk
+    let near=lf>0;
+    for(let di=-2;di<=2&&!near;di++)for(let dj=-2;dj<=2&&!near;dj++){
+      const ii=i+di,jj=j+dj; if(ii>=0&&jj>=0&&ii<NI&&jj<NJ&&frac[ii*NJ+jj]>0) near=true;
+    }
+    if(!near) continue;                                       // outside coastal buffer
+    const lon=BBOX.w+i*CELL, lat=BBOX.s+j*CELL;
+    cells.push({id:cells.length, i, j, lon, lat, cx:lon+CELL/2, cy:lat+CELL/2, ocean:1-lf, gi:Math.round((lon+180)/CELL), gj:Math.round((lat+90)/CELL)});
+  }
+  // coastline overlay: only polygons near Southeast Asia (drops Antarctica ring artefacts)
+  const near = polys.filter(p=>{const xs=p[0].map(c=>c[0]),ys=p[0].map(c=>c[1]);
+    return Math.max(...xs)>80&&Math.min(...xs)<150&&Math.max(...ys)>-25&&Math.min(...ys)<30;});
+  return {cells, land:{type:'Feature',properties:{},geometry:{type:'MultiPolygon',coordinates:near}}};
+}
+
+function score(c, day){
+  let v=0;
+  for(const h of HOT){
+    const d2=(c.cx-h.lon)**2+(c.cy-h.lat)**2;
+    v+=h.a*Math.exp(-d2/(2*h.s*h.s))*(.75+.3*Math.sin(day*.7+h.p));
+  }
+  return Math.min(1, v + hash(c.i,c.j)*.18 + .05);
+}
+function classify(c, day){
+  if(c.ocean<0.45) return 'insufficient';
+  if(hash(c.i,c.j,day)<0.025) return 'insufficient';
+  const v=score(c,day);
+  return v<.36?'favorable':v<.56?'moderate':'elevated';
+}
+function geojson(cells, day){
+  return {type:'FeatureCollection', features: cells.map(c=>({type:'Feature', id:c.id,
+    properties:{s:classify(c,day)},
+    geometry:{type:'Polygon',coordinates:[[[c.lon,c.lat],[c.lon+CELL,c.lat],[c.lon+CELL,c.lat+CELL],[c.lon,c.lat+CELL],[c.lon,c.lat]]]}}))};
+}
+
+/* ---------- map ---------- */
+const map = new maplibregl.Map({
+  container:'map',
+  center:[117,3], zoom:2.6, minZoom:1.5, maxZoom:10,
+  attributionControl:{compact:true},
+  style:{
+    version:8,
+    projection:{type:'globe'},
+    glyphs:'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
+    sky:{'atmosphere-blend':['interpolate',['linear'],['zoom'],0,1,5,1,7,0]},
+    sources:{
+      bluemarble:{type:'raster', tileSize:256, maxzoom:8,
+        tiles:['https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_NextGeneration/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg'],
+        attribution:'Imagery & SST: NASA GIBS / EOSDIS'},
+      sst:{type:'raster', tileSize:256, maxzoom:7, tiles:[GIBS('GHRSST_L4_MUR_Sea_Surface_Temperature')]},
+      ssta:{type:'raster', tileSize:256, maxzoom:7, tiles:[GIBS('GHRSST_L4_MUR_Sea_Surface_Temperature_Anomalies')]},
+      ofm:{type:'vector', url:'https://tiles.openfreemap.org/planet', attribution:'© OpenMapTiles © OpenStreetMap'}
+    },
+    layers:[
+      {id:'bg', type:'background', paint:{'background-color':'#05080d'}},
+      {id:'bluemarble', type:'raster', source:'bluemarble', paint:{'raster-saturation':-.35,'raster-brightness-max':.8,'raster-contrast':.1}},
+      {id:'sst', type:'raster', source:'sst', layout:{visibility:'none'}, paint:{'raster-opacity':.9}},
+      {id:'ssta', type:'raster', source:'ssta', layout:{visibility:'none'}, paint:{'raster-opacity':.9}},
+    ]
+  }
+});
+map.addControl(new maplibregl.NavigationControl({visualizePitch:true}), 'bottom-right');
+window.map = map;
+new ResizeObserver(()=>map.resize()).observe(document.getElementById('map'));
+
+let CELLS=[], selectedId=null;
+
+map.on('load', async ()=>{
+  const {cells, land} = await buildCells();
+  CELLS=cells;
+
+  // hatched pattern for insufficient data
+  const P=8, d=new Uint8Array(P*P*4);
+  for(let y=0;y<P;y++)for(let x=0;x<P;x++){const k=(y*P+x)*4,on=((x+y)%P)<2;d[k]=140;d[k+1]=152;d[k+2]=166;d[k+3]=on?230:40;}
+  map.addImage('hatch',{width:P,height:P,data:d});
+
+  map.addSource('cells',{type:'geojson', data:geojson(cells, DAYS[dayIdx].d)});
+  map.addSource('land',{type:'geojson', data:land});
+
+  map.addLayer({id:'cells-fill', type:'fill', source:'cells', filter:['!=',['get','s'],'insufficient'],
+    paint:{'fill-color':['match',['get','s'],'favorable',COLORS.favorable,'moderate',COLORS.moderate,'elevated',COLORS.elevated,'#000'],
+      'fill-opacity':['case',['boolean',['feature-state','hover'],false],.95,.72]}});
+  map.addLayer({id:'cells-na', type:'fill', source:'cells', filter:['==',['get','s'],'insufficient'], paint:{'fill-pattern':'hatch','fill-opacity':.8}});
+  map.addLayer({id:'cells-line', type:'line', source:'cells', minzoom:4.5,
+    paint:{'line-color':'rgba(5,8,13,.55)','line-width':['interpolate',['linear'],['zoom'],4.5,.3,8,1]}});
+  map.addLayer({id:'cells-sel', type:'line', source:'cells', filter:['==',['id'],-1], paint:{'line-color':'#fff','line-width':2.5}});
+  map.addLayer({id:'coast', type:'line', source:'land', paint:{'line-color':'rgba(230,238,245,.55)','line-width':['interpolate',['linear'],['zoom'],2,.4,8,1.2]}});
+  map.addLayer({id:'labels-country', type:'symbol', source:'ofm', 'source-layer':'place', filter:['==',['get','class'],'country'],
+    layout:{'text-field':['coalesce',['get','name:en'],['get','name']],'text-font':['Noto Sans Bold'],'text-size':11,'text-transform':'uppercase','text-letter-spacing':.12},
+    paint:{'text-color':'#cfd8e2','text-halo-color':'rgba(0,0,0,.7)','text-halo-width':1.2}});
+  map.addLayer({id:'labels-place', type:'symbol', source:'ofm', 'source-layer':'place', minzoom:5,
+    filter:['in',['get','class'],['literal',['island','state','city']]],
+    layout:{'text-field':['coalesce',['get','name:en'],['get','name']],'text-font':['Noto Sans Regular'],'text-size':11},
+    paint:{'text-color':'#e8eef5','text-halo-color':'rgba(0,0,0,.75)','text-halo-width':1.2}});
+
+  map.addLayer(beaconLayer);
+
+  // hover + click
+  let hov=null;
+  map.on('mousemove','cells-fill',e=>{
+    map.getCanvas().style.cursor='pointer';
+    if(hov!==null) map.setFeatureState({source:'cells',id:hov},{hover:false});
+    hov=e.features[0].id; map.setFeatureState({source:'cells',id:hov},{hover:true});
+  });
+  map.on('mouseleave','cells-fill',()=>{map.getCanvas().style.cursor='';if(hov!==null)map.setFeatureState({source:'cells',id:hov},{hover:false});hov=null});
+  map.on('click',e=>{
+    const f=map.queryRenderedFeatures(e.point,{layers:['cells-fill','cells-na']})[0];
+    if(f) selectCell(f.id);
+  });
+
+  renderRegions(); renderLegend(); renderTime();
+  document.getElementById('loading').style.opacity=0;
+  setTimeout(()=>document.getElementById('loading').remove(),600);
+  setTimeout(()=>map.flyTo({center:[118.5,-1],zoom:3.8,duration:2500}),400);
+});
+
+/* ---------- three.js beacons as MapLibre custom layer ---------- */
+const beaconLayer = {
+  id:'beacons', type:'custom', renderingMode:'3d', visible:true,
+  onAdd(m, gl){
+    this.map=m;
+    this.camera=new THREE.Camera();
+    this.scene=new THREE.Scene();
+    this.renderer=new THREE.WebGLRenderer({canvas:m.getCanvas(), context:gl, antialias:true});
+    this.renderer.autoClear=false;
+    // beam: cylinder along −Z, which is "up" (away from the globe) in MapLibre's model matrix
+    const beamGeo=new THREE.CylinderGeometry(.18,.06,1,24,1,true); beamGeo.rotateX(Math.PI/2); beamGeo.translate(0,0,-.5);
+    this.beamMat=new THREE.ShaderMaterial({transparent:true, depthWrite:false, side:THREE.DoubleSide, blending:THREE.AdditiveBlending,
+      uniforms:{c:{value:new THREE.Color(COLORS.elevated)}},
+      vertexShader:`varying float h; void main(){ h=-position.z; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
+      fragmentShader:`uniform vec3 c; varying float h; void main(){ gl_FragColor=vec4(c, (1.-h)*.85); }`});
+    const ringGeo=new THREE.RingGeometry(.85,1,64);
+    this.ringMat=new THREE.MeshBasicMaterial({color:COLORS.elevated, transparent:true, depthWrite:false, side:THREE.DoubleSide});
+    this.beam=new THREE.Mesh(beamGeo,this.beamMat);
+    this.ring=new THREE.Mesh(ringGeo,this.ringMat);
+    this.ring2=new THREE.Mesh(ringGeo,this.ringMat.clone());
+    this.scene.add(this.beam,this.ring,this.ring2);
+    this.points=[];
+  },
+  render(gl, args){
+    if(!this.visible || !this.points.length) return;
+    const t=performance.now()/1000;
+    const z=this.map.getZoom();
+    const scale = 14000*Math.pow(2, (8-z)*0.85); // keep visual size readable across zooms
+    const c=this.map.getCenter();
+    const proj=new THREE.Matrix4().fromArray(args.defaultProjectionData.mainMatrix);
+    this.renderer.resetState();
+    for(const p of this.points){
+      // skip beacons on the far side of the globe
+      const ang=Math.acos(Math.sin(p.lat*Math.PI/180)*Math.sin(c.lat*Math.PI/180)+Math.cos(p.lat*Math.PI/180)*Math.cos(c.lat*Math.PI/180)*Math.cos((p.lon-c.lng)*Math.PI/180));
+      if(ang>1.2) continue;
+      const mm=this.map.transform.getMatrixForModel([p.lon,p.lat],0);
+      const l=new THREE.Matrix4().fromArray(mm).scale(new THREE.Vector3(scale,scale,scale));
+      this.camera.projectionMatrix=proj.clone().multiply(l);
+      const k=(t*.6+p.ph)%1, k2=(k+.5)%1;
+      this.beam.scale.set(1,1,1.6+p.v*1.4);
+      this.ring.scale.setScalar(.2+k*1.3); this.ring.material.opacity=(1-k)*.9;
+      this.ring2.scale.setScalar(.2+k2*1.3); this.ring2.material.opacity=(1-k2)*.9;
+      this.renderer.render(this.scene,this.camera);
+    }
+    this.map.triggerRepaint();
+  }
+};
+window.beaconLayer = beaconLayer;
+function updateBeacons(){
+  const day=DAYS[dayIdx].d;
+  beaconLayer.points = REGIONS.map((r,k)=>{
+    const st=regionStats(r);
+    return st.elevated>=2?{lon:r.lon,lat:r.lat,v:st.elevated/Math.max(1,st.total),ph:k*.37}:null;
+  }).filter(Boolean);
+  map.triggerRepaint();
+}
+
+/* ---------- UI ---------- */
+function regionStats(r){
+  const day=DAYS[dayIdx].d, st={favorable:0,moderate:0,elevated:0,insufficient:0,total:0};
+  for(const c of CELLS){ if((c.cx-r.lon)**2+(c.cy-r.lat)**2<=r.r*r.r){ st[classify(c,day)]++; st.total++; } }
+  st.assessed=st.total-st.insufficient;
+  st.level = !st.assessed||st.insufficient/st.total>.5?'insufficient': st.elevated>=2?'elevated': st.moderate>=2?'moderate':'favorable';
+  return st;
+}
+function renderRegions(){
+  const q=document.getElementById('q').value.toLowerCase();
+  const order={elevated:0,moderate:1,insufficient:2,favorable:3};
+  const rows=REGIONS.filter(r=>(r.name+r.sub).toLowerCase().includes(q)).map(r=>({r,st:regionStats(r)})).sort((a,b)=>order[a.st.level]-order[b.st.level]);
+  document.getElementById('regions').innerHTML=rows.map(({r,st},k)=>`
+    <button class="region" data-k="${REGIONS.indexOf(r)}">
+      <span class="sw ${st.level==='insufficient'?'hatch':''}" style="background-color:${st.level==='insufficient'?'transparent':COLORS[st.level]}"></span>
+      <span><div class="n">${r.name}</div><div class="s">${r.sub}</div>
+      <div class="status" style="color:${COLORS[st.level]}">${LABEL[st.level]} <span class="note">· ${st.assessed} of ${st.total} cells assessed</span></div></span>
+    </button>`).join('');
+  document.querySelectorAll('.region').forEach(b=>b.onclick=()=>{const r=REGIONS[b.dataset.k];map.flyTo({center:[r.lon,r.lat],zoom:7.6,duration:2200,essential:true})});
+  updateBeacons();
+}
+function renderLegend(){
+  const layer=document.querySelector('input[name=layer]:checked').value, el=document.getElementById('legend');
+  if(layer==='composite'){
+    el.innerHTML=`<div class="label">Stress level</div>`+['favorable','moderate','elevated','insufficient'].map(s=>`<div class="row"><span class="sw ${s==='insufficient'?'hatch':''}" style="background-color:${s==='insufficient'?'transparent':COLORS[s]}"></span>${LABEL[s]}</div>`).join('')+
+    `<div class="note">Colors show environmental stress, not disease. Land and open ocean beyond the coastal buffer are not assessed.</div>`;
+  }else{
+    el.innerHTML=`<div class="label">${layer==='sst'?'NASA MUR SST':'MUR SST anomaly'} · live from GIBS</div>
+    <div class="ramp" style="background:${layer==='sst'?'linear-gradient(90deg,#2c1a6b,#2f6fd0,#3bc0c9,#f5e663,#f08a24,#b3191c)':'linear-gradient(90deg,#1b3d8f,#8cb7e3,#f4f4f4,#f2a37a,#a51d22)'}"></div>
+    <div class="kv note"><span>${layer==='sst'?'cold':'−'}</span><span>${layer==='sst'?'warm':'+'}</span></div>
+    <div class="note">Latest available GIBS day, shown as delivered (0.01°), not regridded.</div>`;
+  }
+}
+function renderTime(){
+  const g={history:'History · observed',now:'Now · analysis',forecast:'Forecast · model'};
+  const html=['history','now','forecast'].map(k=>`<div class="tg"><div class="label">${g[k]}</div><div>${DAYS.map((d,i)=>d.kind===k?`<button data-i="${i}" class="${i===dayIdx?'on':''} ${k==='forecast'?'fc':''}">${k==='now'?'Fri 14 Nov':d.d}</button>`:'').join('')}</div></div>`).join('');
+  const el=document.getElementById('time'); el.innerHTML=html;
+  el.querySelectorAll('button').forEach(b=>b.onclick=()=>{dayIdx=+b.dataset.i;onDay()});
+}
+function onDay(){
+  const d=DAYS[dayIdx];
+  map.getSource('cells').setData(geojson(CELLS,d.d));
+  document.getElementById('hudTitle').textContent=`Kappaphycus alvarezii · ${d.d} Nov 2026${d.kind==='forecast'?' (forecast)':''}`;
+  renderTime(); renderRegions(); if(selectedId!==null) selectCell(selectedId,false);
+}
+function spark(c){
+  const vals=[...Array(33)].map((_,k)=>28.6+score(c,k-16)*2.6+Math.sin(k*.4)*.15);
+  const W=290,H=70,min=27.8,max=31.8, x=k=>k/32*W, y=v=>H-(v-min)/(max-min)*H;
+  const base=y(29.6), hist=vals.slice(0,31).map((v,k)=>`${x(k)},${y(v)}`).join(' '), fc=vals.slice(30).map((v,k)=>`${x(k+30)},${y(v)}`).join(' ');
+  return `<svg width="100%" viewBox="0 0 ${W} ${H+14}"><line x1="0" x2="${W}" y1="${base}" y2="${base}" stroke="#8a98a8" stroke-dasharray="3 3"/>
+    <polyline points="${hist}" fill="none" stroke="#e4572e" stroke-width="2"/><polyline points="${fc}" fill="none" stroke="#e4572e" stroke-width="2" stroke-dasharray="4 3"/>
+    <line x1="${x(30)}" x2="${x(30)}" y1="0" y2="${H}" stroke="#3ddbb0"/><text x="0" y="${H+12}" fill="#8a98a8" font-size="10">Oct 15</text><text x="${W}" y="${H+12}" fill="#8a98a8" font-size="10" text-anchor="end">+3 d</text>
+    <text x="4" y="${base-4}" fill="#8a98a8" font-size="9">Nov baseline (sample)</text></svg>`;
+}
+function selectCell(id, fly=true){
+  selectedId=id; const c=CELLS[id], day=DAYS[dayIdx], s=classify(c,day.d), v=score(c,day.d);
+  map.setFilter('cells-sel',['==',['id'],id]);
+  const sst=(28.6+v*2.6).toFixed(1), anom=(v*1.9-.3).toFixed(1), cur=Math.max(.02,.32-v*.3).toFixed(2), sal=(34.1-v*.5).toFixed(1);
+  const drivers=[]; if(+anom>1)drivers.push('SST'); if(+cur<.1)drivers.push('water movement');
+  const el=document.getElementById('cellDrawer');
+  el.innerHTML=`<button class="x" data-close>✕</button>
+    <div class="label">0.25° cell · ${c.lon.toFixed(2)}–${(c.lon+CELL).toFixed(2)}°E · ${Math.abs(c.lat).toFixed(2)}–${Math.abs(c.lat+CELL).toFixed(2)}°${c.lat<0?'S':'N'}</div>
+    <h3>Cell ${c.gi}-${c.gj}</h3>
+    <div class="note">Kappaphycus alvarezii · ${day.kind==='forecast'?'Forecast':'Analysis'} valid ${day.d} Nov 2026, 00:00–24:00 UTC · ocean fraction ${(c.ocean*100|0)}%</div>
+    ${s==='insufficient'?`<div class="card"><span class="badge" style="background:#6b7684;color:#fff">Insufficient data</span><p class="note">${c.ocean<.45?'Less than 45% of this cell is open water, so a 0.25° regional signal would not represent nearshore conditions.':'A required source was missing for this day.'} Not colored as favorable.</p></div>`:
+    `<div class="card ${s==='elevated'?'warn':''}"><span class="badge" style="background:${COLORS[s]}">${LABEL[s]}</span> <span class="note">Evidence confidence: sample</span>
+      <p style="margin:8px 0 0">${drivers.length?`${drivers.length} of 3 evaluated stressors (${drivers.join(', ')}) are outside the sample reference range.`:'Evaluated indicators are within the sample reference range.'} This is an environmental warning, not a disease diagnosis.</p></div>
+    <div class="label sec">What drives this</div>
+    <div class="card"><div class="kv"><span>Sea surface temperature</span><b>${sst} °C</b></div><div class="note" style="color:${+anom>1?'#e4572e':''}">${anom>0?'+':''}${anom} °C vs sample November baseline</div>${spark(c)}<div class="note">Source: NASA MUR SST · observed · 0.01° native, area-mean to cell</div></div>
+    <div class="card"><div class="kv"><span>Water movement</span><b>${cur} m/s</b></div><div class="note">Copernicus Global Ocean Physics · analysis · 0.083° native · surface</div></div>
+    <div class="card"><div class="kv"><span>Salinity</span><b>${sal} PSU</b></div><div class="note">Copernicus Global Ocean Physics · analysis · 0.083° native</div></div>
+    <div class="card"><div class="label">Disease context</div><p class="note" style="margin:6px 0 0">Ice-ice syndrome: <b>not assessable</b>. Environmental indicators cannot diagnose ice-ice.</p></div>`}
+    <p class="note">All values in this prototype are generated sample data for layout only, except the NASA GIBS imagery layers.</p>`;
+  el.classList.add('open'); document.getElementById('layersDrawer').classList.remove('open');
+  bindClose();
+  if(fly && map.getZoom()<6) map.flyTo({center:[c.cx,c.cy],zoom:7,duration:1800});
+}
+function bindClose(){document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>{b.parentElement.classList.remove('open');if(b.parentElement.id==='cellDrawer'){selectedId=null;map.setFilter('cells-sel',['==',['id'],-1])}})}
+
+document.getElementById('q').oninput=renderRegions;
+document.getElementById('bLayers').onclick=()=>{document.getElementById('cellDrawer').classList.remove('open');document.getElementById('layersDrawer').classList.toggle('open')};
+document.getElementById('bReset').onclick=()=>map.flyTo({center:[117,3],zoom:2.6,pitch:0,bearing:0,duration:2000});
+const setBeacons=on=>{beaconLayer.visible=on;document.getElementById('bBeacon').classList.toggle('on',on);document.getElementById('oBeacon').checked=on;map.triggerRepaint()};
+document.getElementById('bBeacon').onclick=()=>setBeacons(!beaconLayer.visible);
+document.getElementById('oBeacon').onchange=e=>setBeacons(e.target.checked);
+document.getElementById('oGrid').onchange=e=>map.setLayoutProperty('cells-line','visibility',e.target.checked?'visible':'none');
+document.getElementById('oLabels').onchange=e=>['coast','labels-country','labels-place'].forEach(l=>map.setLayoutProperty(l,'visibility',e.target.checked?'visible':'none'));
+document.querySelectorAll('input[name=layer]').forEach(r=>r.onchange=()=>{
+  const v=r.value, comp=v==='composite';
+  ['cells-fill','cells-na'].forEach(l=>map.setLayoutProperty(l,'visibility',comp?'visible':'none'));
+  map.setLayoutProperty('sst','visibility',v==='sst'?'visible':'none');
+  map.setLayoutProperty('ssta','visibility',v==='ssta'?'visible':'none');
+  document.querySelector('.hud .label').textContent=comp?'Composite environmental stress':v==='sst'?'Sea surface temperature':'SST anomaly';
+  document.getElementById('hudTitle').textContent=comp?`Kappaphycus alvarezii · ${DAYS[dayIdx].d} Nov 2026`:'NASA GHRSST MUR L4 · latest on GIBS';
+  document.getElementById('hudNote').textContent=comp?'Daily · 0.25° cells (~28 km) · regional, not farm-level':'Observed · native 0.01° (~1 km) · shown as delivered, not regridded';
+  beaconLayer.visible = comp && document.getElementById('oBeacon').checked; map.triggerRepaint();
+  renderLegend();
+});
+bindClose();
+</script>
+</body>
+</html>

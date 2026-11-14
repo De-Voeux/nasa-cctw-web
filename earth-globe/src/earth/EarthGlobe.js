@@ -155,7 +155,7 @@ export class EarthGlobe {
 
   // ---------------------------------------------------------------- events
 
-  /** @param {"ready"|"error"|"viewchange"|"select"} type */
+  /** @param {"ready"|"error"|"viewchange"|"select"|"frame"} type  "frame" fires after every render */
   on(type, fn) {
     if (!this._listeners.has(type)) this._listeners.set(type, new Set())
     this._listeners.get(type).add(fn)
@@ -230,6 +230,32 @@ export class EarthGlobe {
       }
       this.controls.enabled = false
     })
+  }
+
+  /**
+   * Where a surface point appears on screen, in viewport (client) pixels.
+   * `facing` is the cosine between the surface normal and the direction to the
+   * camera: 1 = straight on, 0 = on the visible horizon, < 0 = far side.
+   * Pass `rect` (the canvas getBoundingClientRect) when projecting many points
+   * per frame, and `out` to avoid allocating.
+   * @returns {{x:number, y:number, facing:number, visible:boolean}}
+   */
+  project(lat, lon, rect = this.renderer.domElement.getBoundingClientRect(), out = {}) {
+    const p = latLonToXYZ(lat, lon, 1)
+    const v = this._projVec || (this._projVec = new THREE.Vector3())
+    v.set(p.x, p.y, p.z)
+    const c = this.camera.position
+    const dx = c.x - v.x
+    const dy = c.y - v.y
+    const dz = c.z - v.z
+    // v is a unit vector, so this is the cosine between normal and view ray.
+    const facing = (v.x * dx + v.y * dy + v.z * dz) / (Math.hypot(dx, dy, dz) || 1)
+    v.project(this.camera)
+    out.x = rect.left + ((v.x + 1) / 2) * rect.width
+    out.y = rect.top + ((1 - v.y) / 2) * rect.height
+    out.facing = facing
+    out.visible = facing > 0
+    return out
   }
 
   /** Enable/disable the idle spin. Respects prefers-reduced-motion. */
@@ -569,5 +595,7 @@ export class EarthGlobe {
 
     this._updateSun()
     this.renderer.render(this.scene, this.camera)
+    // After render, so HTML overlays positioned here match the drawn frame.
+    this._emit("frame")
   }
 }

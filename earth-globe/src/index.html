@@ -2,74 +2,59 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Blue Marble globe</title>
-    <style>
-      html,
-      body {
-        width: 100%;
-        height: 100%;
-        margin: 0;
-        background: #02040a;
-        color: #d7dde8;
-        font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
-      }
-      #container {
-        position: fixed;
-        inset: 0;
-      }
-      #panel {
-        position: fixed;
-        top: 12px;
-        left: 12px;
-        padding: 10px 12px;
-        background: rgba(2, 4, 10, 0.72);
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        border-radius: 6px;
-        max-width: 260px;
-      }
-      #panel button {
-        font: inherit;
-        color: inherit;
-        background: transparent;
-        border: 1px solid rgba(255, 255, 255, 0.28);
-        border-radius: 4px;
-        padding: 3px 8px;
-        margin: 4px 4px 0 0;
-        cursor: pointer;
-      }
-      #panel button:hover,
-      #panel button:focus-visible {
-        border-color: #8fb4ff;
-        outline: none;
-      }
-      #readout {
-        margin: 0 0 4px;
-        white-space: pre;
-      }
-      #credit {
-        position: fixed;
-        bottom: 8px;
-        left: 12px;
-        font-size: 11px;
-        opacity: 0.6;
-      }
-      #credit a {
-        color: inherit;
-      }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#050914" />
+    <title>SEAGIS Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,500&display=swap" />
+    <link rel="stylesheet" href="./styles/tokens.css" />
+    <link rel="stylesheet" href="./styles/dashboard.css" />
   </head>
   <body>
-    <div id="container"></div>
-    <div id="panel">
-      <p id="readout">loading…</p>
-      <button data-fly="-6.2,106.8,0.6">Jakarta</button>
-      <button data-fly="51.48,0,0.6">Greenwich</button>
-      <button data-fly="0,0,3">Zoom out</button>
-      <button id="spin">Auto-rotate: on</button>
-      <p id="clicked" style="margin: 6px 0 0"></p>
+    <div id="globe" class="globe" aria-hidden="true"></div>
+    <div id="overlay" class="overlay"></div>
+
+    <!-- Date pills (top left) -->
+    <nav class="glass date-bar" aria-label="Date">
+      <div id="dates" class="date-pills" role="group"></div>
+    </nav>
+
+    <!-- Map controls (right of the globe, left of the panel) -->
+    <div class="map-controls">
+      <button id="layers-btn" class="glass round-btn" aria-label="Layers" aria-expanded="false" aria-controls="layers-menu">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 5-9 5-9-5 9-5Z" /><path d="m3 13 9 5 9-5" /></svg>
+      </button>
+      <div id="layers-menu" class="glass layers-menu" hidden></div>
+      <div class="glass zoom-pill" role="group" aria-label="Zoom">
+        <button id="zoom-in" aria-label="Zoom in"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg></button>
+        <button id="zoom-out" aria-label="Zoom out"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" /></svg></button>
+        <button id="zoom-home" aria-label="Back to Southeast Asia"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" /><path d="M12 2v4M12 18v4M2 12h4M18 12h4" /></svg></button>
+      </div>
     </div>
-    <div id="credit">Surface: NASA Earth Observatory, Blue Marble Next Generation. Clouds, ocean, relief, lights: NASA, via franky-adl/threejs-earth. Sky: Photo by <a href="https://unsplash.com/@loganvoss?utm_source=unsplash&amp;utm_medium=referral&amp;utm_content=creditCopyText">Logan Voss</a> on <a href="https://unsplash.com/photos/a-dark-sky-filled-with-countless-tiny-stars-sOvC2p6seUc?utm_source=unsplash&amp;utm_medium=referral&amp;utm_content=creditCopyText">Unsplash</a>.</div>
-    <script src="./index.js" type="module"></script>
+
+    <!-- Side panel (right) -->
+    <aside class="glass side-panel" aria-label="Locations">
+      <label class="search">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+        <input id="search" type="search" placeholder="Search country, island, or region" autocomplete="off" />
+      </label>
+      <div id="panel-body" class="panel-body" aria-live="polite"></div>
+    </aside>
+
+    <!-- Ask bar (bottom left) -->
+    <form id="ask" class="ask-bar" autocomplete="off">
+      <div class="glass ask-input">
+        <svg class="ask-plus" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+        <input id="ask-input" type="text" aria-label="Ask about the atlas" placeholder="Which area has the most ice-ice reports?" />
+      </div>
+      <button class="glass send-btn" type="submit" aria-label="Send">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 3 10 14" /><path d="m21 3-7 18-4-7-7-4 18-7Z" /></svg>
+      </button>
+    </form>
+
+    <p class="credit">Surface: NASA Earth Observatory, Blue Marble Next Generation · Clouds, ocean, relief, lights: NASA, via franky-adl/threejs-earth · Locations: unverified research leads</p>
+
+    <script src="./dashboard/main.js" type="module"></script>
   </body>
 </html>
