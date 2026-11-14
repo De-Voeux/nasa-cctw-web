@@ -1,6 +1,6 @@
-# Product IDs are resolved by `catalog` (see docs/CATALOG_REVIEW.md). SST only: chlorophyll-a dropped 2026-11-15.
-period:
-  start: '2020-11-15'
+# Product IDs are resolved by `catalog` (see docs/CATALOG_REVIEW.md). NASA: MUR SST only (chlorophyll-a dropped 2026-11-15). Copernicus: no3, po4, pH, salinity.
+period:                    # NASA MUR; all sources start 2022-06-01 (first day of daily CMEMS salinity), decided 2026-11-15
+  start: '2022-06-01'
   end: '2026-11-14'
 regions_file: config/regions.yaml
 products_file: config/products.yaml
@@ -14,6 +14,11 @@ products:
     temporal_resolution: daily
     variables: [analysed_sst]
     endpoint: discover_from_catalog
+  copernicus:
+    enabled: true
+    period: {start: '2022-06-01', end: '2026-11-14'}   # aligned with MUR; daily salinity starts 2022-06-01
+    depth: surface          # shallowest model level (0.494 m)
+    batch: region_whole_period   # one subset per region x dataset; chunks span ~155 days
 execution:
   batch: monthly
   concurrency: 2
@@ -22,4 +27,5 @@ execution:
   require_approval: true
   max_download_gb: 20
   max_disk_gb: 30
+  max_request_cells: 10000   # per ROI per day; plan fails if any request needs more
   retries: 5

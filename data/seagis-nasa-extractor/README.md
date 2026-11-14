@@ -12,11 +12,11 @@ uv venv .venv && uv pip install --python .venv '.[dev]'   # reinstall after code
 
 Install non-editable: in this iCloud-synced folder macOS keeps flagging `.pth` files hidden, and Python then skips them, so an editable install breaks (`No module named 'seagis_extractor'`). Without installing: `PYTHONPATH=src .venv/bin/python -m seagis_extractor catalog`.
 
-Python CLI that will extract daily regional coastal SST (GHRSST MUR L4) for the candidate seaweed regions, over the period set in [config/extraction.yaml](config/extraction.yaml) (currently 2020-11-15 to 2026-11-14). It is the NASA ingestion piece of the [roadmap](../../docs/ROADMAP.md) ("Data foundation") and must follow the project [methodology guardrails](../../docs/METHODOLOGY.md).
+Python CLI that will extract daily regional coastal SST (GHRSST MUR L4) and Copernicus Marine surface no3, po4, pH and salinity ([docs/COPERNICUS_REVIEW.md](docs/COPERNICUS_REVIEW.md)) for the candidate seaweed regions, over the period set in [config/extraction.yaml](config/extraction.yaml) (currently 2022-06-01 to 2026-11-14 for all sources). It is the NASA ingestion piece of the [roadmap](../../docs/ROADMAP.md) ("Data foundation") and must follow the project [methodology guardrails](../../docs/METHODOLOGY.md).
 
 ## Ground rules
 
-- **Scope: SST only.** Chlorophyll-a was dropped on 2026-11-15; [TASK.md](TASK.md) still describes it, and those parts no longer apply.
+- **Scope:** NASA MUR SST plus Copernicus Marine no3, po4, pH and salinity. Chlorophyll-a was dropped on 2026-11-15; [TASK.md](TASK.md) still describes it, and those parts no longer apply.
 - `plan` is metadata-only. No pilot or backfill runs without an approved plan hash.
 - Regions in [config/regions.yaml](config/regions.yaml) are **candidate** leads from [CANDIDATE_HOST_REGIONS.md](../../research/evidence/CANDIDATE_HOST_REGIONS.md); none is a verified farm. No invented coordinates.
 - Missing data stays missing (never zero). Units are converted only when the source says so.

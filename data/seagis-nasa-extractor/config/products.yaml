@@ -9,3 +9,22 @@ mur_sst:
   variables: [analysed_sst, analysis_error, mask, sea_ice_fraction]
   harmony_service: sds/HOSS-geographic   # bbox / shape / temporal / variable subset -> NetCDF-4
 
+
+# Copernicus Marine (CMEMS) analysis-forecast datasets, added 2026-11-15 at the user's request.
+# Read through the public ARCO "geoChunked" Zarr store; exact transfer = sum of intersecting chunks.
+copernicus:
+  - key: cmems_bgc_nut
+    product_id: GLOBAL_ANALYSISFORECAST_BGC_001_028
+    dataset_id: cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m_202311
+    variables: [no3, po4]
+    depth: surface
+  - key: cmems_bgc_car
+    product_id: GLOBAL_ANALYSISFORECAST_BGC_001_028
+    dataset_id: cmems_mod_glo_bgc-car_anfc_0.25deg_P1D-m_202311
+    variables: [ph]
+    depth: surface
+  - key: cmems_phy_so
+    product_id: GLOBAL_ANALYSISFORECAST_PHY_001_024
+    dataset_id: cmems_mod_glo_phy-so_anfc_0.083deg_P1D-m_202406
+    variables: [so]
+    depth: surface

@@ -108,6 +108,41 @@ def membership(grid: MurGrid, geom: shapely.Geometry) -> dict:
     }
 
 
+class RequestGuardError(ValueError):
+    pass
+
+
+def request_for(grid: MurGrid, geom: shapely.Geometry, m: dict, variables: list[str]) -> dict:
+    """The exact Harmony request for one ROI: its own bounding box, nothing wider.
+
+    `expected_extent` is the outer edge of the grid cells the provider should return; fetch must
+    reject any response whose lat/lon coordinates fall outside it.
+    """
+    minx, miny, maxx, maxy = geom.bounds
+    req = [math.floor(minx * 1e4) / 1e4, math.floor(miny * 1e4) / 1e4,
+           math.ceil(maxx * 1e4) / 1e4, math.ceil(maxy * 1e4) / 1e4]
+    h = grid.step / 2
+    extent = [round(float(grid.lon(m["j0"])) - h, 4), round(float(grid.lat(m["i0"])) - h, 4),
+              round(float(grid.lon(m["j1"])) + h, 4), round(float(grid.lat(m["i1"])) + h, 4)]
+    return {"bbox_w_s_e_n": req, "variables": variables, "expected_cells": m["bbox_cells"],
+            "expected_extent_w_s_e_n": extent, "grid_index_range": {"lat": [m["i0"], m["i1"]], "lon": [m["j0"], m["j1"]]}}
+
+
+def check_request(geom: shapely.Geometry, req: dict, max_cells: int, step: float = 0.01) -> None:
+    """Fail closed if a request is not tightly tied to its ROI."""
+    minx, miny, maxx, maxy = geom.bounds
+    w, s_, e, n = req["bbox_w_s_e_n"]
+    if not (w <= minx and s_ <= miny and e >= maxx and n >= maxy):
+        raise RequestGuardError(f"request {req['bbox_w_s_e_n']} does not cover ROI bounds {geom.bounds}")
+    if w < minx - step or s_ < miny - step or e > maxx + step or n > maxy + step:
+        raise RequestGuardError(f"request {req['bbox_w_s_e_n']} extends more than one grid cell beyond ROI {geom.bounds}")
+    ew, es, ee, en = req["expected_extent_w_s_e_n"]
+    if ew < minx - step or es < miny - step or ee > maxx + step or en > maxy + step:
+        raise RequestGuardError(f"expected response extent {req['expected_extent_w_s_e_n']} exceeds ROI by > 1 cell")
+    if req["expected_cells"] > max_cells:
+        raise RequestGuardError(f"request needs {req['expected_cells']} cells/day > max_request_cells {max_cells}")
+
+
 def write_membership(m: dict, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with gzip.open(path, "wt", newline="") as f:
@@ -158,6 +193,7 @@ def row_estimate(roi: dict, m: dict, month: str, first: dt.date, last: dt.date, 
         "dataset": "mur_sst", "country": roi["region_id"].split("-")[0], "region_id": roi["region_id"],
         "subregion_id": roi["subregion_id"], "month": month,
         "bbox": [round(x, 4) for x in roi["bbox"]],
+        "request_bbox": roi["request"]["bbox_w_s_e_n"] if "request" in roi else None,
         "n_time": len(avail), "n_lat": m["n_lat"], "n_lon": m["n_lon"], "n_variables": len(var_bytes),
         "days_in_month_period": len(days), "days_available": len(avail),
         "missing_dates": [d.isoformat() for d in days if d.isoformat() not in available],
@@ -213,7 +249,8 @@ def shared_fetch(rois_m: list[tuple[dict, dict]]) -> dict:
 
 
 def build_plan(catalog: dict, roi_geojson: dict, cfg: dict, inputs: dict, membership_dir: Path,
-               pilot: dict | None = None, pilot_days: int = 7) -> dict:
+               pilot: dict | None = None, pilot_days: int = 7, copernicus_fn=None) -> dict:
+    """copernicus_fn(rois, roi_geoms) -> plan section (network HEADs); None skips Copernicus."""
     prod = next(p for p in catalog["products"] if p["key"] == "mur_sst")
     start = dt.date.fromisoformat(str(cfg["period"]["start"]))
     end = dt.date.fromisoformat(str(cfg["period"]["end"]))
@@ -227,13 +264,17 @@ def build_plan(catalog: dict, roi_geojson: dict, cfg: dict, inputs: dict, member
     full_sizes = {g["date"]: g["size_bytes"] or 0 for g in prod["granules"]}
     conc = int(cfg["execution"].get("concurrency", 2))
 
-    rows, rois_m, roi_summ = [], [], []
+    rows, rois_m, roi_summ, roi_geoms = [], [], [], {}
     for f in roi_geojson["features"]:
         p = f["properties"]
         geom = shape(f["geometry"])
+        roi_geoms[(p["region_id"], p["subregion_id"])] = geom
         roi = {"region_id": p["region_id"], "subregion_id": p["subregion_id"], "bbox": list(geom.bounds),
                "geometry_version": p["geometry_version"], "status": p["status"]}
         m = membership(grid, geom)
+        req = request_for(grid, geom, m, list(variables))
+        check_request(geom, req, int(cfg["execution"].get("max_request_cells", 10_000)))
+        roi["request"] = req
         mpath = membership_dir / f"mur_sst__{p['region_id']}__{p['subregion_id']}__{p['geometry_version']}.csv.gz"
         write_membership(m, mpath)
         rois_m.append((roi, m))
@@ -265,7 +306,13 @@ def build_plan(catalog: dict, roi_geojson: dict, cfg: dict, inputs: dict, member
                     "access": "Harmony sds/HOSS-geographic (bbox + temporal + variable subset, NetCDF-4)",
                     "auth": "NASA Earthdata Login required (Harmony token or ~/.netrc)"},
         "execution": {k: cfg["execution"][k] for k in ("batch", "concurrency", "raw_retention", "max_download_gb",
-                                                       "max_disk_gb", "retries") if k in cfg["execution"]},
+                                                       "max_disk_gb", "retries", "max_request_cells") if k in cfg["execution"]},
+        "fetch_guards": [
+            "Only the per-ROI requests listed in rois[].request may be sent; no global or unlisted bbox.",
+            "Reject (and do not keep) any response whose lat/lon lie outside request.expected_extent_w_s_e_n.",
+            "Reject any response whose cell count per day differs from request.expected_cells.",
+            "Only pixels in the ROI membership table enter the daily aggregates; the rest of the rectangle is discarded.",
+        ],
         "inputs": inputs,
         "assumptions": ASSUMPTIONS,
         "transfer_ratios": ratios,
@@ -282,6 +329,18 @@ def build_plan(catalog: dict, roi_geojson: dict, cfg: dict, inputs: dict, member
             "Coastline accuracy of admin polygons versus MUR mask.",
         ],
     }
+    if copernicus_fn is not None:
+        sec = copernicus_fn(roi_summ, roi_geoms)
+        for d in sec["datasets"]:
+            for r in d["rois"]:
+                table = r.pop("membership")
+                path = membership_dir / f"{d['key']}__{r['region_id']}__{r['subregion_id']}__v1.csv.gz"
+                with gzip.open(path, "wt", newline="") as fh:
+                    w = csv.DictWriter(fh, fieldnames=["lat_index", "lon_index", "lat", "lon", "overlap_fraction"])
+                    w.writeheader()
+                    w.writerows(table)
+                r["membership_table"] = path.name
+        plan["copernicus"] = sec
     plan["totals"] = totals(plan)
     plan["plan_sha256"] = plan_hash(plan)
     plan["generated_at"] = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
@@ -354,6 +413,26 @@ def write_estimate_csv(plan: dict, path: Path) -> None:
             w.writerow(row)
 
 
+COPERNICUS_COLUMNS = ["dataset", "region_id", "subregion_id", "variables", "bbox_cells", "roi_cells",
+                      "cells_mostly_inside", "days_requested", "days_available", "chunks_if_fetched_alone",
+                      "transfer_bytes_if_fetched_alone", "uncompressed_subset_bytes", "final_rows", "membership_table"]
+
+
+def write_copernicus_csv(plan: dict, path: Path) -> None:
+    cm = plan.get("copernicus")
+    if not cm:
+        return
+    with path.open("w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=COPERNICUS_COLUMNS + ["region_fetch_transfer_bytes"])
+        w.writeheader()
+        for d in cm["datasets"]:
+            for r in d["rois"]:
+                row = {k: r.get(k) for k in COPERNICUS_COLUMNS}
+                row["variables"] = ";".join(r["variables"])
+                row["region_fetch_transfer_bytes"] = d["regions"][r["region_id"]]["transfer_bytes"]
+                w.writerow(row)
+
+
 def human(n) -> str:
     if n is None:
         return "unknown"
@@ -382,7 +461,8 @@ def summary(plan: dict) -> str:
         L.append(f"{'COUNTRY ' + c:26} {'':>10} {'':>9} {'':>5} {'':>5}  "
                  f"{human(s['transfer_bytes_low']):>11} / {human(s['transfer_bytes_expected']):>11} / {human(s['transfer_bytes_high']):>11}  {s['final_rows']:>6}")
     g = t["grand"]
-    L.append(f"{'TOTAL MUR 2020-26':26} {'':>10} {'':>9} {'':>5} {'':>5}  "
+    span = f"TOTAL MUR {plan['period']['start'][:4]}-{plan['period']['end'][2:4]}"
+    L.append(f"{span:26} {'':>10} {'':>9} {'':>5} {'':>5}  "
              f"{human(g['transfer_bytes_low']):>11} / {human(g['transfer_bytes_expected']):>11} / {human(g['transfer_bytes_high']):>11}  {g['final_rows']:>6}")
     L.append("")
     L.append(f"Peak disk LOW / EXPECTED / HIGH : {human(g['peak_disk_bytes_low'])} / {human(g['peak_disk_bytes_expected'])} / {human(g['peak_disk_bytes_high'])}")
@@ -396,6 +476,9 @@ def summary(plan: dict) -> str:
     L.append("Shared fetch (cells/day): " + "; ".join(f"{r} per-ROI {v['naive_bbox_cells']}, unique {v['unique_bbox_cells']}, one region bbox {v['single_region_bbox_cells']}"
                                                          for r, v in sf.items()))
     miss = sorted({d for r in plan["rows"] for d in r["missing_dates"]})
+    L.append("Download scope: only the per-ROI boxes in plan.json rois[].request (see outputs/qa/requests_*.png); "
+             "largest box " + str(max(r["request"]["expected_cells"] for r in plan["rois"])) + " cells/day, "
+             "limit " + str(plan["execution"].get("max_request_cells", 10000)))
     L.append(f"Missing dates (not published): {', '.join(miss) or 'none'}")
     L.append("Confidence: days HIGH, grid MEDIUM, transfer LOW, final size LOW. See plan.json assumptions/unknowns.")
     if plan["pilot"]["rows"]:
@@ -403,7 +486,81 @@ def summary(plan: dict) -> str:
         names = ", ".join(f"{r['region_id']}/{r['subregion_id']}" for r in plan["pilot"]["rows"])
         L.append(f"Pilot ({plan['pilot']['days']} days; {names}): transfer {human(p['transfer_bytes_low'])} / "
                  f"{human(p['transfer_bytes_expected'])} / {human(p['transfer_bytes_high'])}, {p['api_calls']} API calls")
+    cm = plan.get("copernicus")
+    if cm:
+        L.append("")
+        L.append(f"COPERNICUS MARINE  {cm['period']['start']} .. {cm['period']['end']}  surface level, exact chunk sizes via HEAD")
+        h2 = f"{'DATASET':16} {'VARS':10} {'GRID':>7} {'DAYS':>9} {'PH-TAWI':>11} {'ID-SOUTH-SUL':>13} {'TRANSFER':>11} {'IF MONTHLY':>11}"
+        L += [h2, "-" * len(h2)]
+        for d in cm["datasets"]:
+            g = d["grid"]["lat_step"]
+            reg = {k: human(v["transfer_bytes"]) for k, v in d["regions"].items()}
+            L.append(f"{d['key']:16} {','.join(d['variables']):10} {g:>6.3f}° {d['available_days']:>4}/{d['requested_days']:<4} "
+                     f"{reg.get('PH-TAWI', '-'):>11} {reg.get('ID-SOUTH-SUL', '-'):>13} {human(d['transfer_bytes']):>11} "
+                     f"{human(d['transfer_bytes_if_monthly_batches']):>11}")
+        L.append(f"{'TOTAL COPERNICUS':16} {'':10} {'':>7} {'':>9} {'':>11} {'':>13} {human(cm['transfer_bytes_total']):>11}")
+        for d in cm["datasets"]:
+            if d["missing_dates"]:
+                L.append(f"  {d['key']}: {len(d['missing_dates'])} days not in dataset ({d['missing_dates'][0]} .. {d['missing_dates'][-1]})")
+        cells = "; ".join(f"{d['key']} " + ",".join(f"{r['subregion_id']}={r['roi_cells']}" for r in d["rois"]) for d in cm["datasets"])
+        L.append(f"  Model cells touching each ROI: {cells}")
+        L.append(f"  Outputs: {cm['final_rows_total']} daily rows, NetCDF subsets <= {human(cm['output_netcdf_bytes_upper_total'])}, "
+                 f"~{cm['api_calls_est']} requests. Account: Copernicus Marine (free) needed for fetch.")
+        both = (g_t := plan["totals"]["grand"]["transfer_bytes_expected"]) + (cm["transfer_bytes_total"] or 0)
+        L.append(f"GRAND TOTAL TRANSFER (MUR expected + Copernicus exact): {human(both)}")
     L.append("")
     L.append(f"PLAN SHA256: {plan['plan_sha256']}")
     L.append("No historical data downloaded. Run fetch only after reviewing and approving the plan.")
     return "\n".join(L)
+
+
+def request_maps(plan: dict, roi_geojson: dict, qa_dir: Path) -> list[Path]:
+    """One overview of all requests in Southeast Asia, plus one zoomed map per region."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import Rectangle
+
+    qa_dir.mkdir(parents=True, exist_ok=True)
+    geoms = {(f["properties"]["region_id"], f["properties"]["subregion_id"]): shape(f["geometry"])
+             for f in roi_geojson["features"]}
+    paths = []
+
+    def draw(ax, rois):
+        for roi in rois:
+            g = geoms[(roi["region_id"], roi["subregion_id"])]
+            import geopandas as gpd
+            gpd.GeoSeries([g]).plot(ax=ax, color="#2a7ab0", alpha=0.55, lw=0)   # keeps land holes empty
+            w, s_, e, n = roi["request"]["expected_extent_w_s_e_n"]
+            ax.add_patch(Rectangle((w, s_), e - w, n - s_, fill=False, ec="#d1495b", lw=1.2))
+            ax.annotate(roi["subregion_id"], (w, n), fontsize=7, color="#d1495b", va="bottom")
+
+    fig, ax = plt.subplots(figsize=(9, 7))
+    draw(ax, plan["rois"])
+    ax.set_xlim(95, 141)
+    ax.set_ylim(-11, 21)
+    ax.set_aspect("equal")
+    ax.grid(lw=0.3)
+    ax.set_title("Requested MUR boxes (red) vs candidate zones (blue): only these boxes are downloaded", fontsize=9)
+    p = qa_dir / "requests_overview.png"
+    fig.savefig(p, dpi=130, bbox_inches="tight")
+    plt.close(fig)
+    paths.append(p)
+
+    by_region = defaultdict(list)
+    for roi in plan["rois"]:
+        by_region[roi["region_id"]].append(roi)
+    for region, rois in by_region.items():
+        fig, ax = plt.subplots(figsize=(8, 8))
+        draw(ax, rois)
+        ext = np.array([r["request"]["expected_extent_w_s_e_n"] for r in rois])
+        ax.set_xlim(ext[:, 0].min() - 0.05, ext[:, 2].max() + 0.05)
+        ax.set_ylim(ext[:, 1].min() - 0.05, ext[:, 3].max() + 0.05)
+        ax.set_aspect("equal")
+        ax.grid(lw=0.3)
+        ax.set_title(f"{region}: requested boxes (red) vs candidate zones (blue)", fontsize=9)
+        p = qa_dir / f"requests_{region}.png"
+        fig.savefig(p, dpi=130, bbox_inches="tight")
+        plt.close(fig)
+        paths.append(p)
+    return paths

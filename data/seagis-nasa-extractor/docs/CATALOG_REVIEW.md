@@ -1,6 +1,6 @@
 # Catalog review — 2026-11-15
 
-Source: `seagis-extract catalog` against NASA CMR, Harmony `/capabilities`, and one HEAD request (metadata only, **0 science bytes**). Raw results: `outputs/catalog.json` (gitignored; regenerate with the command). Period: 2020-11-15 .. 2026-11-14 (start moved from 2020-01-01 in `config/extraction.yaml` on 2026-11-15).
+Source: `seagis-extract catalog` against NASA CMR, Harmony `/capabilities`, and one HEAD request (metadata only, **0 science bytes**). Raw results: `outputs/catalog.json` (gitignored; regenerate with the command). Period at review time: 2020-11-15 .. 2026-11-14. Since then the start has moved to 2022-06-01 to align with Copernicus daily salinity, so the counts below are for the earlier period. The current figures are in PLAN_REVIEW.md.
 
 ## Scope decision (2026-11-15)
 

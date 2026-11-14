@@ -119,3 +119,46 @@ def test_estimate_csv_and_summary(tmp_path):
     assert plan["plan_sha256"] in text and "No historical data downloaded" in text
     assert "2020-02-01" in text
     json.dumps(plan, default=str)   # serialisable
+
+
+# ---------------------------------------------------------------- download-scope guards
+
+def test_request_is_tight_around_roi():
+    roi = box(119.6911, 4.9603, 119.8975, 5.2040)
+    m = estimate.membership(GRID, roi)
+    req = estimate.request_for(GRID, roi, m, ["analysed_sst"])
+    w, s, e, n = req["bbox_w_s_e_n"]
+    assert w <= 119.6911 and e >= 119.8975 and s <= 4.9603 and n >= 5.2040
+    assert e - w < 0.21 + 0.01 and n - s < 0.25 + 0.01
+    ew, es, ee, en = req["expected_extent_w_s_e_n"]
+    assert ew >= 119.6911 - 0.01 and ee <= 119.8975 + 0.01
+    estimate.check_request(roi, req, max_cells=10_000)
+
+
+@pytest.mark.parametrize("bad", [
+    [-180, -90, 180, 90],                        # global, e.g. pulling Africa too
+    [119.0, 4.9603, 119.8975, 5.2040],           # extends far west of the ROI
+    [119.70, 4.97, 119.89, 5.20],                # does not cover the ROI
+])
+def test_guard_rejects_requests_not_tied_to_roi(bad):
+    roi = box(119.6911, 4.9603, 119.8975, 5.2040)
+    m = estimate.membership(GRID, roi)
+    req = estimate.request_for(GRID, roi, m, ["analysed_sst"]) | {"bbox_w_s_e_n": bad}
+    with pytest.raises(estimate.RequestGuardError):
+        estimate.check_request(roi, req, max_cells=10_000)
+
+
+def test_guard_rejects_oversized_roi_and_plan_fails(tmp_path):
+    roi = box(119.0, 4.0, 121.0, 6.0)            # 200 x 200 cells
+    m = estimate.membership(GRID, roi)
+    req = estimate.request_for(GRID, roi, m, ["analysed_sst"])
+    with pytest.raises(estimate.RequestGuardError):
+        estimate.check_request(roi, req, max_cells=10_000)
+
+
+def test_plan_records_request_per_roi_and_rows(tmp_path):
+    plan = _fixture(tmp_path)
+    for roi in plan["rois"]:
+        assert roi["request"]["expected_cells"] == roi["bbox_cells"]
+    assert all(r["request_bbox"] is not None for r in plan["rows"])
+    assert any("Reject" in g for g in plan["fetch_guards"])

@@ -85,13 +85,28 @@ def cmd_plan(args) -> int:
         "catalog": cat_path, "roi_geojson": roi_path, "extraction_config": Path(args.config).resolve(),
         "products_config": root / cfg.get("products_file", "config/products.yaml"),
         "roi_sources_config": root / "config/roi_sources.yaml"}.items()}
+    cm_cfg = cfg.get("products", {}).get("copernicus", {})
+    cm_fn = None
+    if cm_cfg.get("enabled") and cfg["_products"].get("copernicus"):
+        from . import copernicus
+        from .http import MetadataClient
+
+        specs = [dict(s, depth=cm_cfg.get("depth", s.get("depth", "surface"))) for s in cfg["_products"]["copernicus"]]
+        period = {k: str(v) for k, v in cm_cfg["period"].items()}
+        max_cells = int(cfg["execution"].get("max_request_cells", 10_000))
+
+        def cm_fn(rois, geoms):
+            return copernicus.plan_section(MetadataClient(), specs, period, rois, geoms, max_cells)
+    (out_dir / "membership").mkdir(parents=True, exist_ok=True)
     plan = estimate.build_plan(json.loads(cat_path.read_text()), json.loads(roi_path.read_text()), cfg, inputs,
-                               out_dir / "membership", pilot=roi_cfg.get("pilot_subregions"))
+                               out_dir / "membership", pilot=roi_cfg.get("pilot_subregions"), copernicus_fn=cm_fn)
     plan_path = out_dir / "plan.json"
     tmp = plan_path.with_suffix(".json.part")
     tmp.write_text(json.dumps(plan, indent=1, default=str))
     tmp.replace(plan_path)
     estimate.write_estimate_csv(plan, out_dir / "estimate.csv")
+    estimate.write_copernicus_csv(plan, out_dir / "estimate_copernicus.csv")
+    estimate.request_maps(plan, json.loads(roi_path.read_text()), out_dir / "qa")
     text = estimate.summary(plan)
     (out_dir / "plan_summary.txt").write_text(text + "\n")
     print(text)
