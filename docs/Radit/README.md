@@ -25,7 +25,7 @@ Code: [`earth-globe/`](../../earth-globe/) (a self-contained subproject; the dep
 - **Hand-off to the map is specified, not built:** [MAP_HANDOFF.md](MAP_HANDOFF.md) gives the sequence, a derived altitude-to-zoom formula with a table, risks, and how to check it once built.
 - **Clouds are off in the dashboard (2026-11-15), at Radit's request:** the cloud layer drifts about 8 px/s against the pins (measured at 1440×900), which read as the pins floating; it was a very small effect geometrically (the cloud shell sits 0.2 to 2.4 px from the surface at that zoom). The code is commented out in `earth-globe/src/dashboard/main.js`, not deleted, with the steps to restore it. The dashboard no longer loads `clouds.jpg` and its credit line no longer lists clouds; the plain demo (`demo.html`) still shows them.
 - **Renamed SEAGIS → SEAmon (2026-11-15), at Radit's request:** the whole word `SEAGIS` was replaced in 12 text files (root `README.md`, the root page, the dashboard title, the JSON schema title, `seagis-globe/index.html`, and the team notes under `docs/`). **Left unchanged on purpose**, because changing them would break something or misdescribe a file: the domain `seagis.app` (and `seamon.seagis.app` under it), the Worker name `seagis-atlas` (renaming a Worker creates a new one), the package name `seagis-earth-globe` (also in the lockfile), the folder `seagis-globe/`, the schema `$id` (`example.invalid/seagis/…`), and the file name `Seagis NASA.md` that two documents cite. Other repositories (for example the backend ones) are not touched.
-- **Deployed 2026-11-15** as a new Cloudflare Worker and attached to a custom domain: first `nasa.seagis.app`, replaced the same day by <https://seamon.seagis.app> (dashboard at `/globe/`), marked `noindex`. The `workers.dev` address is disabled. `docs/`, `research/` and `contracts/` are not deployed. Details and how to redeploy: [DEPLOY.md](DEPLOY.md).
+- **Deployed 2026-11-15** as a new Cloudflare Worker and attached to a custom domain: first `nasa.seagis.app`, replaced the same day by <https://seamon.seagis.app> (the dashboard is the site root `/`; the plain globe demo is at `/demo`), marked `noindex`. The dashboard first lived at `/globe/` and was moved to `/` at Radit's request; the old static starter page is no longer deployed. The `workers.dev` address is disabled. `docs/`, `research/` and `contracts/` are not deployed. Details and how to redeploy: [DEPLOY.md](DEPLOY.md).
 - **CI/CD working:** a GitHub Actions workflow tests, builds and deploys on a push to `main` or `master` (there is only `main` today). Its first run (2026-11-15) passed install, tests and build; the deploy step failed twice with a Cloudflare authentication error and succeeded on the third attempt after the API token was fixed on the Cloudflare side. The live site is now the CI-built bundle. See [DEPLOY.md](DEPLOY.md).
 
 ## Current status and review steps
@@ -84,7 +84,7 @@ npm start         # http://localhost:1235
 - Which Space Apps challenge, and whether Blue Marble is on its official Resources tab (open decision 1 in [DECISIONS.md](../DECISIONS.md)). Do not claim it as a challenge resource until confirmed.
 - Credit and licence wording for NASA imagery. The NASA download page states no licence; NASA's requested credit "NASA Earth Observatory" came from a search summary and is not yet confirmed on an official page.
 - Pristine NASA originals for clouds, elevation, the ocean mask and city lights could not be reached (details in [TEXTURE_SOURCES.md](TEXTURE_SOURCES.md)); we use the article author's copies instead.
-- Whether the root page should link to `/globe/` (it is a shared page and does not yet).
+- What to do with the old static starter page (`index.html`, `styles.css`, `app.js` in the repository root): it is no longer deployed and was left in the repository; whether to delete it or keep it for reference is the team's call.
 - The CI token's exact permissions are not recorded here (it was fixed on the Cloudflare side without my seeing it), and CI has only deployed once; see [DEPLOY.md](DEPLOY.md).
 - The licences of the article textures and the sky photo, now that they are reachable at a public address (see [DEPLOY.md](DEPLOY.md)).
 
@@ -93,7 +93,7 @@ npm start         # http://localhost:1235
 1. Decide whether the globe belongs in the product (proposal 1) and record it in [DECISIONS.md](../DECISIONS.md) if so.
 2. Build the hand-off specified in [MAP_HANDOFF.md](MAP_HANDOFF.md): the altitude/centre ↔ map zoom/centre mapping as a pure, tested function first, then the cross-fade.
 3. Confirm credit and licence wording for NASA and ESA/Gaia, and add a reduced-quality mode (skip clouds and sky, smaller textures) for phones.
-4. Decide whether the root page links to the deployed `/globe/` demo. Push these notes and watch CI deploy an ordinary push.
+4. Decide whether the dashboard should link to the `/demo` page, and what happens to the old static starter page. Push these notes and watch CI deploy an ordinary push.
 5. Test on touch devices and a low-end GPU before relying on the 4096 default.
 
 See [the collaborator context guide](../COLLABORATOR_CONTEXT.md) for shared guidance.

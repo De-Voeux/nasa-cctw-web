@@ -1,6 +1,6 @@
 name: Deploy site
 
-# Builds the static shell and the globe demo, runs the globe tests, and deploys the
+# Builds the SEAmon dashboard and the globe demo, runs the globe tests, and deploys the
 # Cloudflare Worker (seamon.seagis.app). Pull requests only build and test; they never
 # deploy. `master` is listed as well as `main`: the repository's branch is `main`.
 # Needs two repository secrets: CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID
@@ -10,18 +10,12 @@ on:
   push:
     branches: [main, master]
     paths:
-      - "index.html"
-      - "styles.css"
-      - "app.js"
       - "earth-globe/**"
       - "scripts/**"
       - "wrangler.jsonc"
       - ".github/workflows/deploy.yml"
   pull_request:
     paths:
-      - "index.html"
-      - "styles.css"
-      - "app.js"
       - "earth-globe/**"
       - "scripts/**"
       - "wrangler.jsonc"

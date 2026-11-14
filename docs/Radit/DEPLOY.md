@@ -5,7 +5,7 @@
 | | |
 | --- | --- |
 | Address | <https://seamon.seagis.app> |
-| Dashboard | <https://seamon.seagis.app/globe/> |
+| Globe demo | <https://seamon.seagis.app/demo> (the address `/demo.html` redirects here) |
 | Previous addresses | `nasa.seagis.app` (replaced the same day; no DNS record any more), `seagis-atlas.radityaaydin.workers.dev` (disabled) |
 | `workers.dev` address | **disabled** (see below) |
 | Current version ID | `e40b07c9-b7f8-4c8f-8dd6-61a1f773d71c` (deployed by CI, 2026-11-15 18:10 UTC). Earlier: `d606caa5-c27b-4159-9de4-07b2fa06d87a` (manual, custom domain added), `f2fef4e9-4a68-41db-9917-5c8a53cb3164` (first, manual) |
@@ -23,11 +23,13 @@
 
 ## What is deployed
 
-- `/` — the static shell (`index.html`, `styles.css`, `app.js`).
-- `/globe/` — the dashboard on the globe (Eileen's pull request #1, merged and deployed by CI on 2026-11-15; the live page's title was confirmed to be the dashboard's), and `/globe/demo.html` — the plain globe demo. Both are built from `earth-globe/` with Parcel. The dashboard pins 19 places from `research/evidence/CANDIDATE_HOST_REGIONS.md` ("unverified leads"), compiled into the public JavaScript bundle (`earth-globe/src/data/reportedLocations.js`). The page labels them unverified, but they are no longer kept out of the public site the way `research/` is. I did not re-check the live bundle for that data (the check I tried failed on DNS) and did not load `/globe/demo.html` live.
+- `/` — **the dashboard on the globe** (`earth-globe/src/index.html`; Eileen's pull request #1). It used to be at `/globe/`; the old static starter page that was at `/` (`index.html`, `styles.css`, `app.js` in the repository root) is **no longer deployed**. Those three files are still in the repository, untouched by the move; editing them no longer changes the site.
+- `/demo` — the plain globe demo (`earth-globe/src/demo.html`).
+- `/globe/`, `/globe`, `/globe/demo` and `/globe/demo.html` redirect (301) to `/` or `/demo` through a `_redirects` file written by the build, so links made while the dashboard lived at `/globe/` keep working. Not yet verified live; Cloudflare's static-assets redirect support is from its documentation, not from a test here.
+- Both pages are built from `earth-globe/` with Parcel (the dashboard was merged and first deployed by CI on 2026-11-15). The dashboard pins 19 places from `research/evidence/CANDIDATE_HOST_REGIONS.md` ("unverified leads"), compiled into the public JavaScript bundle (`earth-globe/src/data/reportedLocations.js`). The page labels them unverified, but they are no longer kept out of the public site the way `research/` is. The built dashboard page was checked locally to load 19 pins and no cloud layer; the live bundle was not re-checked for the pin data.
 - `/robots.txt` (disallow all) and an `X-Robots-Tag: noindex, nofollow` header on every response, because the site is research-stage and some texture licences are unresolved.
 
-**Not deployed on purpose:** `docs/`, `research/`, `contracts/`. They are internal team notes, including unverified research leads. The root page does not link to `/globe/` yet (that would edit a shared page).
+**Not deployed on purpose:** `docs/`, `research/`, `contracts/`. They are internal team notes, including unverified research leads. Nothing links to the demo from the dashboard yet.
 
 ## Custom domain
 
@@ -46,7 +48,7 @@ Verified on 2026-11-15 after the deploy:
 Added 2026-11-15, **built and checked locally, not yet deployed**.
 
 - The asset is `earth-globe/src/assets/earth/ogimage-nasa.png` (supplied by Radit): 1200×457 px, PNG, 431,670 bytes. `scripts/build-site.sh` copies it, byte for byte, to `/og-image.png` (a fixed address, because Parcel would hash the name).
-- The root page `index.html` has 10 `og:*` tags and 5 `twitter:*` tags (card type `summary_large_image`). The image address is absolute, `https://seamon.seagis.app/og-image.png`, as the protocol requires (it was `nasa.seagis.app` until the domain change). The `/globe/` pages have **no** tags yet: they are being changed by pull request #1, and editing them now would add a conflict.
+- The tags live in the dashboard page, `earth-globe/src/index.html`, which is now the site root: 10 `og:*` tags and 5 `twitter:*` tags (card type `summary_large_image`), plus the page title and a description. They were first on the old static root page and were moved here when the dashboard became `/`. The image address is absolute, `https://seamon.seagis.app/og-image.png`, as the protocol requires (it was `nasa.seagis.app` until the domain change). The demo page has no tags.
 - **`robots.txt` changed.** It used to disallow every robot, which would also stop link-preview crawlers from reading the page and the image. It now allows Twitterbot, facebookexternalhit, LinkedInBot, Slackbot, Discordbot, WhatsApp and TelegramBot, and still disallows everything else (checked with Python's robots parser: those seven may fetch the page and the image; Googlebot, bingbot and an unknown bot may not). The crawler names come from general knowledge, not from testing against each platform. The `noindex` header is unchanged.
 
 Things to know about the image itself:
@@ -73,7 +75,7 @@ On the owner's machine use the wrapper that pins the right account (`wrangler-ra
 
 **Attempt 3 (18:10 UTC) succeeded end to end.** Nothing was changed in the repository or in the GitHub secrets between attempts 2 and 3 (their update times were still 18:03 UTC), so the fix was made on the Cloudflare side to the token the secret already holds; I was not told what was changed. The deploy log shows 5 assets uploaded (10 already present), `Deployed seagis-atlas triggers`, `nasa.seagis.app (custom domain)` and a new version, `e40b07c9-b7f8-4c8f-8dd6-61a1f773d71c`. Afterwards `/` and `/globe/` returned 200, `/docs/…` 404, and the noindex header was present. In Chrome the live globe (now the CI-built bundle, with different file hashes from the local build) reported `ready`, loaded the 4096×2048 surface and the 7680×4320 sky, and logged no console errors. The CI build is not bit-identical to the local one; that was expected and is why 5 assets differed.
 
-- **Triggers:** a push to `main` **or `master`**; a pull request; a manual run. Only changes to the site files (`index.html`, `styles.css`, `app.js`, `earth-globe/**`, `scripts/**`, `wrangler.jsonc`, the workflow itself) trigger it, so a docs-only push does not deploy. Example: commit `751ac61` (Eca's NASA data access, which touches only `docs/Eca/` and `docs/CHALLENGE_2026.md`) matched none of those paths and GitHub recorded no run for it, as intended. If a data or docs change should ever trigger a deploy, add its path to both `paths` lists in the workflow.
+- **Triggers:** a push to `main` **or `master`**; a pull request; a manual run. Only changes to the site files (`earth-globe/**`, `scripts/**`, `wrangler.jsonc`, the workflow itself) trigger it (the root `index.html`, `styles.css` and `app.js` were removed from the list when they stopped being deployed), so a docs-only push does not deploy. Example: commit `751ac61` (Eca's NASA data access, which touches only `docs/Eca/` and `docs/CHALLENGE_2026.md`) matched none of those paths and GitHub recorded no run for it, as intended. If a data or docs change should ever trigger a deploy, add its path to both `paths` lists in the workflow.
 - **Branches:** the repository's branch is `main`. There is **no `master` branch** on the remote (checked with `git ls-remote`); the workflow lists it only so it also works if one is created.
 - **Steps:** install the globe dependencies with `npm ci`, run `npm test`, run `scripts/build-site.sh`, then deploy with `cloudflare/wrangler-action`. Pull requests stop after the build and never deploy. Only a push (or manual run) on `main` or `master` deploys. One deploy runs at a time and a running deploy is not cancelled.
 - **Pinning:** Node 22; wrangler `4.162.0` (the version used for the manual deploys); the three actions are pinned by major tag (`@v4`, `@v4`, `@v3`), not by commit hash.
