@@ -16,6 +16,7 @@ import { FilterMenu } from "./filterMenu.js"
 import { mountFlags } from "./flags.js"
 import { Chat } from "./chat.js"
 import { answer } from "./ask.js"
+import { askAssistant, renderAnswer, MESSAGES } from "./assistant.js"
 import { waveIcon, thermometerIcon, dropletIcon, rainIcon } from "./icons.js"
 import { initLayout } from "./layout.js"
 
@@ -250,18 +251,32 @@ const chat = new Chat({
   onGoto: (id) => select(id),
 })
 
-$("ask").addEventListener("submit", (e) => {
+let asking = false
+
+$("ask").addEventListener("submit", async (e) => {
   e.preventDefault()
+  if (asking) return
   const input = $("ask-input")
   const q = input.value.trim() || EXAMPLE_QUESTION
   input.value = ""
   chat.user(q)
-  const res = answer(q, LOCATIONS)
-  chat.bot(res.html)
-  if (!res.focus) return
-  if (res.openDetail) return select(res.focus.id)
-  setPressed(res.focus.id)
-  globe.flyTo({ lat: res.focus.lat, lon: res.focus.lon, altitude: 0.9, duration: 1600 })
+  asking = true
+  const bubble = chat.pending()
+  try {
+    // The assistant (Worker + Supabase) answers from verified sources. While it is not set up
+    // or cannot be reached, the built-in answers below keep the ask bar useful.
+    const reply = await askAssistant(q, { species: state.species, country: state.country })
+    if (reply.ok) return bubble.resolve(renderAnswer(reply.data))
+    if (reply.reason !== "unavailable") return bubble.resolve(MESSAGES[reply.reason])
+    const res = answer(q, LOCATIONS)
+    bubble.resolve(res.html)
+    if (!res.focus) return
+    if (res.openDetail) return select(res.focus.id)
+    setPressed(res.focus.id)
+    globe.flyTo({ lat: res.focus.lat, lon: res.focus.lon, altitude: 0.9, duration: 1600 })
+  } finally {
+    asking = false
+  }
 })
 
 // --------------------------------------------------------------- controls

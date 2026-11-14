@@ -1,6 +1,6 @@
 # Ask SEAmon: RAG design
 
-Status: **proposal, nothing built.** Written 2026-11-15 for review by Radit, Eca (data) and whoever owns the research evidence. Today the ask bar is keyword matching in `earth-globe/src/dashboard/ask.js`; it is not retrieval and it says so in its replies.
+Status: **foundation built on a staging project (2026-11-15); see [supabase/README.md](../../supabase/README.md) for what exists and what is unverified.** Decisions taken: embeddings are Supabase's built-in gte-small (384 dimensions), the Worker keeps the service-role key and calls the three functions, the project is the staging project `nasa-seagis`. The corpus and the site data are still empty. Written 2026-11-15 for review by Radit, Eca (data) and whoever owns the research evidence. Today the ask bar is keyword matching in `earth-globe/src/dashboard/ask.js`; it is not retrieval and it says so in its replies.
 
 ## 1. What the assistant is for
 
@@ -71,7 +71,7 @@ create table chunks (
   section     text,                          -- e.g. "Methods", "Table 2"
   page        int,
   content     text not null,
-  embedding   vector(1024),                  -- dimension fixed by the model decision (section 9)
+  embedding   vector(384),                   -- gte-small; see supabase/migrations for the real DDL
   tsv         tsvector generated always as (to_tsvector('simple', content)) stored,
   unique (source_id, ord)
 );

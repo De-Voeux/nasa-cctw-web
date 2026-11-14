@@ -1,0 +1,8 @@
+# Minimal Supabase CLI config. Hosted project only; the local stack is not used.
+project_id = "seamon-rag"
+
+[db]
+major_version = 17
+
+[functions.embed]
+verify_jwt = true

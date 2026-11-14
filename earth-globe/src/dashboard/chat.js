@@ -42,6 +42,17 @@ export class Chat {
     this._add("bot", html)
   }
 
+  /** A bubble that says the answer is on its way; call `.resolve(html)` when it arrives. */
+  pending() {
+    const msg = this._add("bot", `<p class="thinking" aria-live="polite">Thinking…</p>`)
+    return {
+      resolve: (html) => {
+        msg.firstChild.innerHTML = html
+        this.log.scrollTop = this.log.scrollHeight
+      },
+    }
+  }
+
   _add(role, html) {
     const msg = document.createElement("div")
     msg.className = `msg ${role}`
@@ -49,5 +60,6 @@ export class Chat {
     this.log.append(msg)
     this.open()
     this.log.scrollTop = this.log.scrollHeight
+    return msg
   }
 }
