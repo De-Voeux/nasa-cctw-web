@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#071b25" />
+    <meta name="description" content="SEAGIS is a proposed coastal environmental risk atlas for seaweed aquaculture." />
+    <title>SEAGIS — Coastal environmental risk atlas</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="SEAGIS home"><span class="brand-mark" aria-hidden="true">◌</span> SEAGIS</a>
+      <nav aria-label="Main navigation"><a href="#atlas">Atlas</a><a href="#methodology">Methodology</a><a href="#sources">Sources</a></nav>
+    </header>
+    <main id="main">
+      <section class="hero" id="top">
+        <p class="eyebrow">NASA Space Apps · project scaffold</p>
+        <h1>Understand coastal water stress for seaweed farming.</h1>
+        <p>SEAGIS will connect satellite observations, ocean analyses, and weather forecasts to explain regional environmental conditions for cultivated seaweed species.</p>
+        <a class="button" href="#atlas">Explore the atlas concept <span aria-hidden="true">↗</span></a>
+      </section>
+      <section class="atlas" id="atlas" aria-labelledby="atlas-title">
+        <div class="section-heading"><div><p class="eyebrow">Atlas preview</p><h2 id="atlas-title">Coastal environmental assessment</h2></div><span class="status">Data integration pending</span></div>
+        <div class="atlas-grid">
+          <aside class="controls" aria-label="Atlas controls">
+            <label for="species">Species</label><select id="species"><option value="kappaphycus-alvarezii">Kappaphycus alvarezii · candidate</option></select>
+            <label for="region">Coastal region</label><select id="region"><option value="">No verified region yet</option></select>
+            <label for="layer">Layer</label><select id="layer"><option value="composite">Composite environmental stress</option><option value="temperature">Sea surface temperature</option><option value="salinity">Salinity</option><option value="currents">Water movement</option><option value="rainfall">Rainfall</option></select>
+            <p class="control-note">Controls list planned views. Live layers will appear only after source and region verification.</p>
+            <div class="legend"><h3>Assessment legend</h3><p><i class="dot favorable"></i> Favorable</p><p><i class="dot moderate"></i> Moderate stress</p><p><i class="dot elevated"></i> Elevated stress</p><p><i class="dot insufficient"></i> Insufficient data</p></div>
+          </aside>
+          <div class="map-placeholder" role="img" aria-label="Map placeholder. No environmental cells have been assessed."><div class="contour c1"></div><div class="contour c2"></div><div class="contour c3"></div><div class="map-message"><span class="map-icon" aria-hidden="true">◌</span><h3>No assessed cells yet</h3><p>Verified source products, coastal masks, and species rules are needed before this map can show environmental stress.</p></div><span class="map-caption">Regional 0.25° grid planned · not farm-level precision</span></div>
+          <aside class="details" aria-label="Assessment details"><p class="eyebrow">Cell details</p><h3>Insufficient data</h3><p>No cell is selected or assessed. Values, drivers, timestamps, confidence, and citations will appear here when the data pipeline is connected.</p><dl><dt>Assessment kind</dt><dd>Unavailable</dd><dt>Source lineage</dt><dd>Unavailable</dd><dt>Evidence rules</dt><dd>Inactive pending review</dd></dl></aside>
+        </div>
+      </section>
+      <section class="info" id="methodology"><p class="eyebrow">Methodology</p><h2>Show what the evidence supports.</h2><div class="cards"><article><h3>Regional scale</h3><p>The proposed composite uses 0.25° ocean cells. Coastal complexity can make a cell unassessable.</p></article><article><h3>Traceable sources</h3><p>Each future result must expose product, time, units, coverage, and quality information.</p></article><article><h3>Scientific limits</h3><p>Environmental stress is not a disease diagnosis or a validated disease probability.</p></article></div></section>
+      <section class="sources" id="sources"><p class="eyebrow">Planned data providers</p><h2>NASA · Copernicus Marine · Open-Meteo</h2><p>Exact products and permitted uses are being verified. Provider names here do not imply live integration or endorsement.</p></section>
+    </main>
+    <footer><span>SEAGIS</span><span>Research-stage NASA Space Apps project</span></footer>
+  </body>
+</html>
