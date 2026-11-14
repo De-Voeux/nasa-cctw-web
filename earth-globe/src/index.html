@@ -62,13 +62,16 @@
     </button>
     <aside id="side-panel" class="glass side-panel" aria-label="Locations" data-mode="list">
       <button id="sheet-handle" class="sheet-handle" type="button" aria-label="Show more of the list" aria-expanded="false"><span></span></button>
-      <button id="panel-hide" class="panel-hide" type="button" title="Hide panel" aria-label="Hide panel" aria-expanded="true" aria-controls="side-panel">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
-      </button>
-      <label class="search">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
-        <input id="search" type="search" placeholder="Search country, island, or region" autocomplete="off" />
-      </label>
+      <!-- Search and the hide button share one row on wide screens; on phones the row dissolves (display: contents). -->
+      <div class="panel-top">
+        <label class="search">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+          <input id="search" type="search" placeholder="Search country, island, or region" autocomplete="off" />
+        </label>
+        <button id="panel-hide" class="panel-hide" type="button" title="Hide panel" aria-label="Hide panel" aria-expanded="true" aria-controls="side-panel">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+        </button>
+      </div>
 
       <!-- Species, country flags and filters (hidden while a place's detail is open) -->
       <div class="panel-tools">
