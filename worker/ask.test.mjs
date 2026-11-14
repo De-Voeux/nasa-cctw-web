@@ -45,7 +45,7 @@ const run = async (q, script, rpc, env = ENV) => {
 test("rejects the wrong method, bad JSON and bad questions", async () => {
   assert.equal((await handleAsk(new Request("https://s/api/ask"), ENV)).status, 405)
   assert.equal((await handleAsk(new Request("https://s/api/ask", { method: "POST", body: "{" }), ENV)).status, 400)
-  assert.equal((await handleAsk(ask("hi"), ENV)).status, 400)
+  assert.equal((await handleAsk(ask("   "), ENV)).status, 400)
   assert.equal((await handleAsk(ask("x".repeat(501)), ENV)).status, 400)
 })
 
@@ -362,4 +362,37 @@ test("a variable that exists at two resolutions makes the model choose, instead 
 test("the prompt says the data is historical and that resolutions differ", () => {
   assert.match(SYSTEM_PROMPT, /HISTORICAL/)
   assert.match(SYSTEM_PROMPT, /MUR-30d is one sea-surface temperature value every 30 days/)
+})
+
+import { smalltalkReply } from "./smalltalk.js"
+
+test("greetings, thanks and help get a fixed reply with no model call and no secrets", async () => {
+  for (const q of ["hai", "Hai!", "halo", "hi", "Hello!!", "selamat pagi", "terima kasih", "makasih ya", "thanks", "what can you do?", "kamu siapa?"]) {
+    const n = net([])
+    const res = await handleAsk(ask(q), {}, { fetchImpl: n.fetchImpl }) // {} = no secrets: still answers
+    const body = await res.json()
+    assert.equal(res.status, 200, q)
+    assert.equal(body.abstained, false, q)
+    assert.equal(body.kind, "conversation", q)
+    assert.deepEqual([body.claims, body.sources, body.data_used], [[], [], []], q)
+    assert.equal(n.calls.model.length + n.calls.rpc.length, 0, q)
+  }
+})
+
+test("the reply follows the language of the greeting", () => {
+  assert.match(smalltalkReply("hai"), /^Hai!/)
+  assert.match(smalltalkReply("hello"), /^Hi!/)
+  assert.match(smalltalkReply("terima kasih"), /Sama-sama/)
+  assert.match(smalltalkReply("thank you"), /welcome/)
+})
+
+test("a greeting followed by a real question, or any real question, still goes to the model", async () => {
+  assert.equal(smalltalkReply("hai, which area has the most ice-ice case?"), null)
+  assert.equal(smalltalkReply("Which area has the most ice-ice case?"), null)
+  assert.equal(smalltalkReply("thanks for nothing, what is the temperature at Maluku"), null)
+  assert.equal(smalltalkReply("x".repeat(200)), null)
+  assert.equal(smalltalkReply(""), null)
+  const { body, calls } = await run("hai, which area has the most ice-ice case?", [FINAL_ABSTAIN], {})
+  assert.equal(calls.model.length, 1)
+  assert.equal(body.kind, undefined)
 })

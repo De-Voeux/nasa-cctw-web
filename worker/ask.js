@@ -6,6 +6,7 @@
 // else, and an answer with nothing behind it becomes an explicit "not enough evidence".
 
 import { createLlm } from "./llm.js"
+import { smalltalkReply } from "./smalltalk.js"
 
 const MAX_MODEL_TURNS = 5
 const MAX_TOOL_CALLS = 4
@@ -228,7 +229,14 @@ export async function handleAsk(request, env, { fetchImpl = fetch } = {}) {
     return json(400, { error: "bad_json" })
   }
   const question = typeof body?.question === "string" ? body.question.trim() : ""
-  if (question.length < 3 || question.length > MAX_QUESTION) return json(400, { error: "bad_question", max: MAX_QUESTION })
+  if (question.length < 1 || question.length > MAX_QUESTION) return json(400, { error: "bad_question", max: MAX_QUESTION })
+
+  // Greetings and thanks: a fixed reply, no model, no secrets needed (see smalltalk.js).
+  const chat = smalltalkReply(question)
+  if (chat) {
+    console.log(JSON.stringify({ event: "ask", kind: "smalltalk", ms: Date.now() - started }))
+    return json(200, { answer_md: chat, claims: [], sources: [], data_used: [], confidence: "none", abstained: false, kind: "conversation" })
+  }
 
   const llm = createLlm(env, fetchImpl)
   if (!llm.configured || !env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) return json(503, { error: "assistant_unavailable" })
