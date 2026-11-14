@@ -1,8 +1,9 @@
 import { EarthGlobe } from "../earth/EarthGlobe.js"
 import albedo from "../assets/earth/albedo.jpg"
-import normal from "../assets/earth/normal.jpg"
-import ocean from "../assets/earth/ocean.jpg"
-import clouds from "../assets/earth/clouds.png"
+import bump from "../assets/earth/bump.jpg"
+import ocean from "../assets/earth/ocean.png"
+import clouds from "../assets/earth/clouds.jpg"
+import lights from "../assets/earth/lights.png"
 import { LOCATIONS, PLACE_LABELS } from "../data/reportedLocations.js"
 import { GlobeOverlay } from "./overlay.js"
 import { mountDatePills } from "./datePills.js"
@@ -16,8 +17,8 @@ const $ = (id) => document.getElementById(id)
 // --------------------------------------------------------------- globe
 
 const globe = new EarthGlobe($("globe"), {
-  textures: { albedo, normal, ocean, clouds },
-  cloudsFormat: "alpha",
+  textures: { albedo, bump, ocean, clouds, lights },
+  cloudsFormat: "luminance", // these cloud maps store density as brightness
   background: null, // transparent: the CSS star field shows through
   initialView: { lat: 10, lon: 95, altitude: 3 },
   autoRotate: { enabled: false },

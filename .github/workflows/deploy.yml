@@ -1,0 +1,70 @@
+name: Deploy site
+
+# Builds the static shell and the globe demo, runs the globe tests, and deploys the
+# Cloudflare Worker (nasa.seagis.app). Pull requests only build and test; they never
+# deploy. `master` is listed as well as `main`: the repository's branch is `main`.
+# Needs two repository secrets: CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID
+# (see docs/Radit/DEPLOY.md).
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "index.html"
+      - "styles.css"
+      - "app.js"
+      - "earth-globe/**"
+      - "scripts/**"
+      - "wrangler.jsonc"
+      - ".github/workflows/deploy.yml"
+  pull_request:
+    paths:
+      - "index.html"
+      - "styles.css"
+      - "app.js"
+      - "earth-globe/**"
+      - "scripts/**"
+      - "wrangler.jsonc"
+      - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One deploy at a time; a running deploy is never cancelled half-way.
+concurrency:
+  group: deploy-site
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: earth-globe/package-lock.json
+
+      - name: Install globe dependencies
+        working-directory: earth-globe
+        run: npm ci
+
+      - name: Test
+        working-directory: earth-globe
+        run: npm test
+
+      - name: Build site bundle
+        run: ./scripts/build-site.sh
+
+      - name: Deploy to Cloudflare
+        if: github.event_name != 'pull_request' && (github.ref_name == 'main' || github.ref_name == 'master')
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          wranglerVersion: "4.162.0"
+          command: deploy

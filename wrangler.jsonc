@@ -1,0 +1,18 @@
+{
+  // Static-assets Worker: no script, Cloudflare serves the files in dist/site.
+  // Build first with scripts/build-site.sh. Also reachable on the workers.dev
+  // address that `wrangler deploy` prints.
+  "name": "seagis-atlas",
+  "compatibility_date": "2026-11-14",
+  // Custom domain: the seagis.app zone must be in the same Cloudflare account as
+  // this Worker. Wrangler creates the DNS record for the hostname on deploy.
+  "routes": [{ "pattern": "nasa.seagis.app", "custom_domain": true }],
+  // Wrangler turns these off by default once `routes` is set. Written out so that a
+  // deploy never changes them silently. Set workers_dev to true to bring the
+  // *.workers.dev address back.
+  "workers_dev": false,
+  "preview_urls": false,
+  "assets": {
+    "directory": "./dist/site"
+  }
+}

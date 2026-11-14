@@ -1,15 +1,24 @@
 import { EarthGlobe } from "./earth/EarthGlobe.js"
 import albedo from "./assets/earth/albedo.jpg"
-import normal from "./assets/earth/normal.jpg"
-import ocean from "./assets/earth/ocean.jpg"
-import clouds from "./assets/earth/clouds.png"
+import bump from "./assets/earth/bump.jpg"
+import ocean from "./assets/earth/ocean.png"
+import clouds from "./assets/earth/clouds.jpg"
 import lights from "./assets/earth/lights.png"
+import sky from "./assets/earth/sky.jpg"
+
+// Tuning from the URL, e.g. ?softness=0 (hard terminator) or ?softness=0.3&ambient=0.03.
+// Only keys that are present are passed: an explicit undefined would override a default.
+const query = new URLSearchParams(location.search)
+const tuning = {}
+for (const [param, option] of [["softness", "terminatorSoftness"], ["ambient", "ambient"]]) {
+  if (query.has(param) && Number.isFinite(Number(query.get(param)))) tuning[option] = Number(query.get(param))
+}
 
 const globe = new EarthGlobe(document.getElementById("container"), {
-  textures: { albedo, normal, ocean, clouds, lights },
-  // The placeholder cloud PNG keeps cloud density in its alpha channel.
-  // NASA's Blue Marble cloud map stores it as brightness: use "luminance".
-  cloudsFormat: "alpha",
+  textures: { albedo, bump, ocean, clouds, lights, sky },
+  // These cloud maps store density as brightness, not in an alpha channel.
+  cloudsFormat: "luminance",
+  ...tuning,
 })
 
 const readout = document.getElementById("readout")
