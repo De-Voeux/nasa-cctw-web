@@ -1,4 +1,4 @@
--- DRAFT, NOT APPLIED. Review before anything runs it. See README.md in this folder.
+-- Applied to the staging project `nasa-seagis` (see supabase/README.md).
 --
 -- Foundation for "Ask SEAmon" (docs/Radit/RAG_DESIGN.md):
 --   rag.*  verified sources and their chunks (vector + full-text search)
@@ -13,8 +13,9 @@
 --     only. The Worker keeps the service key as a secret. Trade-off: that key can do far
 --     more than call these functions. A narrower role with its own JWT can replace it later.
 --  3. Only chunks of VERIFIED sources are searchable (sources.verified_by is not null).
---  4. The embedding size (1024) is a PLACEHOLDER until the embedding model is chosen
---     (RAG_DESIGN.md section 9.1). Changing it later means re-embedding every chunk.
+--  4. Embeddings are 384-dimensional: Supabase's built-in gte-small model. It is mostly an
+--     English model, so the Worker has the LLM write the search query in English before it
+--     is embedded. Changing the model later means re-embedding every chunk.
 --  5. Nothing here stores assessments or stress levels; those follow
 --     contracts/assessment.schema.json once a reviewed rule exists.
 
@@ -58,7 +59,7 @@ create table rag.chunks (
   section    text,                            -- e.g. "Methods", "Table 2"
   page       int,
   content    text not null,
-  embedding  extensions.vector(1024),         -- PLACEHOLDER size, see note 4
+  embedding  extensions.vector(384),         -- gte-small, see note 4
   tsv        tsvector generated always as (to_tsvector('simple', content)) stored,
   unique (source_id, ord)
 );
@@ -103,7 +104,7 @@ revoke all on all tables in schema env from public, anon, authenticated;
 -- is too weak and abstain. The threshold is tuned on the evaluation set, not hard-coded.
 create function public.rag_search(
   query_text        text,
-  query_embedding   extensions.vector(1024),
+  query_embedding   extensions.vector(384),
   filter_species    text default null,
   filter_country    text default null,
   match_count       int  default 6

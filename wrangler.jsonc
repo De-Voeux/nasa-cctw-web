@@ -1,8 +1,13 @@
 {
-  // Static-assets Worker: no script, Cloudflare serves the files in dist/site.
-  // Build first with scripts/build-site.sh. Also reachable on the workers.dev
-  // address that `wrangler deploy` prints.
+  // Static assets from dist/site plus one small script for /api/* (the Ask SEAmon assistant,
+  // worker/). Every other path is served from the assets without running the script. Build
+  // first with scripts/build-site.sh.
+  //
+  // Secrets the script needs (set with `wrangler secret put`; until all three exist,
+  // /api/ask answers 503 and the page falls back to its built-in answers):
+  //   ANTHROPIC_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
   "name": "seagis-atlas",
+  "main": "./worker/index.js",
   "compatibility_date": "2026-11-14",
   // Custom domain: the seagis.app zone must be in the same Cloudflare account as
   // this Worker. Wrangler creates the DNS record for the hostname on deploy.
@@ -13,6 +18,12 @@
   "workers_dev": false,
   "preview_urls": false,
   "assets": {
-    "directory": "./dist/site"
-  }
+    "directory": "./dist/site",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+  // Per-address limit on the assistant: 10 questions a minute.
+  "ratelimits": [
+    { "name": "ASK_LIMITER", "namespace_id": "1001", "simple": { "limit": 10, "period": 60 } }
+  ]
 }

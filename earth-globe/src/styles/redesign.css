@@ -171,10 +171,10 @@
 }
 .chat-close:hover { background: var(--fill-hover); color: #a8b4ff; }
 .chat-close svg { width: 22px; height: 22px; }
-.chat-log { display: grid; gap: 12px; max-height: min(42vh, 380px); overflow-y: auto; padding: 38px 2px 2px; scrollbar-width: thin; }
+.chat-log { display: grid; gap: 12px; max-height: min(42vh, 380px); overflow-y: auto; overflow-x: hidden; padding: 38px 2px 2px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.22) transparent; color-scheme: dark; }
 .msg { display: flex; }
 .msg.user { justify-content: flex-end; }
-.bubble { max-width: 92%; padding: 12px 18px; border-radius: 22px; font-size: 15px; line-height: 1.45; }
+.bubble { max-width: 92%; overflow-wrap: anywhere; min-width: 0; padding: 12px 18px; border-radius: 22px; font-size: 15px; line-height: 1.45; }
 .bubble p { margin: 0 0 6px; }
 .bubble p:last-child { margin-bottom: 0; }
 .msg.user .bubble { background: #2c3d96; color: #fff; }
@@ -234,3 +234,12 @@
   .flags { display: none; }
   .chat-log { max-height: 22vh; }
 }
+
+/* Assistant answers: claims with source numbers, the data used, and the source list. */
+.bubble .claims { margin: 6px 0 0; padding-left: 18px; }
+.bubble .claims li { margin: 3px 0; }
+.bubble .cite { color: #a9c4ff; font-size: 0.75em; margin-left: 2px; }
+.bubble .data-used { margin-top: 8px; font-size: 12.5px; color: var(--text-muted); }
+.bubble .sources { margin: 8px 0 0; padding-left: 20px; font-size: 12.5px; color: var(--text-muted); }
+.bubble .sources li { margin: 2px 0; }
+.bubble .thinking { color: var(--text-muted); font-style: italic; }
