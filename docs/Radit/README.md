@@ -8,7 +8,7 @@
 
 The 3D **globe overview** for the SEAGIS atlas: when a user zooms out they see a round Earth, and when they zoom in the view should hand off to the flat map. This is presentation only. It does not compute, store or display environmental risk, and it is not part of the assessment pipeline.
 
-Code: [`earth-globe/`](../../earth-globe/) (a self-contained subproject; nothing at the repository root was changed). Module notes: [`earth-globe/src/earth/README.md`](../../earth-globe/src/earth/README.md). Texture provenance: [TEXTURE_SOURCES.md](TEXTURE_SOURCES.md).
+Code: [`earth-globe/`](../../earth-globe/) (a self-contained subproject; the deployment files `wrangler.jsonc` and `scripts/build-site.sh` sit at the repository root). Module notes: [`earth-globe/src/earth/README.md`](../../earth-globe/src/earth/README.md). Texture provenance: [TEXTURE_SOURCES.md](TEXTURE_SOURCES.md). Map hand-off specification: [MAP_HANDOFF.md](MAP_HANDOFF.md). Deployment: [DEPLOY.md](DEPLOY.md).
 
 ## Work completed
 
@@ -22,6 +22,9 @@ Code: [`earth-globe/`](../../earth-globe/) (a self-contained subproject; nothing
 - **Soft terminator:** the first version had a hard edge to pure black, which looked like two different Earths. `terminatorSoftness` (default 0.3) applies wrap lighting, N·L → (N·L + w)/(1 + w), to the ground and the cloud shell, and city lights now fade in across the dusk band. The side effect is a narrower dark side, because light now reaches about 17° past the old terminator. Set `?softness=0.15` on the demo page for a stronger night.
 - `bumpScale` is 0.003: the article's 0.03 was written for a sphere of radius 10, and ours has radius 1.
 - Portrait screens: the horizontal field of view is held fixed so the globe is not cropped on phones.
+- **Hand-off to the map is specified, not built:** [MAP_HANDOFF.md](MAP_HANDOFF.md) gives the sequence, a derived altitude-to-zoom formula with a table, risks, and how to check it once built.
+- **Deployed 2026-11-15** as a new Cloudflare Worker and attached to the custom domain <https://nasa.seagis.app> (globe demo at `/globe/`), marked `noindex`. The `workers.dev` address is disabled. `docs/`, `research/` and `contracts/` are not deployed. Details and how to redeploy: [DEPLOY.md](DEPLOY.md).
+- **CI/CD written, not yet run:** a GitHub Actions workflow tests, builds and deploys on a push to `main` or `master` (there is only `main` today). It needs two repository secrets that are not set yet; see [DEPLOY.md](DEPLOY.md).
 
 ## Current status and review steps
 
@@ -38,6 +41,7 @@ npm start         # http://localhost:1235
 - With the article textures installed: the page reports `ready` with 6 textures loaded, the cloud layer renders, and a production build succeeds. Draw calls: 4, about 55,000 triangles (measured earlier with the Gaia sky).
 - Day/night: a terminator is visible with the dark side on the right, and city lights appear on the dark side (Europe, the Middle East, India). Setting `emissiveIntensity` to 3 visibly strengthened them compared with 1; that comparison was by eye on small crops. Sun angle and brightness were not compared numerically against the article's demo.
 - Terminator: with `?softness=0` the page reproduces the hard edge reported on 2026-11-15; with 0.3 and 0.15 the edge is gradual (compared on full-size screenshots at the same view, with the Pacific and North America in frame). An attempt to measure edge sharpness from the canvas pixels returned invalid zero readings and was discarded, so this is a visual judgement only. Which value looks best is a taste call; 0.3 is the current default.
+- Deployment: `https://nasa.seagis.app` serves `/` and `/globe/` (200, valid certificate), returns 404 for `/docs/`, sends the noindex header, and the old `workers.dev` address returns 404. In Chrome the globe also reaches `ready` on the new domain (one console message that looks like browser-extension noise; unconfirmed). Detail and one unexplained reading in [DEPLOY.md](DEPLOY.md).
 - Sky: the 16:9 image is drawn as a flat background (`UVMapping`); with a 1.752 canvas the cover fit crops about 0.7% per side. Only a landscape pane was checked; portrait cropping was computed but not viewed.
 - Close-up (altitude 0.4 over the Andes): coastline, albedo, clouds and ocean map line up. The relief shading from the bump map is subtle there and was **not** judged beyond "active".
 - `flyTo` to Jakarta (−6.2, 106.8) arrives exactly at the target in about 1.2 s. A click at the exact screen centre returns (−6.2, 106.8).
@@ -78,14 +82,16 @@ npm start         # http://localhost:1235
 - Which Space Apps challenge, and whether Blue Marble is on its official Resources tab (open decision 1 in [DECISIONS.md](../DECISIONS.md)). Do not claim it as a challenge resource until confirmed.
 - Credit and licence wording for NASA imagery. The NASA download page states no licence; NASA's requested credit "NASA Earth Observatory" came from a search summary and is not yet confirmed on an official page.
 - Pristine NASA originals for clouds, elevation, the ocean mask and city lights could not be reached (details in [TEXTURE_SOURCES.md](TEXTURE_SOURCES.md)); we use the article author's copies instead.
-- How the bundle is shipped into the static root site, which currently has no build step.
+- Whether the root page should link to `/globe/` (it is a shared page and does not yet).
+- The two GitHub secrets the deploy workflow needs (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`) are not set, so CI cannot deploy yet.
+- The licences of the article textures and the sky photo, now that they are reachable at a public address (see [DEPLOY.md](DEPLOY.md)).
 
 ## Next steps
 
 1. Decide whether the globe belongs in the product (proposal 1) and record it in [DECISIONS.md](../DECISIONS.md) if so.
-2. Build the globe → flat-map hand-off (altitude and centre → map zoom and centre), as a pure, tested function.
+2. Build the hand-off specified in [MAP_HANDOFF.md](MAP_HANDOFF.md): the altitude/centre ↔ map zoom/centre mapping as a pure, tested function first, then the cross-fade.
 3. Confirm credit and licence wording for NASA and ESA/Gaia, and add a reduced-quality mode (skip clouds and sky, smaller textures) for phones.
-4. Decide how the root static site loads the built globe bundle.
+4. Decide whether the root page links to the deployed `/globe/` demo. Set the two GitHub secrets, push, and watch the first CI run.
 5. Test on touch devices and a low-end GPU before relying on the 4096 default.
 
 See [the collaborator context guide](../COLLABORATOR_CONTEXT.md) for shared guidance.
