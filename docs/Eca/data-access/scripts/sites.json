@@ -1,0 +1,44 @@
+[
+  {
+    "id": "se-sulawesi",
+    "name": "Southeast Sulawesi (Konawe coast)",
+    "country": "Indonesia",
+    "lat": -4.0,
+    "lon": 123.0
+  },
+  {
+    "id": "s-sulawesi",
+    "name": "South Sulawesi (Takalar coast)",
+    "country": "Indonesia",
+    "lat": -5.6,
+    "lon": 119.2
+  },
+  {
+    "id": "sabah",
+    "name": "Sabah (Semporna coast)",
+    "country": "Malaysia",
+    "lat": 4.5,
+    "lon": 118.8
+  },
+  {
+    "id": "tawi-tawi",
+    "name": "Tawi-Tawi (Bongao coast)",
+    "country": "Philippines",
+    "lat": 5.0,
+    "lon": 119.9
+  },
+  {
+    "id": "bohol",
+    "name": "Bohol (Bohol Sea)",
+    "country": "Philippines",
+    "lat": 10.0,
+    "lon": 124.5
+  },
+  {
+    "id": "khanh-hoa",
+    "name": "Khanh Hoa coast",
+    "country": "Vietnam",
+    "lat": 12.2,
+    "lon": 109.3
+  }
+]
