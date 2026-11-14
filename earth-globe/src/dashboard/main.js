@@ -15,6 +15,7 @@ import { SidePanel } from "./sidePanel.js"
 import { FilterMenu } from "./filterMenu.js"
 import { mountFlags } from "./flags.js"
 import { mountChat } from "./chat.js"
+import { mountPanelHandle } from "./panelHandle.js"
 import { mountLayersMenu } from "./layersMenu.js"
 
 const HOME = { lat: 5, lon: 117, altitude: 1.35 }
@@ -246,35 +247,38 @@ bodyBtn.addEventListener("click", () => setBody(sidePanelEl.dataset.body !== "co
 // The label says "list" or "details" depending on what the panel shows.
 new MutationObserver(() => setBody(sidePanelEl.dataset.body === "collapsed", false)).observe(sidePanelEl, { attributes: true, attributeFilter: ["data-mode"] })
 
-// Hide the whole panel (wide screens) to see the full globe; a round button at the edge brings it back.
-const panelHide = $("panel-hide")
-const panelShow = $("panel-show")
-panelShow.hidden = false // the CSS shows it only while the panel is hidden
+// One handle hides the whole panel (wide screens) and brings it back. Click it, press the arrow keys,
+// or drag it (dashboard/panelHandle.js); it travels with the panel and its arrow turns around.
+const panelToggle = $("panel-toggle")
+const isPanelHidden = () => document.documentElement.dataset.panel === "hidden"
 function setPanel(hidden, remember = true) {
   document.documentElement.dataset.panel = hidden ? "hidden" : "open"
-  panelHide.setAttribute("aria-expanded", String(!hidden))
-  panelShow.setAttribute("aria-expanded", String(!hidden))
+  panelToggle.dataset.look = hidden ? "hidden" : "open"
+  panelToggle.setAttribute("aria-expanded", String(!hidden))
+  panelToggle.setAttribute("aria-label", hidden ? "Show panel" : "Hide panel")
+  panelToggle.title = hidden ? "Show locations panel (drag or click)" : "Hide panel (drag or click)"
   if (!remember) return
   try {
     localStorage.setItem("seamon.panelHidden", hidden ? "1" : "0")
   } catch {}
+}
+/** A change made by the user: also gives the tab a short nudge once the panel has gone. */
+function userSetPanel(hidden) {
+  if (hidden === isPanelHidden()) return
+  setPanel(hidden)
+  panelToggle.classList.remove("nudge")
+  if (hidden) {
+    void panelToggle.offsetWidth // restart the animation
+    panelToggle.classList.add("nudge")
+  }
 }
 let savedHidden = null
 try {
   savedHidden = localStorage.getItem("seamon.panelHidden")
 } catch {}
 setPanel(savedHidden === "1", false)
-panelHide.addEventListener("click", () => {
-  setPanel(true)
-  panelShow.focus()
-  panelShow.classList.remove("nudge")
-  void panelShow.offsetWidth // restart the animation
-  panelShow.classList.add("nudge")
-})
-panelShow.addEventListener("click", () => {
-  setPanel(false)
-  panelHide.focus()
-})
+mountPanelHandle({ handle: panelToggle, panel: sidePanelEl, isHidden: isPanelHidden, setHidden: userSetPanel })
+panelToggle.addEventListener("click", () => userSetPanel(!isPanelHidden()))
 
 // --------------------------------------------------------------- bottom sheet (phones)
 

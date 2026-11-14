@@ -31,45 +31,46 @@
 .panel-body { flex: 1; overflow-y: auto; padding: 8px 16px 20px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.2) transparent; }
 /* Hide the whole panel to see the full globe. The panel slides out; --panel-offset goes to 0 so the
    globe re-centres and the map controls move to the edge. */
-.panel-top { display: flex; align-items: center; gap: 8px; margin: 22px 20px 8px 24px; }
-/* :where keeps this at the same specificity as .search, so the phone rules further down still win. */
-:where(.panel-top) .search { flex: 1; min-width: 0; margin: 0; }
-/* A round button in the search field's own style, so it reads as part of the row. */
-.panel-hide {
-  flex: none; width: 44px; height: 44px; border-radius: 50%;
-  display: grid; place-items: center; color: var(--text-muted);
-  background: var(--fill-subtle); border: 1px solid rgba(255, 255, 255, 0.12);
-  transition: background 0.15s, color 0.15s, border-color 0.15s;
-}
-.panel-hide:hover { background: var(--fill-hover); color: var(--text); border-color: rgba(255, 255, 255, 0.25); }
-.panel-hide svg { width: 20px; height: 20px; }
 .side-panel { transition: transform 0.3s ease, visibility 0s; }
 html[data-panel="hidden"] { --panel-offset: 0px; }
 html[data-panel="hidden"] .side-panel {
   transform: translateX(calc(100% + var(--gap) * 2)); visibility: hidden;
   transition: transform 0.3s ease, visibility 0s 0.3s;
 }
-/* A tab on the right edge, in the accent colour with a label: easy to see and where a drawer's handle is expected.
+/* The handle. It is fixed on the screen but follows the panel: its right edge is the panel's left edge
+   (--panel-offset is 0 once the panel is hidden), and `right` animates with the same duration as the panel's slide,
+   so the two travel together. Open: a small glass pill with an arrow pointing the way the panel will go.
+   Hidden: it settles on the screen edge as an accent tab with its label, and the arrow has turned around.
    It sits below the map controls (top right) so the two never overlap. */
-.panel-show {
-  position: fixed; right: 0; z-index: 3;
+.panel-toggle {
+  position: fixed; z-index: 4;
   top: min(max(46%, 316px), calc(100% - 168px));
-  display: none; flex-direction: column; align-items: center; gap: 8px;
-  padding: 14px 9px; border-radius: 16px 0 0 16px;
-  background: var(--accent); color: #fff;
-  box-shadow: -6px 6px 24px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  right: calc(var(--panel-offset) + var(--gap) - 1px);
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 16px 8px; border-radius: 14px 0 0 14px;
+  background: var(--panel-bg); border: 1px solid var(--glass-border); border-right: 0; color: var(--text-muted);
+  box-shadow: -6px 6px 20px rgba(0, 0, 0, 0.35);
   font-size: 13px; font-weight: 600; letter-spacing: 0.04em;
-  transition: padding 0.15s, filter 0.15s;
+  cursor: grab; touch-action: none; user-select: none;
+  transition: right 0.3s ease, background 0.3s, color 0.3s, padding 0.3s, border-color 0.3s;
 }
-.panel-show:hover { padding-right: 14px; filter: brightness(1.12); }
-.panel-show svg { width: 22px; height: 22px; stroke-width: 2.4; }
-.ps-label { writing-mode: vertical-rl; }
-html[data-panel="hidden"] .panel-show { display: flex; }
-/* Draws the eye once, right after the panel was hidden. */
-.panel-show.nudge { animation: panel-nudge 0.6s ease-in-out 3; }
+.panel-toggle:hover { color: var(--text); }
+.panel-toggle svg { width: 22px; height: 22px; stroke-width: 2.4; transition: transform 0.3s ease; }
+.pt-label { writing-mode: vertical-rl; }
+html[data-panel="hidden"] .panel-toggle { right: 0; }
+.panel-toggle[data-look="hidden"] {
+  background: var(--accent); border-color: transparent; color: #fff;
+  box-shadow: -6px 6px 24px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+.panel-toggle[data-look="hidden"] svg { transform: rotate(180deg); }
+.panel-toggle[data-look="hidden"]:hover { filter: brightness(1.12); }
+/* While dragging nothing eases: the panel and the handle stay under the pointer. */
+.panel-dragging .side-panel, .panel-dragging .panel-toggle, .panel-dragging .panel-toggle svg { transition: none !important; }
+.panel-dragging, .panel-dragging * { cursor: grabbing !important; user-select: none !important; }
+/* Draws the eye once, right after the panel was hidden (after the slide has finished). */
+.panel-toggle.nudge { animation: panel-nudge 0.6s ease-in-out 0.35s 3; }
 @keyframes panel-nudge { 50% { transform: translateX(-8px); } }
-@media (prefers-reduced-motion: reduce) { .panel-show.nudge { animation: none; } }
-.panel-show[hidden] { display: none !important; }
+@media (prefers-reduced-motion: reduce) { .panel-toggle.nudge { animation: none; } .panel-toggle, .panel-toggle svg { transition: none; } }
 
 /* Collapse button for the list / details (wide screens; phones use the sheet handle). */
 .body-collapse {
@@ -226,8 +227,7 @@ html[data-panel="hidden"] .panel-show { display: flex; }
 /* ---------------------------------------------------------------- phones (bottom sheet) */
 
 @media (max-width: 600px), (orientation: portrait) and (max-width: 900px) {
-  .body-collapse, .panel-hide, .panel-show { display: none !important; }
-  .panel-top { display: contents; }
+  .body-collapse, .panel-toggle { display: none !important; }
   html[data-panel="hidden"] { --panel-offset: var(--panel-w); }
   html[data-panel="hidden"] .side-panel { transform: none; visibility: visible; }
   .side-panel[data-body="collapsed"] { bottom: 0; overflow-y: auto; }
