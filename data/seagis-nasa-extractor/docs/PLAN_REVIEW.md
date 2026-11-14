@@ -2,9 +2,11 @@
 
 `seagis-extract plan` (metadata and local geometry only, **0 science bytes**). Outputs (gitignored, reproducible): `outputs/plan.json`, `outputs/estimate.csv` (one row per ROI × month, 511 rows), `outputs/plan_summary.txt`, and `outputs/membership/*.csv.gz` (grid-cell weight table per ROI).
 
-**PLAN SHA256: `b5a03161b2de7b911aa5b576be54545c651a4cea7e08341412bd5456a40d371e`** (calibrated backfill plan; the pilot ran under `85f62d82…`)
+**PLAN SHA256: `5e8befeee46ed29752fa91ee1f883682213efbeb3c1037402e6158ab21084918`** (calibrated backfill plan; the pilot ran under `85f62d82…`)
 
 The hash covers the plan contents and the SHA-256 of every input (catalog, ROI GeoJSON, configs). Timestamps are excluded, so re-running `plan` on unchanged inputs gives the same hash. Any change to the ROIs, the period, or the limits gives a new hash.
+
+> **Updated 2026-11-15 (one year):** the period is now **2025-11-15 .. 2026-11-14** for every source; the 2022-06-01 start below is superseded. Same 47 zones and 73 MUR boxes. Transfer: MUR 1.39 / **1.55** / 1.94 GiB (LOW / EXPECTED / HIGH), Copernicus 393 MiB per region (212 MiB with a shared chunk cache), about **1.9 GiB** in total. 2026-11-14 is not published yet and stays missing. Approved plan hash: `5e8befeee46ed29752fa91ee1f883682213efbeb3c1037402e6158ab21084918`. Data from the earlier partial fetch (2022-06..2024-02) was deleted; its manifest is in `outputs/archive_2022-2026/`.
 
 > **Updated 2026-11-15:** all sources now start **2022-06-01**, the first day of daily Copernicus salinity. The plan also covers the Copernicus Marine datasets no3, po4, pH and salinity. Their transfer is exact, 129.4 MiB; see [COPERNICUS_REVIEW.md](COPERNICUS_REVIEW.md). Combined transfer is about 481 MiB. The tables below are the MUR part.
 >
@@ -191,5 +193,5 @@ Backfill, after reviewing this calibrated plan:
 ```
 
 ```bash
-.venv/bin/seagis-extract fetch --approve-plan b5a03161b2de7b911aa5b576be54545c651a4cea7e08341412bd5456a40d371e
+.venv/bin/seagis-extract fetch --approve-plan 5e8befeee46ed29752fa91ee1f883682213efbeb3c1037402e6158ab21084918
 ```

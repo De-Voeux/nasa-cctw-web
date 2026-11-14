@@ -171,7 +171,14 @@ def cmd_fetch(args) -> int:
     root = cfg["_root"]
     plan_path = Path(args.plan) if args.plan else root / "outputs/plan.json"
     plan = json.loads(plan_path.read_text())
-    units = backfill.build_units(plan, cfg, regions=args.region, sources=args.source)
+    regions = list(args.region or [])
+    if args.batch is not None:
+        batches = (yaml.safe_load((root / "config/fetch_batches.yaml").read_text()) or {}).get("batches") or {}
+        if args.batch not in batches:
+            print(f"unknown batch {args.batch}; defined: {sorted(batches)}", file=sys.stderr)
+            return 2
+        regions += batches[args.batch]
+    units = backfill.build_units(plan, cfg, regions=regions or None, sources=args.source)
     if args.dry_run:
         mur = [u for u in units if u["kind"] == "mur"]
         jobs = sum(len(u["roi"]["mur_requests"]) for u in mur)
@@ -194,8 +201,10 @@ def cmd_fetch(args) -> int:
         print("Loaded from .env: " + ", ".join(sorted(names)) + " (values not shown)")
     try:
         bf = backfill.Backfill(root, cfg, plan, out_dir=root / "outputs/fetch", raw_dir=root / "data/raw/fetch",
-                               processed_dir=root / "data/processed", membership_dir=root / "outputs/membership")
-        summary = bf.run(units, max_units=args.max_units)
+                               processed_dir=root / "data/processed", membership_dir=root / "outputs/membership",
+                               log=lambda m: print(m, flush=True))
+        with backfill.RunLock(root / "outputs/fetch/fetch.lock"):
+            summary = bf.run(units, max_units=args.max_units)
     except pilot.FetchGuardError as e:
         print(f"ABORTED by download guard: {e}", file=sys.stderr)
         return 5
@@ -242,6 +251,7 @@ def main(argv=None) -> int:
     fe.add_argument("--plan", default=None, help="default outputs/plan.json")
     fe.add_argument("--approve-plan", default=None, help="the PLAN SHA256 you reviewed (required)")
     fe.add_argument("--region", action="append", help="limit to region id (repeatable)")
+    fe.add_argument("--batch", type=int, default=None, help="run one batch from execution.batches")
     fe.add_argument("--source", choices=["all", "mur", "copernicus"], default="all")
     fe.add_argument("--max-units", type=int, default=None, help="stop after N units (e.g. to measure speed)")
     fe.add_argument("--dry-run", action="store_true", help="count the work; send nothing")

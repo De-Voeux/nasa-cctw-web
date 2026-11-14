@@ -19,6 +19,7 @@ from __future__ import annotations
 import calendar
 import datetime as dt
 import hashlib
+import os
 import shutil
 import time
 import urllib.parse
@@ -239,6 +240,8 @@ class Backfill:
         free = shutil.disk_usage(self.root).free
         if free < 2e9:
             raise FetchError(f"only {free / 1e9:.1f} GB free on disk; need at least 2 GB")
+        if self.discard_raw and self.raw_dir.exists():
+            shutil.rmtree(self.raw_dir)          # leftovers of interrupted units; they are re-fetched
         todo = [u for u in units if not self._done(u)]
         skipped = len(units) - len(todo)
         if max_units is not None:
@@ -281,3 +284,27 @@ class Backfill:
         import json
         (self.out_dir / "fetch_summary.json").write_text(json.dumps(summary, indent=1))
         return summary
+
+
+class RunLock:
+    """One fetch at a time: two runs on the same units waste bandwidth and race on the same files."""
+
+    def __init__(self, path: Path):
+        self.path = Path(path)
+
+    def __enter__(self):
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        if self.path.exists():
+            try:
+                pid = int(self.path.read_text().strip())
+                os.kill(pid, 0)
+                raise FetchError(f"another fetch is running (pid {pid}); stop it first or wait")
+            except (ValueError, ProcessLookupError):
+                pass                                   # stale lock from a killed run
+            except PermissionError:
+                raise FetchError("another fetch is running (lock held)")
+        self.path.write_text(str(os.getpid()))
+        return self
+
+    def __exit__(self, *exc):
+        self.path.unlink(missing_ok=True)
