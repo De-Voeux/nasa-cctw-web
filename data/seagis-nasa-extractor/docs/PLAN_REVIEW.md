@@ -74,16 +74,57 @@ Shared fetch: per-ROI bboxes overlap very little (PH 2946 → 2829 unique cells;
 - Harmony rate limits and poll counts are unknown.
 - ROI coastlines come from admin polygons and are not yet compared with the MUR `mask`.
 
-## 7. Pilot (not run)
+## 7. Pilot (implemented, not run)
 
-7 days (2022-06-01 .. 2022-06-07) for PH-TAWI/bongao and ID-SOUTH-SUL/takalar. Estimated transfer 0.15 / 0.42 / 0.90 MiB and 28 API calls. The pilot checks units, timestamps, latitude order, grid origin, the coastline versus the MUR mask, nulls, actual file size against the estimate, and the outputs. **The `pilot` command is not implemented yet. It needs an Earthdata Login account.**
+**Scope.** The pilot runs for 7 days (2022-06-01 .. 2022-06-07) on PH-TAWI/bongao and ID-SOUTH-SUL/takalar, for MUR and for the three Copernicus datasets. Estimated MUR transfer is 0.15 / 0.42 / 0.90 MiB. A hard budget of 5 MiB aborts the run if it is exceeded.
+
+**What happens, in order:**
+
+1. **Gate.** The pilot refuses to start unless all of these hold:
+   - `--approve-plan` equals `plan_sha256`;
+   - plan.json still hashes to that value, so it has not been edited;
+   - every input file (catalog, ROI GeoJSON, configs) is unchanged;
+   - no zone without sea cells is left unaccepted.
+2. **MUR.** One Harmony job is sent per approved box. Only the boxes in `rois[].mur_requests` are allowed, and the time window selects exactly the granules dated 1–7 June. The Earthdata token is sent only to Earthdata/Harmony hosts and is stripped on redirects to S3.
+   - Files that arrive with an unexpected date are not downloaded.
+   - Any file whose cells fall outside the approved extent is **deleted**, and the run aborts with exit code 5.
+3. **Copernicus.** The official toolbox (`copernicusmarine.open_dataset`) is used with the ROI box, the 7 days and the surface level only. A subset outside the box plus one cell aborts the run.
+4. **Checks.** Each check is reported as PASS, WARN or FAIL:
+   - MUR cell count vs plan
+   - latitude order
+   - grid origin and index range (the assumed grid)
+   - timestamps
+   - units
+   - SST value range
+   - fill fraction
+   - days returned
+   - zone cells that MUR's own mask calls land or lake (the coastline check)
+   - transfer vs estimate
+   - Copernicus cell count, dates, depth, and sea cells valid / land cells empty
+5. **Outputs:**
+   - `outputs/pilot/pilot_report.json`
+   - `outputs/pilot/pilot_daily.csv` (`FINAL_SCHEMA`: area-weighted daily mean, min, max, std and coverage per zone and variable)
+   - `outputs/pilot/pilot_summary.txt`
+   - a resumable manifest, `pilot_manifest.jsonl`
+
+   Raw pilot files are kept in `data/raw/pilot/` (gitignored) for inspection.
+
+Exit codes: 0 PASS, 2 refused by the gate, 4 a check FAILED or an auth/HTTP error, 5 aborted by a download guard.
+
+**Not yet verified live.** Two Harmony details are only covered by fakes in tests: the comma-separated `variable=` parameter, and the job/link format. The pilot is what verifies them.
 
 ## 8. Approval
 
-After the pilot is built and run, the command will be:
+Preview the exact requests first. This sends nothing:
 
 ```bash
-.venv/bin/seagis-extract pilot --plan outputs/plan.json --approve-plan 85f62d82722154f277094cf0b8fd330d6118eed5283d36c5018ff6a5746bdbc7
+.venv/bin/seagis-extract pilot --dry-run
+```
+
+Run the pilot. Credentials are read from the gitignored `.env`, and values are never printed:
+
+```bash
+.venv/bin/seagis-extract pilot --approve-plan 85f62d82722154f277094cf0b8fd330d6118eed5283d36c5018ff6a5746bdbc7
 ```
 
 Backfill (`fetch`) needs a **new** plan, re-generated after the pilot updates the calibration, and its own approval.

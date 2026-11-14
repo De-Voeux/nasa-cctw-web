@@ -1,4 +1,4 @@
-"""seagis-extract command line. Only `catalog` is implemented so far."""
+"""seagis-extract command line: catalog, regions build, plan, pilot (fetch/process/validate/export pending)."""
 from __future__ import annotations
 
 import argparse
@@ -120,6 +120,41 @@ def cmd_plan(args) -> int:
     return 0
 
 
+def cmd_pilot(args) -> int:
+    import json
+
+    from . import auth, pilot
+
+    cfg = load_config(Path(args.config))
+    root = cfg["_root"]
+    plan_path = Path(args.plan) if args.plan else root / "outputs/plan.json"
+    plan = json.loads(plan_path.read_text())
+    if args.dry_run:
+        for line in pilot.dry_run_lines(plan, cfg):
+            print(line)
+        return 0
+    try:
+        pilot.verify_plan(plan, args.approve_plan, root)
+    except pilot.PlanGateError as e:
+        print(f"REFUSED: {e}", file=sys.stderr)
+        return 2
+    names = auth.apply_env(root / ".env")
+    if names:
+        print("Loaded from .env: " + ", ".join(sorted(names)) + " (values not shown)")
+    try:
+        report = pilot.run_pilot(root, cfg, plan, out_dir=root / "outputs/pilot", raw_dir=root / "data/raw/pilot",
+                                 membership_dir=root / "outputs/membership")
+    except (pilot.FetchGuardError,) as e:
+        print(f"ABORTED by download guard: {e}", file=sys.stderr)
+        return 5
+    except (auth.AuthError, pilot.FetchError) as e:
+        print(f"FAILED: {e}", file=sys.stderr)
+        return 4
+    print(pilot.summary(report))
+    print(f"\nWrote {root / 'outputs/pilot'}/pilot_report.json, pilot_daily.csv, pilot_summary.txt")
+    return 0 if report["status"] == "PASS" else 4
+
+
 def _not_yet(name):
     def run(_args):
         print(f"`{name}` is not implemented yet (see TASK.md).", file=sys.stderr)
@@ -144,7 +179,13 @@ def main(argv=None) -> int:
     pl.add_argument("--calibrate", action="store_true", help="(not implemented) approved small calibration sample")
     pl.add_argument("--max-sample-mb", type=float, default=None)
     pl.set_defaults(func=cmd_plan)
-    for name in ( "pilot", "fetch", "process", "validate", "export"):
+    pi = sub.add_parser("pilot", help="approved 7-day calibration run for the plan's pilot subregions")
+    pi.add_argument("--config", default="config/extraction.yaml")
+    pi.add_argument("--plan", default=None, help="default outputs/plan.json")
+    pi.add_argument("--approve-plan", default=None, help="the PLAN SHA256 you reviewed (required)")
+    pi.add_argument("--dry-run", action="store_true", help="print the exact requests; send nothing")
+    pi.set_defaults(func=cmd_pilot)
+    for name in ("fetch", "process", "validate", "export"):
         sp = sub.add_parser(name, help="not implemented yet")
         sp.add_argument("rest", nargs="*")
         sp.set_defaults(func=_not_yet(name))

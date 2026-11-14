@@ -1,6 +1,14 @@
 # SEAGIS NASA regional coastal extractor
 
-**Status (2026-11-15):** `catalog` and `regions build` are implemented. `catalog` has been run against live NASA metadata ([docs/CATALOG_REVIEW.md](docs/CATALOG_REVIEW.md)). `regions build` has produced candidate ROIs for the two pilot regions ([docs/ROI_REVIEW.md](docs/ROI_REVIEW.md)). `plan` has produced a metadata-only preflight ([docs/PLAN_REVIEW.md](docs/PLAN_REVIEW.md)). `pilot`, `fetch` and later steps are not implemented, and no SST data has been downloaded. Full specification: [TASK.md](TASK.md).
+**Status (2026-11-15):** `catalog`, `regions build`, `plan` and `pilot` are implemented.
+
+- `catalog` has been run against live NASA metadata ([docs/CATALOG_REVIEW.md](docs/CATALOG_REVIEW.md)).
+- `regions build` has produced 47 candidate zones in 17 regions ([docs/ROI_REVIEW.md](docs/ROI_REVIEW.md)).
+- `plan` has produced a metadata-only preflight ([docs/PLAN_REVIEW.md](docs/PLAN_REVIEW.md)).
+- `pilot` is built and tested against fakes, but has **not been run**: it needs the user's `--approve-plan`.
+- `fetch`, `process`, `validate` and `export` are not implemented.
+
+No science data has been downloaded. Pilot dependencies install with `uv pip install --python .venv '.[fetch]'`. Full specification: [TASK.md](TASK.md).
 
 ```bash
 uv venv .venv && uv pip install --python .venv '.[dev]'   # reinstall after code changes
