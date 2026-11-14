@@ -1,65 +1,109 @@
+import { answer } from "./ask.js"
+import { askAssistant, renderAnswer, MESSAGES } from "./assistant.js"
+
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c])
 
 /**
- * The conversation that opens above the ask input: the user's questions on the
- * right, the answers on the left. Closing it keeps the history; asking again
- * reopens it.
+ * "Ask SEAmon" chat (bottom left). Closed, it is only the input row; after the
+ * first question it opens into a glass panel with the conversation.
+ * Questions go to the assistant (POST /api/ask: verified sources and site data, with
+ * citations). While it is not set up or cannot be reached, `answer()` in ask.js gives the
+ * built-in local answers, which can carry "Show …" buttons that select a place on the globe.
+ *
+ * @param {HTMLElement} root
+ * @param {{locations:any[], onShow:(loc:any)=>void, getContext?:()=>{species?:string, country?:string|null}}} opts
+ *   getContext: the species and country selected in the panel, sent with the question
  */
-export class Chat {
-  /**
-   * @param {{bar:HTMLElement, panel:HTMLElement, log:HTMLElement, closeBtn:HTMLElement, onGoto:(id:string)=>void}} opts
-   */
-  constructor({ bar, panel, log, closeBtn, onGoto }) {
-    this.bar = bar
-    this.panel = panel
-    this.log = log
-    closeBtn.addEventListener("click", () => this.close())
-    log.addEventListener("click", (e) => {
-      const a = e.target.closest("[data-goto]")
-      if (!a) return
-      e.preventDefault()
-      onGoto(a.dataset.goto)
+export function mountChat(root, { locations, onShow, getContext = () => ({}) }) {
+  const log = root.querySelector("#chat-log")
+  const form = root.querySelector("#ask")
+  const input = root.querySelector("#ask-input")
+  const mic = root.querySelector("#mic")
+
+  const setOpen = (open) => {
+    root.dataset.open = String(open)
+    root.classList.toggle("glass", open)
+  }
+
+  const push = (who, html) => {
+    const el = document.createElement("div")
+    el.className = `msg ${who}`
+    el.innerHTML = html
+    log.append(el)
+    log.scrollTop = log.scrollHeight
+    return el
+  }
+
+  let asking = false
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault()
+    const q = input.value.trim()
+    if (!q) return input.focus()
+    if (asking) return
+    asking = true
+    setOpen(true)
+    push("user", esc(q))
+    input.value = ""
+    const bubble = push("bot", `<p class="thinking" aria-live="polite">Thinking…</p>`)
+    try {
+      const reply = await askAssistant(q, getContext())
+      if (reply.ok) {
+        bubble.innerHTML = renderAnswer(reply.data)
+        return
+      }
+      if (reply.reason !== "unavailable") {
+        bubble.innerHTML = MESSAGES[reply.reason]
+        return
+      }
+      const res = answer(q, locations)
+      const actions = (res.actions || [])
+        .map((a) => `<button type="button" class="show-btn" data-goto="${a.loc.id}">${esc(a.label)}</button>`)
+        .join("")
+      bubble.innerHTML = res.html + (actions ? `<div class="msg-actions">${actions}</div>` : "")
+      if (res.focus && res.autoShow) onShow(res.focus)
+    } finally {
+      asking = false
+      log.scrollTop = log.scrollHeight
+    }
+  })
+
+  log.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-goto]")
+    if (!b) return
+    e.preventDefault()
+    const loc = locations.find((l) => l.id === b.dataset.goto)
+    if (loc) onShow(loc)
+  })
+
+  root.querySelector("#chat-close").addEventListener("click", () => {
+    log.innerHTML = ""
+    setOpen(false)
+    input.focus()
+  })
+
+  // Voice input through the browser's speech recognition, when it exists.
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition
+  if (!SR) {
+    mic.hidden = true
+  } else {
+    let rec = null
+    mic.addEventListener("click", () => {
+      if (rec) return rec.stop()
+      rec = new SR()
+      rec.lang = "en-US"
+      rec.interimResults = true
+      rec.onresult = (ev) => (input.value = [...ev.results].map((r) => r[0].transcript).join(""))
+      rec.onend = () => {
+        rec = null
+        mic.setAttribute("aria-pressed", "false")
+        input.focus()
+      }
+      rec.onerror = rec.onend
+      mic.setAttribute("aria-pressed", "true")
+      rec.start()
     })
   }
 
-  open() {
-    this.panel.hidden = false
-    this.bar.classList.add("has-chat")
-  }
-
-  close() {
-    this.panel.hidden = true
-    this.bar.classList.remove("has-chat")
-  }
-
-  /** A question typed by the user. Plain text, escaped here. */
-  user(text) {
-    this._add("user", `<p>${esc(text)}</p>`)
-  }
-
-  /** An answer. `html` must already be escaped (see ask.js). */
-  bot(html) {
-    this._add("bot", html)
-  }
-
-  /** A bubble that says the answer is on its way; call `.resolve(html)` when it arrives. */
-  pending() {
-    const msg = this._add("bot", `<p class="thinking" aria-live="polite">Thinking…</p>`)
-    return {
-      resolve: (html) => {
-        msg.firstChild.innerHTML = html
-        this.log.scrollTop = this.log.scrollHeight
-      },
-    }
-  }
-
-  _add(role, html) {
-    const msg = document.createElement("div")
-    msg.className = `msg ${role}`
-    msg.innerHTML = `<div class="bubble">${html}</div>`
-    this.log.append(msg)
-    this.open()
-    this.log.scrollTop = this.log.scrollHeight
-    return msg
-  }
+  setOpen(false)
 }

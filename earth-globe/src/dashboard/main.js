@@ -14,23 +14,13 @@ import { mountDatePills } from "./datePills.js"
 import { SidePanel } from "./sidePanel.js"
 import { FilterMenu } from "./filterMenu.js"
 import { mountFlags } from "./flags.js"
-import { Chat } from "./chat.js"
-import { answer } from "./ask.js"
-import { askAssistant, renderAnswer, MESSAGES } from "./assistant.js"
-import { waveIcon, thermometerIcon, dropletIcon, rainIcon } from "./icons.js"
-import { initLayout } from "./layout.js"
+import { mountChat } from "./chat.js"
+import { mountLayersMenu } from "./layersMenu.js"
 
 const HOME = { lat: 5, lon: 117, altitude: 1.35 }
-const EXAMPLE_QUESTION = "Which area has the most ice-ice case?"
 const DEFAULT_SPECIES = "Kappaphycus alvarezii"
 const DEFAULT_COUNTRY = "Indonesia"
 const $ = (id) => document.getElementById(id)
-
-// --------------------------------------------------------------- layout
-
-// Sizes the globe canvas before the globe is built, so it starts at the right
-// resolution instead of jumping once the first frame is drawn.
-initLayout()
 
 // --------------------------------------------------------------- globe
 
@@ -48,10 +38,10 @@ window.globe = globe // handy in the console
 globe.on("error", (err) => console.error(err))
 globe.ready.then(() => globe.flyTo({ ...HOME, duration: 2400 }))
 
-// --------------------------------------------------------------- data and filters
+// --------------------------------------------------------------- data and filters (sidebar, Radit)
 
 const byId = new Map(LOCATIONS.map((l) => [l.id, l]))
-// The assessment of every place. None exists yet, so all are "Insufficient Data" (see data/stress.js).
+// The assessment of every place. None exists yet; see data/stress.js for the demo levels.
 const assessments = new Map(LOCATIONS.map((l) => [l.id, assess(l)]))
 
 // Every taxon named in the leads, the MVP candidate first.
@@ -88,11 +78,10 @@ function rows() {
     .map((loc) => ({ loc, a: assessments.get(loc.id) }))
 }
 
-// --------------------------------------------------------------- overlay
+// --------------------------------------------------------------- overlay (markers with level icons)
 
 const overlay = new GlobeOverlay(globe, $("overlay"))
 
-// Country and sea names: the lowest priority, so they step aside for pins and pin names.
 for (const l of PLACE_LABELS) {
   const el = document.createElement("span")
   el.className = `place-label${l.sea ? " sea" : ""}`
@@ -100,31 +89,26 @@ for (const l of PLACE_LABELS) {
   overlay.add({ lat: l.lat, lon: l.lon, el, group: "labels", minFacing: 0.25, declutter: true, priority: -1 })
 }
 
-const pins = new Map() // id -> { marker, name, el, nameEl }
+/** id → { el, item } */
+const pins = new Map()
 for (const loc of LOCATIONS) {
+  const a = assessments.get(loc.id)
+  const lv = LEVELS[a.level]
   const el = document.createElement("button")
   el.className = "marker"
-  el.setAttribute("aria-label", `${loc.name}, ${loc.country}: ${loc.concern} mentioned for ${loc.taxa.length} taxa`)
+  el.dataset.level = a.level
   el.setAttribute("aria-pressed", "false")
-  el.innerHTML = waveIcon + (loc.taxa.length > 1 ? `<span class="count">${loc.taxa.length}</span>` : "")
+  el.setAttribute("aria-label", `${loc.name}, ${loc.country}: ${lv.label}`)
+  el.innerHTML = `<span class="marker-dot"><img src="${lv.icon}" alt="" draggable="false"></span><span class="marker-name">${loc.name}</span>`
   el.addEventListener("click", () => select(loc.id))
-  const nameEl = document.createElement("span")
-  nameEl.className = "place-label marker-name"
-  nameEl.textContent = loc.name
-  const marker = overlay.add({ lat: loc.lat, lon: loc.lon, el, group: "markers", minFacing: 0.15, solid: true })
-  // The name sits under its pin (dy), and is hidden when it would land on another pin or name.
-  const name = overlay.add({ lat: loc.lat, lon: loc.lon, el: nameEl, group: "names", minFacing: 0.15, declutter: true, dy: 36, priority: loc.taxa.length })
-  pins.set(loc.id, { marker, name, el, nameEl })
+  const item = overlay.add({ lat: loc.lat, lon: loc.lon, el, group: "markers", minFacing: 0.15, solid: true })
+  pins.set(loc.id, { el, item })
 }
 
-let selectedId = null
-
 function setPressed(id) {
-  selectedId = id
   for (const [k, p] of pins) {
     p.el.setAttribute("aria-pressed", String(k === id))
     p.el.style.zIndex = k === id ? "2" : ""
-    p.name.priority = (byId.get(k).taxa.length || 0) + (k === id ? 1000 : 0)
   }
 }
 
@@ -132,16 +116,12 @@ function setPressed(id) {
 function paintPins() {
   for (const [id, p] of pins) {
     const loc = byId.get(id)
-    const show = hasSpecies(loc)
-    overlay.setHidden(p.marker, !show)
-    overlay.setHidden(p.name, !show)
-    const dim = !passes(loc)
-    p.el.classList.toggle("is-dim", dim)
-    p.nameEl.classList.toggle("is-dim", dim)
+    overlay.setHidden(p.item, !hasSpecies(loc))
+    p.el.classList.toggle("is-dim", !passes(loc))
   }
 }
 
-// --------------------------------------------------------------- panel
+// --------------------------------------------------------------- side panel (Radit)
 
 const panel = new SidePanel($("panel-body"), {
   root: document.querySelector(".side-panel"),
@@ -152,6 +132,7 @@ const panel = new SidePanel($("panel-body"), {
 function select(id) {
   const loc = byId.get(id)
   if (!loc) return
+  setSheet(true)
   setPressed(id)
   panel.showLocation(loc, assessments.get(id))
   const alt = Math.min(globe.getView().altitude, 0.7)
@@ -241,42 +222,41 @@ offerRegions()
 paintPins()
 panel.showList(rows())
 
-// --------------------------------------------------------------- ask bar and conversation
+// --------------------------------------------------------------- bottom sheet (phones)
 
-const chat = new Chat({
-  bar: $("ask-bar"),
-  panel: $("chat"),
-  log: $("chat-log"),
-  closeBtn: $("chat-close"),
-  onGoto: (id) => select(id),
+/** Must match the bottom-sheet media query in dashboard.css. */
+const SHEET = matchMedia("(max-width: 600px), (orientation: portrait) and (max-width: 900px)")
+const handle = $("sheet-handle")
+
+function setSheet(expanded) {
+  document.body.dataset.sheet = expanded && SHEET.matches ? "expanded" : "collapsed"
+  const open = document.body.dataset.sheet === "expanded"
+  handle.setAttribute("aria-expanded", String(open))
+  handle.setAttribute("aria-label", open ? "Show less of the list" : "Show more of the list")
+}
+setSheet(false)
+SHEET.addEventListener("change", () => setSheet(false))
+handle.addEventListener("click", () => setSheet(document.body.dataset.sheet !== "expanded"))
+// Using the search, species, flags or filters needs room: open the sheet.
+document.querySelector(".side-panel").addEventListener("focusin", (e) => {
+  if (e.target !== handle) setSheet(true)
+})
+// Swipe the handle up or down.
+let touchY = null
+handle.addEventListener("touchstart", (e) => (touchY = e.touches[0].clientY), { passive: true })
+handle.addEventListener("touchend", (e) => {
+  if (touchY === null) return
+  const dy = e.changedTouches[0].clientY - touchY
+  if (Math.abs(dy) > 30) setSheet(dy < 0)
+  touchY = null
 })
 
-let asking = false
+// --------------------------------------------------------------- chat
 
-$("ask").addEventListener("submit", async (e) => {
-  e.preventDefault()
-  if (asking) return
-  const input = $("ask-input")
-  const q = input.value.trim() || EXAMPLE_QUESTION
-  input.value = ""
-  chat.user(q)
-  asking = true
-  const bubble = chat.pending()
-  try {
-    // The assistant (Worker + Supabase) answers from verified sources. While it is not set up
-    // or cannot be reached, the built-in answers below keep the ask bar useful.
-    const reply = await askAssistant(q, { species: state.species, country: state.country })
-    if (reply.ok) return bubble.resolve(renderAnswer(reply.data))
-    if (reply.reason !== "unavailable") return bubble.resolve(MESSAGES[reply.reason])
-    const res = answer(q, LOCATIONS)
-    bubble.resolve(res.html)
-    if (!res.focus) return
-    if (res.openDetail) return select(res.focus.id)
-    setPressed(res.focus.id)
-    globe.flyTo({ lat: res.focus.lat, lon: res.focus.lon, altitude: 0.9, duration: 1600 })
-  } finally {
-    asking = false
-  }
+mountChat($("chat"), {
+  locations: LOCATIONS,
+  onShow: (loc) => select(loc.id),
+  getContext: () => ({ species: state.species, country: state.country }),
 })
 
 // --------------------------------------------------------------- controls
@@ -287,50 +267,9 @@ function zoomBy(factor) {
 }
 $("zoom-in").addEventListener("click", () => zoomBy(0.65))
 $("zoom-out").addEventListener("click", () => zoomBy(1.5))
-$("zoom-home").addEventListener("click", () => globe.flyTo({ ...HOME, duration: 1600 }))
-
-// The data layers. None is connected yet, so each row says so instead of offering a switch.
-const LAYERS = [
-  { name: "Sea Water Temperature", source: "NASA GHRSST MUR L4 · 0.01°", icon: thermometerIcon },
-  { name: "Salinity", source: "Copernicus Global Ocean Physics · 0.083°", icon: dropletIcon },
-  { name: "Rainfall", source: "NASA GPM IMERG · Open-Meteo forecast", icon: rainIcon },
-]
-
-const layersBtn = $("layers-btn")
-const layersMenu = $("layers-menu")
-layersMenu.innerHTML = `
-  <h2>Layers</h2>
-  <ul class="layer-list">
-    ${LAYERS.map(
-      (l) => `
-      <li class="layer-row">
-        <span class="lr-icon">${l.icon}</span>
-        <span class="lr-text"><span class="lr-name">${l.name}</span><span class="lr-src">${l.source}</span></span>
-        <span class="lr-state">Not connected yet</span>
-      </li>`,
-    ).join("")}
-  </ul>`
-
-layersBtn.addEventListener("click", () => {
-  const open = layersMenu.hidden
-  layersMenu.hidden = !open
-  layersBtn.setAttribute("aria-expanded", String(open))
+$("brand").addEventListener("click", () => {
+  deselect()
+  globe.flyTo({ ...HOME, duration: 1600 })
 })
 
-function closeLayers() {
-  layersMenu.hidden = true
-  layersBtn.setAttribute("aria-expanded", "false")
-}
-
-// a tap outside the menu closes it, so the map controls are reachable again
-document.addEventListener("pointerdown", (e) => {
-  if (layersMenu.hidden) return
-  if (layersMenu.contains(e.target) || layersBtn.contains(e.target)) return
-  closeLayers()
-})
-document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && !layersMenu.hidden) {
-    closeLayers()
-    layersBtn.focus()
-  }
-})
+mountLayersMenu($("layers-btn"), $("layers-menu"))
