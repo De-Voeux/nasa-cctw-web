@@ -1,0 +1,39 @@
+# Administrative boundary sources. Files live under data/boundaries/ (gitignored).
+# Downloaded 2026-11-15 with the user's approval; metadata from https://www.geoboundaries.org/api/current/gbOpen/<ISO>/<ADM>/
+sources:
+  PHL-ADM2:
+    name: geoBoundaries gbOpen PHL
+    level: ADM2 (Provinces)
+    url: https://github.com/wmgeolab/geoBoundaries/raw/41af8f1/releaseData/gbOpen/PHL/ADM2/geoBoundaries-PHL-ADM2.geojson
+    path: data/boundaries/geoboundaries/PHL-ADM2/geoBoundaries-PHL-ADM2.geojson
+    bytes: 444406710
+    sha256: 99ee15cfc487c2315de65b630afac1e83c25b3e249927772b3bdb019335b64c6
+    license: CC BY 3.0 IGO
+    upstream: NAMRIA, Philippines Statistics Authority (PSA), OCHA Philippines
+    year_represented: 2020
+    features: 86   # API reports admUnitCount 87; file has 86
+  PHL-ADM3:
+    name: geoBoundaries gbOpen PHL
+    level: ADM3 (Municipalities)
+    url: https://github.com/wmgeolab/geoBoundaries/raw/9469f09/releaseData/gbOpen/PHL/ADM3/geoBoundaries-PHL-ADM3.geojson
+    path: data/boundaries/geoboundaries/PHL-ADM3/geoBoundaries-PHL-ADM3.geojson
+    bytes: 532129402
+    sha256: 0a125b1716b584ac6728ca0249beb49f29636966b6ecb8974bc0c36db01d4624
+    license: CC BY 3.0 IGO
+    upstream: NAMRIA, Philippines Statistics Authority (PSA), OCHA Philippines
+    year_represented: 2020
+    features: 1647
+  IDN-ADM2:
+    name: geoBoundaries gbOpen IDN
+    level: ADM2 (Regencies / cities)
+    url: https://github.com/wmgeolab/geoBoundaries/raw/9469f09/releaseData/gbOpen/IDN/ADM2/geoBoundaries-IDN-ADM2.geojson
+    path: data/boundaries/geoboundaries/IDN-ADM2/geoBoundaries-IDN-ADM2.geojson
+    bytes: 158892831
+    sha256: 947cedc058888c0c2b2628071d289956c85fe279adb369dcf1327ce2236a5602
+    license: CC BY 3.0 IGO
+    upstream: Badan Pusat Statistik (BPS), World Food Programme, OCHA ROAP
+    year_represented: 2020
+    features: 519
+attribution: >-
+  Boundaries: geoBoundaries (Runfola et al. 2020, PLoS ONE 15(4): e0231866), CC BY 3.0 IGO;
+  upstream NAMRIA/PSA/OCHA (PH) and BPS/WFP/OCHA ROAP (ID).

@@ -1,0 +1,32 @@
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+.netrc
+*.netrc
+
+# Downloaded and derived science data
+data/raw/*
+data/processed/*
+data/boundaries/*
+!data/**/.gitkeep
+*.part
+*.nc
+*.nc4
+*.h5
+*.parquet
+
+# Run outputs (plan/estimate are reviewed artifacts; commit deliberately if wanted)
+outputs/*
+!outputs/.gitkeep
+!outputs/qa/
+outputs/qa/*
+!outputs/qa/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+*.egg-info/
+.cache/

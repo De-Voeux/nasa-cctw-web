@@ -1,0 +1,25 @@
+# Product IDs are resolved by `catalog` (see docs/CATALOG_REVIEW.md). SST only: chlorophyll-a dropped 2026-11-15.
+period:
+  start: '2020-11-15'
+  end: '2026-11-14'
+regions_file: config/regions.yaml
+products_file: config/products.yaml
+roi_directory: data/roi
+roi:
+  seaward_buffer_km: 5      # agreed 2026-11-15; candidate zone only, not a farm extent
+  pilot_first: [PH-TAWI, ID-SOUTH-SUL]
+products:
+  mur_sst:
+    enabled: true
+    temporal_resolution: daily
+    variables: [analysed_sst]
+    endpoint: discover_from_catalog
+execution:
+  batch: monthly
+  concurrency: 2
+  raw_retention: discard_after_validation
+  metadata_only_preflight: true
+  require_approval: true
+  max_download_gb: 20
+  max_disk_gb: 30
+  retries: 5

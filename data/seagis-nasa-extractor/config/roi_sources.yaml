@@ -1,0 +1,29 @@
+# Which admin feature defines each candidate subregion. Names were checked against the
+# downloaded files on 2026-11-15 (exact shapeName, one feature each). Region ids match regions.yaml.
+regions:
+  PH-TAWI:
+    source: PHL-ADM3
+    subregions:
+      bongao: Bongao
+      sitangkai: Sitangkai
+      sibutu: Sibutu
+  ID-SOUTH-SUL:
+    source: IDN-ADM2
+    subregions:
+      takalar: Takalar
+      jeneponto: Jeneponto
+      pangkep: Pangkajene Dan Kepulauan
+      selayar: Kepulauan Selayar
+    # Agreed 2026-11-15: limit the two archipelagic regencies to islands near their main
+    # landmass. Thresholds sit in the natural distance gaps measured on the source polygons:
+    # Pangkep: nearest parts lie within 57.5 km, the next one at 118.7 km (keeps the Spermonde group);
+    # Selayar: nearest parts lie within 30.0 km, the next one at 45.8 km (drops Takabonerate and the southern islands).
+    keep_parts_within_km_of_main:
+      pangkep: 60
+      selayar: 35
+    review_notes: >-
+      Pangkep and Selayar limited to near-main-landmass islands; dropped outer islands
+      still count as land and as neighbouring coast.
+pilot_subregions:          # small units for the 7-day pilot (task criterion 4)
+  PH-TAWI: bongao
+  ID-SOUTH-SUL: takalar
