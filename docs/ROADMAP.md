@@ -3,8 +3,11 @@
 ## 0. Evidence and data discovery
 
 - Confirm the challenge and at least one NASA resource from its official Resources tab.
+- Follow the [research scope](RESEARCH_SCOPE.md): verify taxa, natural versus cultivated distribution, disease/syndrome records, environmental needs, cultivation impacts, and the historical data inventory.
+- Check every entry in the [candidate host and region table](../research/evidence/CANDIDATE_HOST_REGIONS.md) against the original paper before using it in the product.
 - Select a source-verified cultivated species and region.
 - Review species/stressor literature and verify provider products at that region.
+- Assess whether a prediction target has labelled data, a simple baseline, and held-out historical validation; otherwise keep it outside the MVP.
 
 ## 1. Data foundation
 
