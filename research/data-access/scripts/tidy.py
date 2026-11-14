@@ -3,13 +3,19 @@
 Raw files are kept untouched so provenance is preserved. This script only reads
 them and writes derived tables.
 
-Usage: python3 tidy.py
-Writes: data/power_monthly.csv, data/power_daily.csv, data/mur_sst.csv
+The daily table is skipped by default. It is by far the largest output, roughly
+98 MB for 19 sites, and no analysis reads it: trend.py uses the monthly table
+and the MUR table only. Pass --with-daily to build it anyway.
+
+Usage: python3 tidy.py [--with-daily]
+Writes: data/power_monthly.csv, data/mur_sst.csv (and data/power_daily.csv
+        only with --with-daily)
 """
 import csv
 import json
 import os
 import re
+import sys
 from datetime import date, timedelta
 
 MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN",
@@ -148,5 +154,8 @@ def write_rows(path, fields, rows):
 if __name__ == "__main__":
     sites = json.load(open("sites.json"))
     print("power monthly rows:", convert_power_monthly(sites, "data/power_monthly.csv"))
-    print("power daily rows:  ", convert_power_daily(sites, "data/power_daily.csv"))
+    if "--with-daily" in sys.argv:
+        print("power daily rows:  ", convert_power_daily(sites, "data/power_daily.csv"))
+    else:
+        print("power daily rows:   skipped, pass --with-daily to build the derived table")
     print("mur rows:          ", convert_mur(sites, "data/mur_sst.csv"))
