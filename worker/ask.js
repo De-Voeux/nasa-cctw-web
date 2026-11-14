@@ -1,11 +1,12 @@
 // POST /api/ask: the Ask SEAmon assistant (design: docs/Radit/RAG_DESIGN.md).
 //
-// The model may only call four tools: search_evidence (verified literature), get_series
+// The model (OpenRouter free models by default, with key and model fallback in llm.js) may only call four tools: search_evidence (verified literature), get_series
 // and list_sites (per-site measurements) and final_answer. Everything it states must be
 // backed by what those tools returned in THIS request; validateAnswer() rejects anything
 // else, and an answer with nothing behind it becomes an explicit "not enough evidence".
 
-const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
+import { createLlm } from "./llm.js"
+
 const MAX_MODEL_TURNS = 5
 const MAX_TOOL_CALLS = 4
 const MAX_QUESTION = 500
@@ -204,7 +205,8 @@ export async function handleAsk(request, env, { fetchImpl = fetch } = {}) {
   const question = typeof body?.question === "string" ? body.question.trim() : ""
   if (question.length < 3 || question.length > MAX_QUESTION) return json(400, { error: "bad_question", max: MAX_QUESTION })
 
-  if (!env.ANTHROPIC_API_KEY || !env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) return json(503, { error: "assistant_unavailable" })
+  const llm = createLlm(env, fetchImpl)
+  if (!llm.configured || !env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) return json(503, { error: "assistant_unavailable" })
 
   if (env.ASK_LIMITER) {
     const ip = request.headers.get("cf-connecting-ip") ?? "unknown"
@@ -261,30 +263,33 @@ export async function handleAsk(request, env, { fetchImpl = fetch } = {}) {
   }
 
   const messages = [
+    { role: "system", content: SYSTEM_PROMPT },
     {
       role: "user",
       content: `Question: ${question}${body.species ? `\nSelected species: ${body.species}` : ""}${body.country ? `\nSelected country: ${body.country}` : ""}`,
     },
   ]
+  const tools = TOOLS.map((t) => ({ type: "function", function: { name: t.name, description: t.description, parameters: t.input_schema } }))
   let toolCalls = 0
   let retried = false
+  let nudged = false
   let answer = null
 
   try {
     for (let turn = 0; turn < MAX_MODEL_TURNS && !answer; turn++) {
-      const res = await readJson(
-        await fetchImpl(ANTHROPIC_URL, {
-          method: "POST",
-          headers: { "x-api-key": env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-          body: JSON.stringify({ model: env.ASK_MODEL || "claude-sonnet-5-5", max_tokens: 1200, system: SYSTEM_PROMPT, tools: TOOLS, tool_choice: { type: "any" }, messages }),
-        }),
-        "model",
-      )
-      const uses = (res.content ?? []).filter((b) => b.type === "tool_use")
-      if (uses.length === 0) break
-      messages.push({ role: "assistant", content: res.content })
+      const reply = await llm.chat({ messages, tools })
+      const calls = reply.toolCalls
+      // Keep only what the API needs back; providers add fields of their own.
+      messages.push({ role: "assistant", content: reply.message.content ?? null, ...(calls.length ? { tool_calls: reply.message.tool_calls } : {}) })
+      if (calls.length === 0) {
+        // Free models sometimes answer in plain text. Plain text is never shown: ask once for the tools.
+        if (nudged) break
+        nudged = true
+        messages.push({ role: "user", content: "Use the tools. Finish by calling final_answer; do not answer in plain text." })
+        continue
+      }
       const results = []
-      for (const u of uses) {
+      for (const u of calls) {
         if (u.name === "final_answer") {
           const v = validateAnswer(u.input, ctx)
           if (v.ok) {
@@ -293,25 +298,25 @@ export async function handleAsk(request, env, { fetchImpl = fetch } = {}) {
           }
           if (retried) break
           retried = true
-          results.push({ type: "tool_result", tool_use_id: u.id, is_error: true, content: `Rejected: ${v.problem}. Fix it and call final_answer again, or abstain.` })
+          results.push({ role: "tool", tool_call_id: u.id, content: `Rejected: ${v.problem}. Fix it and call final_answer again, or abstain.` })
           continue
         }
         if (++toolCalls > MAX_TOOL_CALLS) {
-          results.push({ type: "tool_result", tool_use_id: u.id, is_error: true, content: "Tool call limit reached. Call final_answer now." })
+          results.push({ role: "tool", tool_call_id: u.id, content: "Tool call limit reached. Call final_answer now." })
           continue
         }
         let out
         try {
-          out = await runTool(u.name, u.input)
+          out = u.input === null ? { error: "arguments were not valid JSON" } : await runTool(u.name, u.input)
         } catch (e) {
           console.log(JSON.stringify({ event: "tool_error", tool: u.name, message: String(e.message).slice(0, 200) }))
           out = { error: "tool failed" }
         }
-        results.push({ type: "tool_result", tool_use_id: u.id, content: JSON.stringify(out) })
+        results.push({ role: "tool", tool_call_id: u.id, content: JSON.stringify(out) })
       }
       if (answer) break
       if (results.length === 0) break
-      messages.push({ role: "user", content: results })
+      messages.push(...results)
     }
   } catch (e) {
     console.log(JSON.stringify({ event: "ask_error", message: String(e.message).slice(0, 200), ms: Date.now() - started }))

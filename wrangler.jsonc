@@ -5,7 +5,8 @@
   //
   // Secrets the script needs (set with `wrangler secret put`; until all three exist,
   // /api/ask answers 503 and the page falls back to its built-in answers):
-  //   ANTHROPIC_API_KEY, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
+  //   OPENROUTER_API_KEY (more keys as OPENROUTER_API_KEY_2 to _9, or a comma list in
+  //   OPENROUTER_API_KEYS, tried in turn), SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY
   "name": "seagis-atlas",
   "main": "./worker/index.js",
   "compatibility_date": "2026-11-14",

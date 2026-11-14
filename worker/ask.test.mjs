@@ -3,23 +3,26 @@ import assert from "node:assert/strict"
 import { handleAsk, validateAnswer, summarize, ABSTAIN } from "./ask.js"
 
 // All sources and numbers below are test fixtures, not scientific data.
-const ENV = { ANTHROPIC_API_KEY: "k", SUPABASE_URL: "https://x.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "s" }
+const ENV = { OPENROUTER_API_KEY: "k1", SUPABASE_URL: "https://x.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "s" }
 const CHUNK = { chunk_id: 7, source_id: "t:one", citation: "Fixture (2026).", doi: null, url: null, section: "S", page: 3, content: "fixture text", similarity: 0.9, keyword_hit: false }
 const ask = (q, env = ENV, init = {}) =>
   new Request("https://site/api/ask", { method: "POST", body: JSON.stringify({ question: q }), headers: { "content-type": "application/json" }, ...init })
 
-const use = (name, input, id = name + Math.random()) => ({ type: "tool_use", id, name, input })
+const use = (name, input, id = name + Math.random()) => ({ id, name, input })
 
-/** A fake network: `script` is the list of model turns; rpc maps function names to handlers. */
+/** A fake network: `script` is the list of model turns (tool calls each); rpc maps function names to handlers.
+ *  A turn may also be { status: 429 } to simulate a failing provider call. */
 function net(script, rpc = {}) {
   const calls = { model: [], rpc: [], embed: 0 }
   const fetchImpl = async (url, init) => {
     const body = init?.body ? JSON.parse(init.body) : {}
-    if (url.includes("api.anthropic.com")) {
-      calls.model.push(body)
+    if (url.includes("/chat/completions")) {
+      calls.model.push({ ...body, key: init.headers.authorization })
       const turn = script.shift()
       assert.ok(turn, "model called more times than scripted")
-      return new Response(JSON.stringify({ content: turn }), { status: 200 })
+      if (turn.status) return new Response("fail", { status: turn.status })
+      const tool_calls = turn.map((u) => ({ id: u.id, type: "function", function: { name: u.name, arguments: JSON.stringify(u.input) } }))
+      return new Response(JSON.stringify({ choices: [{ message: { role: "assistant", content: null, tool_calls: tool_calls.length ? tool_calls : undefined } }] }), { status: 200 })
     }
     if (url.endsWith("/functions/v1/embed")) {
       calls.embed++
@@ -48,7 +51,7 @@ test("rejects the wrong method, bad JSON and bad questions", async () => {
 
 test("is unavailable (503) until its secrets are set, so the page can fall back", async () => {
   assert.equal((await handleAsk(ask("a real question"), {})).status, 503)
-  assert.equal((await handleAsk(ask("a real question"), { ...ENV, ANTHROPIC_API_KEY: "" })).status, 503)
+  assert.equal((await handleAsk(ask("a real question"), { ...ENV, OPENROUTER_API_KEY: "" })).status, 503)
 })
 
 test("rate limit answers 429 before any model call", async () => {
@@ -75,8 +78,9 @@ test("literature question: searches in English, answers with a resolved citation
   assert.equal(calls.embed, 1)
   assert.equal(calls.rpc[0][1].filter_species, "Kappaphycus alvarezii")
   assert.equal(calls.rpc[0][1].query_text, "ice-ice study")
-  // the model is told to use tools every turn, and the tool result carries the chunk text as data
-  assert.equal(calls.model[0].tool_choice.type, "any")
+  // OpenAI-style request: system prompt first, tools as functions
+  assert.equal(calls.model[0].messages[0].role, "system")
+  assert.equal(calls.model[0].tools[0].type, "function")
 })
 
 test("a citation the tools never returned is rejected, then the model may fix it", async () => {
@@ -139,7 +143,7 @@ test("measurements: the model gets a computed summary and may cite only what was
     ],
     { env_get_series: () => rows },
   )
-  const summary = JSON.parse(JSON.parse(JSON.stringify(calls.model[1].messages.at(-1).content[0].content))).summary
+  const summary = JSON.parse(calls.model[1].messages.at(-1).content).summary
   assert.equal(summary.mean, 30)
   assert.equal(summary.n_missing, 1)
   assert.deepEqual(summary.latest, { day: "2026-11-03", value: 31 })
@@ -175,4 +179,79 @@ test("a failing tool does not crash the request or leak its error text", async (
 test("summarize handles an empty series", () => {
   assert.deepEqual(summarize([], "a", "b"), { n_days_with_value: 0, n_rows: 0, from: "a", to: "b" })
   assert.ok(ABSTAIN.abstained)
+})
+
+// ------------------------------------------------------------------ keys, models and fallback
+import { collectKeys, modelList, DEFAULT_MODELS } from "./llm.js"
+
+const FINAL_ABSTAIN = [use("final_answer", { answer_md: "none", claims: [], data_used: [], confidence: "none", abstained: true })]
+
+test("keys are collected from every field and de-duplicated", () => {
+  const keys = collectKeys({ OPENROUTER_API_KEY: "a", OPENROUTER_API_KEY_2: "b", OPENROUTER_API_KEY_3: " ", OPENROUTER_API_KEYS: "c, a ,d" })
+  assert.deepEqual(keys, ["a", "b", "c", "d"])
+  assert.deepEqual(collectKeys({}), [])
+  assert.deepEqual(modelList({ ASK_MODELS: "m1, m2" }), ["m1", "m2"])
+  assert.deepEqual(modelList({}), DEFAULT_MODELS)
+})
+
+test("a rate-limited key falls through to the next key", async () => {
+  const env = { ...ENV, OPENROUTER_API_KEY_2: "k2" }
+  const { body, calls } = await run("question here", [{ status: 429 }, FINAL_ABSTAIN], {}, env)
+  assert.equal(body.abstained, true)
+  assert.deepEqual(calls.model.map((m) => m.key), ["Bearer k1", "Bearer k2"])
+  assert.equal(calls.model[0].model, calls.model[1].model) // same model, second key
+})
+
+test("a model that rejects the request is skipped, and the next model is tried", async () => {
+  const env = { ...ENV, ASK_MODELS: "m1,m2" }
+  const { body, calls } = await run("question here", [{ status: 400 }, FINAL_ABSTAIN], {}, env)
+  assert.equal(body.abstained, true)
+  assert.deepEqual(calls.model.map((m) => m.model), ["m1", "m2"])
+})
+
+test("a key refused with 401 is not used again in the same request", async () => {
+  const env = { ...ENV, OPENROUTER_API_KEY_2: "k2", ASK_MODELS: "m1,m2" }
+  const { calls } = await run("question here", [{ status: 401 }, { status: 429 }, FINAL_ABSTAIN], {}, env)
+  // k1 dies on m1; k2 is rate limited on m1; m2 goes straight to k2 (k1 skipped)
+  assert.deepEqual(calls.model.map((m) => `${m.model}/${m.key}`), ["m1/Bearer k1", "m1/Bearer k2", "m2/Bearer k2"])
+})
+
+test("when every model and key fails the request ends in 502, without leaking details", async () => {
+  const env = { ...ENV, ASK_MODELS: "m1" }
+  const n = net([{ status: 500 }])
+  const res = await handleAsk(ask("question here"), env, { fetchImpl: n.fetchImpl })
+  assert.equal(res.status, 502)
+  assert.deepEqual(await res.json(), { error: "assistant_failed" })
+})
+
+test("the attempt budget stops a long chain of failures", async () => {
+  const env = { ...ENV, OPENROUTER_API_KEYS: "a,b,c,d", ASK_MODELS: "m1,m2,m3" }
+  const n = net(Array.from({ length: 20 }, () => ({ status: 429 })))
+  const res = await handleAsk(ask("question here"), env, { fetchImpl: n.fetchImpl })
+  assert.equal(res.status, 502)
+  assert.ok(n.calls.model.length <= 6)
+})
+
+test("plain text with no tool call is never shown: one nudge, then an abstention", async () => {
+  const { body, calls } = await run("question here", [[], []], {})
+  assert.equal(body.abstained, true)
+  assert.equal(calls.model.length, 2)
+  assert.match(JSON.stringify(calls.model[1].messages.at(-1)), /Use the tools/)
+})
+
+test("tool arguments that are not valid JSON are reported to the model, not executed", async () => {
+  const n = net([FINAL_ABSTAIN])
+  const raw = n.fetchImpl
+  let first = true
+  const fetchImpl = async (url, init) => {
+    if (url.includes("/chat/completions") && first) {
+      first = false
+      return new Response(JSON.stringify({ choices: [{ message: { role: "assistant", content: null, tool_calls: [{ id: "t1", type: "function", function: { name: "get_series", arguments: "{oops" } }] } }] }), { status: 200 })
+    }
+    return raw(url, init)
+  }
+  const res = await handleAsk(ask("question here"), ENV, { fetchImpl })
+  assert.equal(res.status, 200)
+  assert.equal(n.calls.rpc.length, 0)
+  assert.match(JSON.stringify(n.calls.model[0].messages.at(-1)), /not valid JSON/)
 })

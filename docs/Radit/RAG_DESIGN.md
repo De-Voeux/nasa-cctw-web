@@ -145,7 +145,7 @@ A fixed set of 40 to 60 questions written by someone who knows the domain, store
 ## 9. Open decisions
 
 1. **Embedding model.** Users will ask in Indonesian, English, and likely Tagalog or Malay, while most papers are English, so use a **multilingual** model. Candidates: a hosted API (Voyage, OpenAI) or an open model such as BGE-M3 or multilingual-e5 served from Supabase or a Worker. Not decided; this fixes the `vector(...)` dimension. Verify pricing and licence at decision time.
-2. **LLM.** Claude is the proposal (tool use and structured output are what this design leans on); needs an API account, budget and a per-day cap.
+2. **LLM.** Decided 2026-11-15: OpenRouter with free models, several keys and a model list tried in turn (`worker/llm.js`). The design leans on tool calling, which free models support unevenly; the Worker rejects answers that do not trace to retrieved material, but model choice should be settled on the evaluation set. A stronger paid model can replace the list without code changes (`ASK_MODELS`).
 3. **Worker or Edge Function** (section 2).
 4. **Who verifies sources, and how.** The corpus is only as good as this step. Today `research/evidence` is 3 KB of unverified leads, so **there is nothing to retrieve yet.** Minimum useful start: the review paper in the brief plus a handful of papers on *Kappaphycus*, ice-ice and temperature or salinity, each with the fields listed in `research/evidence/README.md`.
 5. **Licence of what we store.** Many papers cannot be copied into a database. If not, store short quoted passages (with the licence allowing it), or store only embeddings plus a link and fetch the text from the open copy.
