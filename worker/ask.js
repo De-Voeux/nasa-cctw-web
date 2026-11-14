@@ -214,7 +214,15 @@ export async function handleAsk(request, env, { fetchImpl = fetch } = {}) {
     if (!success) return json(429, { error: "rate_limited" })
   }
 
-  const sb = env.SUPABASE_URL.replace(/\/$/, "")
+  // Only the origin is used, so a URL pasted with a path (".../rest/v1/") still works.
+  let sb
+  try {
+    const u = new URL(env.SUPABASE_URL.trim())
+    if (u.protocol !== "https:") throw new Error("not https")
+    sb = u.origin
+  } catch {
+    return json(503, { error: "assistant_unavailable" })
+  }
   const sbHeaders = { authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}`, apikey: env.SUPABASE_SERVICE_ROLE_KEY, "content-type": "application/json" }
   const rpc = async (name, args) =>
     readJson(await fetchImpl(`${sb}/rest/v1/rpc/${name}`, { method: "POST", headers: sbHeaders, body: JSON.stringify(args) }), name)

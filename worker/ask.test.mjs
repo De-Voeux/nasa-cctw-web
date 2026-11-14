@@ -255,3 +255,14 @@ test("tool arguments that are not valid JSON are reported to the model, not exec
   assert.equal(n.calls.rpc.length, 0)
   assert.match(JSON.stringify(n.calls.model[0].messages.at(-1)), /not valid JSON/)
 })
+
+test("SUPABASE_URL pasted with a path still reaches the right endpoints; a bad one is unavailable", async () => {
+  const urls = []
+  const n = net([[use("list_sites", {})], FINAL_ABSTAIN])
+  const fetchImpl = async (url, init) => (urls.push(url), n.fetchImpl(url, init))
+  const env = { ...ENV, SUPABASE_URL: " https://abc.supabase.co/rest/v1/ " }
+  assert.equal((await handleAsk(ask("question here"), env, { fetchImpl })).status, 200)
+  assert.ok(urls.includes("https://abc.supabase.co/rest/v1/rpc/env_list_sites"), urls.join("\n"))
+  assert.equal((await handleAsk(ask("question here"), { ...ENV, SUPABASE_URL: "not a url" })).status, 503)
+  assert.equal((await handleAsk(ask("question here"), { ...ENV, SUPABASE_URL: "http://abc.supabase.co" })).status, 503)
+})
