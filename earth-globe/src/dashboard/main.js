@@ -20,7 +20,7 @@ import { waveIcon, thermometerIcon, dropletIcon, rainIcon } from "./icons.js"
 import { initLayout } from "./layout.js"
 
 const HOME = { lat: 5, lon: 117, altitude: 1.35 }
-const EXAMPLE_QUESTION = "Which area has the most ice-ice reports?"
+const EXAMPLE_QUESTION = "Which area has the most ice-ice case?"
 const DEFAULT_SPECIES = "Kappaphycus alvarezii"
 const DEFAULT_COUNTRY = "Indonesia"
 const $ = (id) => document.getElementById(id)

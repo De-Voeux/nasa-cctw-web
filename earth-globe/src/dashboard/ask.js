@@ -37,6 +37,6 @@ export function answer(question, locations) {
   }
 
   return {
-    html: `<p>The assistant isn't connected yet. Try “Which area has the most ice-ice reports?” or a place name like “Tawi-Tawi”.</p>`,
+    html: `<p>The assistant isn't connected yet. Try “Which area has the most ice-ice case?” or “Area in Indonesia that produce cottoni”.</p>`,
   }
 }
