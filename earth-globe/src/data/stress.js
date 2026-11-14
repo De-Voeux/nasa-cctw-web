@@ -7,8 +7,8 @@
  * say Favorable, Moderate Risk or Elevated Risk for a real region until an
  * assessment backs it; replace `assess()` with a lookup of real results when they exist.
  *
- * `?demo=levels` hands out made-up levels so the four card designs can be reviewed.
- * The panel then says the values are demo values, and nothing here is real data.
+ * The mock (see MOCK_DEFAULT below) hands out made-up levels so the four card designs
+ * can be reviewed. The panel then says the values are demo values; none is real data.
  */
 import favorable from "../assets/ui/levels/favorable.svg"
 import moderate from "../assets/ui/levels/moderate.svg"
@@ -25,7 +25,17 @@ export const LEVELS = {
 /** Order used by the Stress Level filter. */
 export const LEVEL_ORDER = ["favorable", "moderate", "elevated", "insufficient"]
 
-export const DEMO = new URLSearchParams(location.search).get("demo") === "levels"
+/*
+ * MOCK ON BY DEFAULT (decided with Radit, 2026-11-15, to match the design mock).
+ * The levels and conditions below are made up for the design review. They are NOT
+ * assessments and must not ship to a public site as if they were. The panel shows a
+ * banner saying so while this is on. Before real use: set MOCK_DEFAULT to false (or
+ * delete the demo branch of assess()) so every region reads "Insufficient Data"
+ * until real results exist. `?demo=off` turns the mock off, `?demo=levels` forces it on.
+ */
+const MOCK_DEFAULT = true
+const demoParam = new URLSearchParams(location.search).get("demo")
+export const DEMO = demoParam === "levels" || (MOCK_DEFAULT && demoParam !== "off")
 
 const NO_DATA = "Environmental layers not connected yet"
 const DEMO_CONDITION = {
