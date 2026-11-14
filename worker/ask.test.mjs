@@ -220,16 +220,16 @@ test("when every model and key fails the request ends in 502, without leaking de
   const env = { ...ENV, ASK_MODELS: "m1" }
   const n = net([{ status: 500 }])
   const res = await handleAsk(ask("question here"), env, { fetchImpl: n.fetchImpl })
-  assert.equal(res.status, 502)
-  assert.deepEqual(await res.json(), { error: "assistant_failed" })
+  assert.equal(res.status, 503)
+  assert.deepEqual(await res.json(), { error: "assistant_unavailable", reason: "down" })
 })
 
 test("the attempt budget stops a long chain of failures", async () => {
   const env = { ...ENV, OPENROUTER_API_KEYS: "sk-or-a,sk-or-b,sk-or-c,sk-or-d", ASK_MODELS: "m1,m2,m3" }
   const n = net(Array.from({ length: 20 }, () => ({ status: 429 })))
   const res = await handleAsk(ask("question here"), env, { fetchImpl: n.fetchImpl })
-  assert.equal(res.status, 502)
-  assert.ok(n.calls.model.length <= 6)
+  assert.equal(res.status, 503)
+  assert.ok(n.calls.model.length <= 8)
 })
 
 test("plain text with no tool call is never shown: one nudge, then an abstention", async () => {
@@ -395,4 +395,18 @@ test("a greeting followed by a real question, or any real question, still goes t
   const { body, calls } = await run("hai, which area has the most ice-ice case?", [FINAL_ABSTAIN], {})
   assert.equal(calls.model.length, 1)
   assert.equal(body.kind, undefined)
+})
+
+test("when every key has hit its daily limit the answer is a 503 with reason quota, so the page can fall back", async () => {
+  const body429 = JSON.stringify({ error: { message: "Rate limit exceeded: free-models-per-day. Add 10 credits" } })
+  const env = { ...ENV, OPENROUTER_API_KEY_2: "sk-or-k2" }
+  const n = net([{ status: 429, body: body429 }, { status: 429, body: body429 }])
+  const res = await handleAsk(ask("question here"), env, { fetchImpl: n.fetchImpl })
+  assert.equal(res.status, 503)
+  assert.deepEqual(await res.json(), { error: "assistant_unavailable", reason: "quota" })
+  assert.equal(n.calls.model.length, 2) // each key tried once, no point retrying a spent key
+})
+
+test("not configured stays a plain 503 without a reason", async () => {
+  assert.deepEqual(await (await handleAsk(ask("a real question"), {})).json(), { error: "assistant_unavailable" })
 })
