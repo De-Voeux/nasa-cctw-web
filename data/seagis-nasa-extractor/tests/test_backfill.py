@@ -145,3 +145,16 @@ def test_gate_refuses_uncalibrated_plan(tmp_path):
         backfill.verify_fetch_plan(plan, plan["plan_sha256"], tmp_path)
     plan, _ = make_fetch_plan(tmp_path)
     backfill.verify_fetch_plan(plan, plan["plan_sha256"], tmp_path)
+
+
+def test_run_lock_blocks_a_second_live_run_and_clears_stale(tmp_path):
+    import os
+    lock = tmp_path / "fetch.lock"
+    with backfill.RunLock(lock):
+        assert lock.read_text() == str(os.getpid())
+        with pytest.raises(fetch.FetchError, match="another fetch"):
+            backfill.RunLock(lock).__enter__()
+    assert not lock.exists()
+    lock.write_text("999999")                       # stale pid from a killed run
+    with backfill.RunLock(lock):
+        pass

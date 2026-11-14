@@ -1,6 +1,6 @@
 # Product IDs are resolved by `catalog` (see docs/CATALOG_REVIEW.md). NASA: MUR SST only (chlorophyll-a dropped 2026-11-15). Copernicus: no3, po4, pH, salinity.
-period:                    # NASA MUR; all sources start 2022-06-01 (first day of daily CMEMS salinity), decided 2026-11-15
-  start: '2022-06-01'
+period:                    # one year, all sources; narrowed from 2022-06-01..2026-11-14 on 2026-11-15
+  start: '2025-11-15'
   end: '2026-11-14'
 regions_file: config/regions.yaml
 products_file: config/products.yaml
@@ -18,7 +18,7 @@ products:
     endpoint: discover_from_catalog
   copernicus:
     enabled: true
-    period: {start: '2022-06-01', end: '2026-11-14'}   # aligned with MUR; daily salinity starts 2022-06-01
+    period: {start: '2025-11-15', end: '2026-11-14'}   # aligned with MUR
     depth: surface          # shallowest model level (0.494 m)
     batch: region_whole_period   # one subset per region x dataset; chunks span ~155 days
     # Zones the model grid treats as land for a dataset (no sea cell in the static mask).
