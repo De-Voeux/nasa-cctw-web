@@ -1,4 +1,4 @@
-/* SEAmon dashboard design tokens. Change values here, not in dashboard.css. */
+/* SEAGIS dashboard design tokens. Change values here, not in dashboard.css. */
 :root {
   /* surfaces */
   --space-0: #03060d;
@@ -14,7 +14,7 @@
 
   /* text */
   --text: #f2f5fa;
-  --text-muted: rgba(235, 240, 248, 0.62);
+  --text-muted: rgba(235, 240, 248, 0.7);
   --text-faint: rgba(235, 240, 248, 0.38);
 
   /* accents */
@@ -22,6 +22,21 @@
   --accent-soft: rgba(47, 99, 214, 0.28);
   --warn: #f2b544;
   --marker-bg: rgba(6, 10, 18, 0.78);
+  --indigo: #3a4789;
+  --indigo-hover: #4652a0;
+  --indigo-soft: rgba(70, 85, 160, 0.35);
+  --indigo-bubble: #2f3d86;
+  --date-active: #2a49a8;
+  --panel-bg: rgba(14, 18, 30, 0.78);
+  --chat-bg: rgba(14, 18, 30, 0.72);
+  --pop-bg: #262c48;
+
+  /* stress levels (match the SEAmon icons) */
+  --lvl-favorable: #3fc6a0;
+  --lvl-moderate: #e3d13c;
+  --lvl-elevated: #ff4b3e;
+  --warn-text: #ff9b73; /* stressor outside its range */
+  --ok: #7fdcc0;        /* stressor within its range */
 
   /* shape */
   --radius-xl: 28px;
@@ -29,17 +44,9 @@
   --radius-md: 14px;
   --radius-pill: 999px;
   --gap: 12px;
-  --panel-w: clamp(380px, 26vw, 480px);
+  --panel-w: 400px;
 
-  /* mobile bottom sheet (the side panel turns into a sheet under 860px) */
-  --sheet-h: 42vh;
-  --sheet-h-collapsed: 56px;
-
-  /* globe canvas insets, written by dashboard/layout.js */
-  --globe-top: 0px;
-  --globe-bottom: 0px;
-
-  /* device safe areas; index.html asks for viewport-fit=cover */
+  /* device safe areas (notches, home bar) */
   --safe-t: env(safe-area-inset-top, 0px);
   --safe-r: env(safe-area-inset-right, 0px);
   --safe-b: env(safe-area-inset-bottom, 0px);
