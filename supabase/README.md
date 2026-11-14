@@ -25,7 +25,7 @@ browser ─▶ /api/ask (Cloudflare Worker, worker/) ─▶ model + tools ─▶
 | Where | Name | Notes |
 |---|---|---|
 | Cloudflare Worker secrets (`wrangler secret put`) | `OPENROUTER_API_KEY` | the model provider. Until at least one key is set `/api/ask` answers 503 and the page uses its built-in answers |
-| | `OPENROUTER_API_KEY_2` ... `_9`, or `OPENROUTER_API_KEYS` | optional extra keys (a comma list in the second form). A request tries them in turn when one is rate-limited or refused |
+| | `OPENROUTER_API_KEY_2` ... `_9`, or `OPENROUTER_API_KEYS` | optional extra OpenRouter keys (a comma list in the second form). **Only keys starting with `sk-or-` are used**; a key for another provider is skipped and never sent to OpenRouter. A refused key (401/402/403) or one that hit a daily or credit limit is skipped for the request |
 | | `SUPABASE_URL` | `https://<project-ref>.supabase.co` |
 | | `SUPABASE_SERVICE_ROLE_KEY` | the **legacy `service_role` JWT**. The `embed` function checks the role claim in the JWT, so the new `sb_secret_...` key does not work for it. This key is powerful: keep it as a secret only |
 | Worker variables (optional) | `ASK_MODELS`, `MIN_SIMILARITY`, `LLM_BASE_URL` | `ASK_MODELS` is a comma list tried in order (default: four free OpenRouter models that advertise tool calling, listed in `worker/llm.js`; the free list changes often). `MIN_SIMILARITY` defaults to `0.8`. `LLM_BASE_URL` points at another OpenAI-compatible endpoint |
