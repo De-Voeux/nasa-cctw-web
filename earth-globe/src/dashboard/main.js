@@ -132,6 +132,8 @@ const panel = new SidePanel($("panel-body"), {
 function select(id) {
   const loc = byId.get(id)
   if (!loc) return
+  setPanel(false, false) // a place was picked: bring the panel back
+  setBody(false, false) // a place was picked: show its details, but keep the remembered choice
   setSheet(true)
   setPressed(id)
   panel.showLocation(loc, assessments.get(id))
@@ -221,6 +223,58 @@ $("search").addEventListener("input", (e) => {
 offerRegions()
 paintPins()
 panel.showList(rows())
+
+// Collapse button: hides the list / details so more of the map shows. The choice is remembered
+// in this browser only; storage may be blocked, so it is optional.
+const sidePanelEl = document.querySelector(".side-panel")
+const bodyBtn = $("body-collapse")
+function setBody(collapsed, remember = true) {
+  sidePanelEl.dataset.body = collapsed ? "collapsed" : "open"
+  bodyBtn.setAttribute("aria-expanded", String(!collapsed))
+  bodyBtn.setAttribute("aria-label", `${collapsed ? "Show" : "Hide"} ${sidePanelEl.dataset.mode === "detail" ? "details" : "list"}`)
+  if (!remember) return
+  try {
+    localStorage.setItem("seamon.panelBody", collapsed ? "collapsed" : "open")
+  } catch {}
+}
+let savedBody = null
+try {
+  savedBody = localStorage.getItem("seamon.panelBody")
+} catch {}
+setBody(savedBody === "collapsed", false)
+bodyBtn.addEventListener("click", () => setBody(sidePanelEl.dataset.body !== "collapsed"))
+// The label says "list" or "details" depending on what the panel shows.
+new MutationObserver(() => setBody(sidePanelEl.dataset.body === "collapsed", false)).observe(sidePanelEl, { attributes: true, attributeFilter: ["data-mode"] })
+
+// Hide the whole panel (wide screens) to see the full globe; a round button at the edge brings it back.
+const panelHide = $("panel-hide")
+const panelShow = $("panel-show")
+panelShow.hidden = false // the CSS shows it only while the panel is hidden
+function setPanel(hidden, remember = true) {
+  document.documentElement.dataset.panel = hidden ? "hidden" : "open"
+  panelHide.setAttribute("aria-expanded", String(!hidden))
+  panelShow.setAttribute("aria-expanded", String(!hidden))
+  if (!remember) return
+  try {
+    localStorage.setItem("seamon.panelHidden", hidden ? "1" : "0")
+  } catch {}
+}
+let savedHidden = null
+try {
+  savedHidden = localStorage.getItem("seamon.panelHidden")
+} catch {}
+setPanel(savedHidden === "1", false)
+panelHide.addEventListener("click", () => {
+  setPanel(true)
+  panelShow.focus()
+  panelShow.classList.remove("nudge")
+  void panelShow.offsetWidth // restart the animation
+  panelShow.classList.add("nudge")
+})
+panelShow.addEventListener("click", () => {
+  setPanel(false)
+  panelHide.focus()
+})
 
 // --------------------------------------------------------------- bottom sheet (phones)
 
