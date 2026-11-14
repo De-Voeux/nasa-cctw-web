@@ -50,8 +50,12 @@
       </div>
     </div>
 
-    <!-- Side panel (right) -->
+    <!-- Side panel (right; a bottom sheet on narrow screens) -->
     <aside class="glass side-panel" aria-label="Locations">
+      <button id="sheet-toggle" class="sheet-toggle" type="button" aria-expanded="true" aria-controls="panel-body">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+        Locations
+      </button>
       <label class="search">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
         <input id="search" type="search" placeholder="Search country, island, or region" autocomplete="off" />

@@ -29,7 +29,21 @@
   --radius-md: 14px;
   --radius-pill: 999px;
   --gap: 12px;
-  --panel-w: 400px;
+  --panel-w: clamp(300px, 28vw, 400px);
+
+  /* mobile bottom sheet (the side panel turns into a sheet under 860px) */
+  --sheet-h: 42vh;
+  --sheet-h-collapsed: 56px;
+
+  /* globe canvas insets, written by dashboard/layout.js */
+  --globe-top: 0px;
+  --globe-bottom: 0px;
+
+  /* device safe areas; index.html asks for viewport-fit=cover */
+  --safe-t: env(safe-area-inset-top, 0px);
+  --safe-r: env(safe-area-inset-right, 0px);
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-l: env(safe-area-inset-left, 0px);
 
   --font: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
 }

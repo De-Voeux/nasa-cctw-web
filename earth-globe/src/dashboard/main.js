@@ -13,9 +13,17 @@ import { mountDatePills } from "./datePills.js"
 import { SidePanel } from "./sidePanel.js"
 import { answer } from "./ask.js"
 import { waveIcon } from "./icons.js"
+import { initLayout } from "./layout.js"
 
 const HOME = { lat: 5, lon: 117, altitude: 1.35 }
+const EXAMPLE_QUESTION = "Which area has the most ice-ice reports?"
 const $ = (id) => document.getElementById(id)
+
+// --------------------------------------------------------------- layout
+
+// Sizes the globe canvas before the globe is built, so it starts at the right
+// resolution instead of jumping once the first frame is drawn.
+initLayout()
 
 // --------------------------------------------------------------- globe
 
@@ -106,7 +114,7 @@ $("panel-body").addEventListener("click", (e) => {
 $("ask").addEventListener("submit", (e) => {
   e.preventDefault()
   const input = $("ask-input")
-  const q = input.value.trim() || input.placeholder
+  const q = input.value.trim() || EXAMPLE_QUESTION
   const res = answer(q, LOCATIONS)
   $("search").value = ""
   if (res.openDetail && res.focus) {
@@ -118,6 +126,15 @@ $("ask").addEventListener("submit", (e) => {
   }
   input.value = ""
 })
+
+// The long example question does not fit a phone: shorten the hint there, but
+// keep the full question for an empty submit.
+const askInput = $("ask-input")
+function fitPlaceholder() {
+  askInput.placeholder = window.innerWidth < 520 ? "Ask about the atlas" : EXAMPLE_QUESTION
+}
+fitPlaceholder()
+window.addEventListener("resize", fitPlaceholder)
 
 // --------------------------------------------------------------- controls
 
@@ -145,10 +162,21 @@ layersBtn.addEventListener("click", () => {
   layersMenu.hidden = !open
   layersBtn.setAttribute("aria-expanded", String(open))
 })
+
+function closeLayers() {
+  layersMenu.hidden = true
+  layersBtn.setAttribute("aria-expanded", "false")
+}
+
+// a tap outside the menu closes it, so the map controls are reachable again
+document.addEventListener("pointerdown", (e) => {
+  if (layersMenu.hidden) return
+  if (layersMenu.contains(e.target) || layersBtn.contains(e.target)) return
+  closeLayers()
+})
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && !layersMenu.hidden) {
-    layersMenu.hidden = true
-    layersBtn.setAttribute("aria-expanded", "false")
+    closeLayers()
     layersBtn.focus()
   }
 })
