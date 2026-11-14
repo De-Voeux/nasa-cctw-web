@@ -1,5 +1,5 @@
 /* Region detail: stress summary, stressor cards and their trend charts.
-   Uses the level colours from redesign.css. */
+   Uses the level colours (--lv-*) defined in sidebar.css. */
 :root {
   --warn-text: #ff9b73; /* stressor outside its range */
   --ok: #7fdcc0;        /* stressor within its range */
