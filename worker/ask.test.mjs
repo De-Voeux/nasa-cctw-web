@@ -285,3 +285,18 @@ test("keys that are not OpenRouter keys are never sent to OpenRouter", async () 
   // and with only foreign keys the assistant is simply unavailable
   assert.equal((await handleAsk(ask("question here"), { ...env, OPENROUTER_API_KEY_2: "" })).status, 503)
 })
+
+test("an empty search tells the model to stop searching and answer, and the log names the model", async () => {
+  const logs = []
+  const orig = console.log
+  console.log = (m) => logs.push(m)
+  try {
+    const { body, calls } = await run("question here", [[use("search_evidence", { query_en: "q" })], FINAL_ABSTAIN], { rag_search: () => [] })
+    assert.equal(body.abstained, true)
+    assert.equal(calls.model.length, 2) // one search, one final answer: no retry loop
+    assert.match(JSON.stringify(calls.model[1].messages.at(-1)), /Do NOT search again/)
+  } finally {
+    console.log = orig
+  }
+  assert.ok(logs.some((l) => /"event":"ask".*"model":"/.test(l)), logs.join("\n"))
+})

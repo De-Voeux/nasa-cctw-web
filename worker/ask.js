@@ -231,7 +231,7 @@ export async function handleAsk(request, env, { fetchImpl = fetch } = {}) {
 
   const minSim = Number(env.MIN_SIMILARITY ?? DEFAULT_MIN_SIMILARITY)
   const ctx = { chunks: new Map(), series: [] }
-  const trace = { tools: [], chunk_ids: [] }
+  const trace = { tools: [], chunk_ids: [], model: null }
 
   async function runTool(name, input) {
     trace.tools.push(name)
@@ -248,7 +248,13 @@ export async function handleAsk(request, env, { fetchImpl = fetch } = {}) {
       const kept = rows.filter((r) => r.keyword_hit || r.similarity >= minSim)
       for (const r of kept) ctx.chunks.set(r.chunk_id, r)
       trace.chunk_ids.push(...kept.map((r) => r.chunk_id))
-      if (kept.length === 0) return { results: [], note: "No sufficiently relevant verified source was found." }
+      if (kept.length === 0) {
+        // Free models tend to retry an empty search with new wording until the tool budget is gone.
+        return {
+          results: [],
+          note: "No sufficiently relevant verified source was found. The sources we have do not cover this. Do NOT search again for this question: call final_answer now with abstained=true.",
+        }
+      }
       return {
         results: kept.map((r) => ({ chunk_id: r.chunk_id, citation: r.citation, section: r.section, page: r.page, text: r.content })),
       }
@@ -286,6 +292,7 @@ export async function handleAsk(request, env, { fetchImpl = fetch } = {}) {
   try {
     for (let turn = 0; turn < MAX_MODEL_TURNS && !answer; turn++) {
       const reply = await llm.chat({ messages, tools })
+      trace.model = reply.model
       const calls = reply.toolCalls
       // Keep only what the API needs back; providers add fields of their own.
       messages.push({ role: "assistant", content: reply.message.content ?? null, ...(calls.length ? { tool_calls: reply.message.tool_calls } : {}) })
@@ -333,6 +340,6 @@ export async function handleAsk(request, env, { fetchImpl = fetch } = {}) {
 
   const final = answer ?? shape({ ...ABSTAIN }, ctx)
   // Logged without the question text or any address; the retention decision is still open.
-  console.log(JSON.stringify({ event: "ask", abstained: final.abstained, tools: trace.tools, chunk_ids: trace.chunk_ids, ms: Date.now() - started }))
+  console.log(JSON.stringify({ event: "ask", abstained: final.abstained, model: trace.model, tools: trace.tools, chunk_ids: trace.chunk_ids, ms: Date.now() - started }))
   return json(200, final)
 }
