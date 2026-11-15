@@ -116,10 +116,22 @@ function setPressed(id) {
   }
 }
 
+function updatePinLevel(id) {
+  const pin = pins.get(id)
+  const loc = byId.get(id)
+  const assessment = assessments.get(id)
+  if (!pin || !loc || !assessment) return
+  const level = LEVELS[assessment.level]
+  pin.el.dataset.level = assessment.level
+  pin.el.querySelector(".marker-dot img").src = level.icon
+  pin.el.setAttribute("aria-label", `${loc.name}, ${loc.country}: ${level.label}`)
+}
+
 // Pins of other species are hidden; pins that fail another filter stay but fade.
 function paintPins() {
   for (const [id, p] of pins) {
     const loc = byId.get(id)
+    updatePinLevel(id)
     overlay.setHidden(p.item, !hasSpecies(loc))
     p.el.classList.toggle("is-dim", !passes(loc))
   }
