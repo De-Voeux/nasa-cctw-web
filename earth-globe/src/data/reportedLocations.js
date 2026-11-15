@@ -1,11 +1,12 @@
 /**
  * Ice-ice report locations for the dashboard markers.
  *
- * Source: research/evidence/CANDIDATE_HOST_REGIONS.md (user-provided leads,
- * 14 Nov 2026). Every row there is UNVERIFIED: it records places said to be
- * mentioned in a paper, not confirmed cultivation, local disease occurrence,
- * or case counts. Keep `verification: "pending"` until a row is checked
- * against the original publication.
+ * Source: Alimin et al. (2026), "Reported seaweed diseases in aquaculture: a
+ * systematic review", Aquaculture International 34:97, Table 1. The review
+ * compiles earlier field studies; each row here is a place where one of those
+ * studies reported ice-ice on farmed seaweed. Checked against the paper by the
+ * SEAmon team (as stated by Eileen, 15 Nov 2026). See also
+ * research/evidence/CANDIDATE_HOST_REGIONS.md.
  *
  * lat/lon are approximate display anchors for the named province/region
  * (placed on nearby water so markers don't sit inland). They are NOT farm
@@ -13,9 +14,13 @@
  */
 
 export const SOURCE = {
-  label: "Candidate host & region leads",
-  file: "research/evidence/CANDIDATE_HOST_REGIONS.md",
-  status: "unverified",
+  short: "Alimin et al. (2026)",
+  title: "Reported seaweed diseases in aquaculture: a systematic review",
+  journal: "Aquaculture International",
+  citation: "Alimin AWF, Kasmiati K, Aswin A, et al. (2026) Reported seaweed diseases in aquaculture: a systematic review. Aquaculture International 34:97",
+  url: "https://doi.org/10.1007/s10499-026-02486-2",
+  table: "Table 1",
+  status: "checked",
 }
 
 const KA = "Kappaphycus alvarezii"
@@ -24,7 +29,7 @@ const KSPP = "Kappaphycus spp."
 const ED = "Eucheuma denticulatum"
 const GV = "Gracilaria verrucosa"
 
-/** @type {{id:string,name:string,country:string,lat:number,lon:number,taxa:string[],concern:string,verification:"pending"}[]} */
+/** @type {{id:string,name:string,country:string,lat:number,lon:number,taxa:string[],concern:string,verification:"checked"}[]} */
 export const LOCATIONS = [
   { id: "ph-pangasinan", dataRegionId: "PH-PANG", name: "Pangasinan", country: "Philippines", lat: 16.2, lon: 119.95, taxa: [KA] },
   { id: "ph-batangas", dataRegionId: "PH-BATANGAS", name: "Batangas", country: "Philippines", lat: 13.6, lon: 121.0, taxa: [KS] },
@@ -44,7 +49,7 @@ export const LOCATIONS = [
   { id: "id-maluku", dataRegionId: "ID-MALUKU", name: "Maluku", country: "Indonesia", lat: -3.4, lon: 128.4, taxa: [KA] },
   { id: "id-n-java-sea", dataRegionId: "ID-N-JAVA-SEA", name: "North Java Sea", country: "Indonesia", lat: -5.6, lon: 110.5, taxa: [KA], note: "Laut Jawa bagian utara" },
   { id: "id-ntb", dataRegionId: "ID-NTB", name: "West Nusa Tenggara", country: "Indonesia", lat: -8.85, lon: 116.9, taxa: [KA] },
-].map((l) => ({ concern: "Ice-ice", verification: "pending", ...l }))
+].map((l) => ({ concern: "Ice-ice", verification: "checked", ...l }))
 
 /** Country and sea labels drawn on the globe. */
 export const PLACE_LABELS = [
