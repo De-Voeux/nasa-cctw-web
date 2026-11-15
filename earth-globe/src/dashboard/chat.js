@@ -36,6 +36,12 @@ export function mountChat(root, { locations, onShow, getContext = () => ({}) }) 
   }
 
   let asking = false
+  // What was said so far (plain text), so a follow-up like "how about now?" can be understood. Built-in answers are not kept.
+  const history = []
+  const remember = (role, text) => {
+    history.push({ role, text: String(text).slice(0, 600) })
+    while (history.length > 6) history.shift()
+  }
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault()
@@ -54,9 +60,11 @@ export function mountChat(root, { locations, onShow, getContext = () => ({}) }) 
     }
     const bubble = push("bot", `<p class="thinking" aria-live="polite">Thinking…</p>`)
     try {
-      const reply = await askAssistant(q, getContext())
+      const reply = await askAssistant(q, { ...getContext(), history: history.slice() })
       if (reply.ok) {
         const d = reply.data
+        remember("user", q)
+        remember("assistant", d.answer_md)
         // Places the answer names become "Show on the globe" buttons; if the QUESTION itself named exactly one
         // place, go there at once (the same as the built-in answers do).
         const named = placesIn([d.answer_md, ...(d.claims ?? []).map((c) => c.text)].join("\n"), locations)
@@ -95,6 +103,7 @@ export function mountChat(root, { locations, onShow, getContext = () => ({}) }) 
 
   root.querySelector("#chat-close").addEventListener("click", () => {
     log.innerHTML = ""
+    history.length = 0
     setOpen(false)
     input.focus()
   })
