@@ -5,6 +5,7 @@ Backend of the assistant described in [`docs/Radit/RAG_DESIGN.md`](../docs/Radit
 | Path | What |
 |---|---|
 | `migrations/20261115000001_rag_foundation.sql` | extensions, private schemas `rag` and `env`, tables, `rag_search`, `env_list_sites`, `env_get_series` |
+| `migrations/20261115000004_rag_usage.sql` | `rag.usage` and `rag_usage_hit`: the daily cap on assistant questions (applied to staging 2026-11-15) |
 | `migrations/20261115000002_rag_ingest.sql` | `rag_ingest_source`, `rag_source_hash` (used by `scripts/rag/ingest.mjs`) |
 | `migrations/20261115000003_env_ingest.sql` | `env_ingest` (used by `scripts/env/load.mjs`); `env_list_sites` now reports what data each site has; `env_get_series` takes an optional product |
 | `functions/embed/` | Edge Function that embeds text with the built-in gte-small model (384 dimensions) |
@@ -32,6 +33,7 @@ browser ─▶ /api/ask (Cloudflare Worker, worker/) ─▶ model + tools ─▶
 | | `OPENROUTER_API_KEY_2` ... `_9`, or `OPENROUTER_API_KEYS` | optional extra OpenRouter keys (a comma list in the second form). **Only keys starting with `sk-or-` are used**; a key for another provider is skipped and never sent to OpenRouter. A refused key (401/402/403) or one that hit a daily or credit limit is skipped for the request |
 | | `SUPABASE_URL` | `https://<project-ref>.supabase.co` |
 | | `SUPABASE_SERVICE_ROLE_KEY` | the **legacy `service_role` JWT**. The `embed` function checks the role claim in the JWT, so the new `sb_secret_...` key does not work for it. This key is powerful: keep it as a secret only |
+| Worker variable (optional) | `ASK_DAILY_LIMIT` | questions that reach a model per UTC day, counted in the database (`rag_usage_hit`). Unset = 100, a number = that, `0` or `off` = no cap. When it is reached the page shows its built-in answer. Greetings are not counted. The default is a rough guess (about half of what the Workers AI free allocation should cover), not a measured figure |
 | Worker variables (optional) | `ASK_MODELS`, `MIN_SIMILARITY`, `LLM_BASE_URL` | `ASK_MODELS` is a comma list tried in order (default: four free OpenRouter models that advertise tool calling, listed in `worker/llm.js`; the free list changes often). `MIN_SIMILARITY` defaults to `0.8`. `LLM_BASE_URL` points at another OpenAI-compatible endpoint |
 | Your shell, for ingestion | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | same values; never commit them |
 

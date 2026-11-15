@@ -16,6 +16,19 @@ const CONFIDENCE = ["high", "moderate", "low", "none"]
 // evaluation set (RAG_DESIGN.md section 8) and set MIN_SIMILARITY in the Worker vars.
 const DEFAULT_MIN_SIMILARITY = 0.8
 
+/** Default cap on questions that reach a model, per UTC day. About half of what the Workers AI free allocation
+ *  should cover on a rough estimate (not measured), leaving room for the estimate being wrong. */
+export const DEFAULT_DAILY_LIMIT = 100
+
+/** ASK_DAILY_LIMIT: unset -> 100; a positive number -> that; "0" or "off" -> no cap. */
+export function dailyLimit(env) {
+  const raw = String(env.ASK_DAILY_LIMIT ?? "").trim().toLowerCase()
+  if (raw === "") return DEFAULT_DAILY_LIMIT
+  if (raw === "0" || raw === "off") return 0
+  const n = Math.floor(Number(raw))
+  return Number.isFinite(n) && n > 0 ? n : DEFAULT_DAILY_LIMIT
+}
+
 export const SYSTEM_PROMPT = `You are the assistant inside SEAmon, an atlas of environmental conditions around seaweed farms in Southeast Asia. You help with questions about ice-ice disease and the environment.
 
 Rules:
@@ -270,6 +283,23 @@ export async function handleAsk(request, env, { fetchImpl = fetch } = {}) {
     readJson(await fetchImpl(`${sb}/rest/v1/rpc/${name}`, { method: "POST", headers: sbHeaders, body: JSON.stringify(args) }), name)
   const embed = async (text) =>
     (await readJson(await fetchImpl(`${sb}/functions/v1/embed`, { method: "POST", headers: sbHeaders, body: JSON.stringify({ input: text }) }), "embed")).embeddings[0]
+
+  // Daily cap: one count per question that reaches a model, taken before any model call. When it is
+  // reached (or the count cannot be read) the page gets the 503 fallback and shows its built-in answer.
+  const cap = dailyLimit(env)
+  if (cap > 0) {
+    let hit
+    try {
+      hit = (await rpc("rag_usage_hit", { p_scope: "ask", p_limit: cap }))?.[0]
+    } catch (e) {
+      console.log(JSON.stringify({ event: "usage_error", message: String(e.message).slice(0, 160) }))
+      return json(503, { error: "assistant_unavailable", reason: "down" })
+    }
+    if (!hit?.allowed) {
+      console.log(JSON.stringify({ event: "daily_limit", used: hit?.used, limit: cap }))
+      return json(503, { error: "assistant_unavailable", reason: "quota" })
+    }
+  }
 
   const minSim = Number(env.MIN_SIMILARITY ?? DEFAULT_MIN_SIMILARITY)
   const ctx = { chunks: new Map(), series: [], dates: new Set() } // dates: every YYYY-MM-DD the tools returned
