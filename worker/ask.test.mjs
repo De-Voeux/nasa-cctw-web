@@ -757,3 +757,24 @@ test("a literature answer that lists a topic in data_used is no longer thrown aw
   assert.deepEqual(body.data_used, [])
   assert.equal(calls.model.length, 2) // no second attempt was needed
 })
+
+test("after the tool budget the model is told to call the function, not to write text; and the nudge names what it already has", async () => {
+  // five searches in one turn: the fifth is over the budget of four
+  const fiveInOne = Array.from({ length: 5 }, () => use("search_evidence", { query_en: "q" }))
+  const a = await run("question here", [fiveInOne, FINAL_ABSTAIN], { rag_search: () => [CHUNK] })
+  assert.match(JSON.stringify(a.calls.model[1].messages.at(-1)), /do not write plain text: call the final_answer function now with what you already retrieved/)
+  // plain text after sources were retrieved gets the sharper nudge
+  const b = await run("question here", [[use("search_evidence", { query_en: "q" })], [], FINAL_ABSTAIN], { rag_search: () => [CHUNK] })
+  assert.match(JSON.stringify(b.calls.model[2].messages.at(-1)), /You already have sources or measurements/)
+  assert.match(SYSTEM_PROMPT, /Usually ONE search, without a country or species filter, is enough/)
+  assert.match(SYSTEM_PROMPT, /never search country by country/)
+})
+
+test("when the model answers in plain text after retrieving sources, only final_answer is offered next", async () => {
+  const b = await run("question here", [[use("search_evidence", { query_en: "q" })], [], FINAL_ABSTAIN], { rag_search: () => [CHUNK] })
+  assert.ok(b.calls.model[0].tools.length > 1) // all tools at first
+  assert.deepEqual(b.calls.model[2].tools.map((t) => t.function.name), ["final_answer"])
+  // with nothing retrieved the model keeps every tool (it may still need to search)
+  const c = await run("question here", [[], FINAL_ABSTAIN], {})
+  assert.ok(c.calls.model[1].tools.length > 1)
+})
