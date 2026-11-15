@@ -173,16 +173,14 @@ function refresh() {
 // Coloured ocean layer (sea temperature, salinity, rainfall), picked in the Layers menu.
 const oceanLayer = mountOceanLayer(globe, $("layer-legend"))
 
-// Date bar: five days, plus a calendar for the last three months and the chart length.
+// Date bar: five days, plus a calendar for the last three months.
 const dates = mountDatePills($("date-bar"), {
   onChange: (d) => {
     panel.setDay(d)
     oceanLayer.setDate(d.date)
   },
-  onRange: (days) => panel.setRange(days),
 })
 panel.day = dates.current
-panel.range = dates.range
 oceanLayer.setDate(dates.current.date)
 
 // Species
@@ -292,8 +290,70 @@ new MutationObserver(() => setBody(sidePanelEl.dataset.body === "collapsed", fal
 // or drag it (dashboard/panelHandle.js); it travels with the panel and its arrow turns around.
 const panelToggle = $("panel-toggle")
 const isPanelHidden = () => document.documentElement.dataset.panel === "hidden"
+
+/** CSS cubic-bezier() as a function of time 0..1, so JS motion matches the CSS slides. */
+function cubicBezier(x1, y1, x2, y2) {
+  const cx = 3 * x1, bx = 3 * (x2 - x1) - cx, ax = 1 - cx - bx
+  const cy = 3 * y1, by = 3 * (y2 - y1) - cy, ay = 1 - cy - by
+  const X = (t) => ((ax * t + bx) * t + cx) * t
+  const Y = (t) => ((ay * t + by) * t + cy) * t
+  const dX = (t) => (3 * ax * t + 2 * bx) * t + cx
+  return (x) => {
+    let t = x
+    for (let i = 0; i < 8; i++) {
+      const d = dX(t)
+      if (Math.abs(d) < 1e-6) break
+      t -= (X(t) - x) / d
+    }
+    return Y(Math.min(1, Math.max(0, t)))
+  }
+}
+
+// The globe slides right by half the panel when the panel hides, so it stays centred on the
+// free map. It is moved here, frame by frame before the globe renders, rather than by a CSS
+// transition: the pins and labels are placed after each render from the canvas position, and a
+// CSS transition runs on its own clock, so they lagged behind the Earth and jumped at the end.
+// Duration and curve come from --panel-dur / --panel-ease (tokens.css) so it moves with the panel.
+const globeEl = $("globe")
+const rootStyle = () => getComputedStyle(document.documentElement)
+const panelEase = (() => {
+  const m = rootStyle().getPropertyValue("--panel-ease").match(/cubic-bezier\(([^)]+)\)/)
+  const [a, b, c, d] = m ? m[1].split(",").map(Number) : [0.32, 0.72, 0, 1]
+  return cubicBezier(a, b, c, d)
+})()
+const REDUCED_MOTION = matchMedia("(prefers-reduced-motion: reduce)")
+let globeDx = 0
+let globePlaced = false
+let globeSlide = 0
+function globeTargetDx() {
+  // --panel-w is 0 on phones (bottom sheet), so the globe stays put there.
+  return isPanelHidden() ? (parseFloat(rootStyle().getPropertyValue("--panel-w")) || 0) / 2 : 0
+}
+function slideGlobe(animate = true) {
+  cancelAnimationFrame(globeSlide)
+  const from = globeDx
+  const to = globeTargetDx()
+  const ms = (parseFloat(rootStyle().getPropertyValue("--panel-dur")) || 0.45) * 1000
+  const set = (x) => {
+    globeDx = x
+    globeEl.style.setProperty("--globe-dx", `${x.toFixed(2)}px`)
+    overlay.update() // place the pins for this offset now, not one frame later
+  }
+  if (!animate || REDUCED_MOTION.matches || from === to) return set(to)
+  const start = performance.now()
+  const step = (now) => {
+    const k = Math.min(1, (now - start) / ms)
+    set(from + (to - from) * panelEase(k))
+    if (k < 1) globeSlide = requestAnimationFrame(step)
+  }
+  globeSlide = requestAnimationFrame(step)
+}
+addEventListener("resize", () => slideGlobe(false)) // --panel-w changes at the breakpoints
+
 function setPanel(hidden, remember = true) {
   document.documentElement.dataset.panel = hidden ? "hidden" : "open"
+  slideGlobe(globePlaced) // the first call, on page load, puts the globe in place without a slide
+  globePlaced = true
   panelToggle.dataset.look = hidden ? "hidden" : "open"
   panelToggle.setAttribute("aria-expanded", String(!hidden))
   panelToggle.setAttribute("aria-label", hidden ? "Show panel" : "Hide panel")

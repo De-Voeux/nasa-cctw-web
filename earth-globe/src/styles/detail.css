@@ -20,6 +20,13 @@
 .confidence { margin: 6px 0 0; font-size: 13px; color: var(--source-text); }
 .confidence b { color: var(--text); }
 
+.section-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 18px 0 10px; }
+.section-head .section-title { margin: 0; }
+.seg-sm button { min-height: 32px; min-width: 44px; padding: 0 8px; font-size: 12px; font-variant-numeric: tabular-nums; }
+/* Phones and portrait tablets (same query as the bottom sheet in dashboard.css): bigger touch targets */
+@media (max-width: 600px), (orientation: portrait) and (max-width: 900px) {
+  .seg-sm button { min-height: 40px; }
+}
 .section-title { margin: 22px 0 10px; font-size: 11.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--source-text); }
 
 .driver { padding: 14px 16px; margin-bottom: 10px; border-radius: var(--radius-md); background: var(--fill-subtle); border: 1px solid rgba(255, 255, 255, 0.08); }
@@ -58,3 +65,57 @@
 .not-assessed li { margin: 4px 0; }
 .not-assessed b { color: var(--text); font-weight: 600; }
 .detail .fineprint { margin: 10px 0 0; font-size: 11.5px; color: var(--text-faint); }
+
+/* Link to the paper the locations come from */
+.src-link { color: #b9cbff; text-decoration: underline; text-decoration-color: rgba(185, 203, 255, 0.45); text-underline-offset: 2px; }
+.src-link:hover { text-decoration-color: currentColor; }
+
+/* "Seaweed mentioned here": a photo per species with its credit */
+.card ul.species-list { list-style: none; padding: 0; display: grid; gap: 10px; }
+.species-item { display: flex; align-items: center; gap: 12px; margin: 0; }
+.sp-photo {
+  flex: none; width: 96px; height: 72px; border-radius: 10px; object-fit: cover;
+  background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.sp-none {
+  display: grid; place-items: center; text-align: center;
+  border-style: dashed; border-color: rgba(255, 255, 255, 0.18);
+  font-size: 11px; color: var(--text-faint);
+}
+.sp-text { display: grid; gap: 3px; min-width: 0; }
+.sp-name { font-size: 14px; }
+.sp-credit { font-size: 11px; line-height: 1.35; color: var(--text-faint); }
+.sp-credit a { color: inherit; text-decoration: underline; text-decoration-color: rgba(255, 255, 255, 0.3); text-underline-offset: 2px; }
+.sp-credit a:hover { color: var(--text-muted); }
+
+/* "How the water links to ice-ice" (collapsible) */
+.explain { padding: 0; }
+.explain summary {
+  list-style: none; cursor: pointer; padding: 14px 40px 14px 14px; position: relative;
+  display: grid; gap: 3px; border-radius: var(--radius-md);
+}
+.explain summary::-webkit-details-marker { display: none; }
+.explain summary::after {
+  content: ""; position: absolute; right: 18px; top: 50%; width: 8px; height: 8px; margin-top: -6px;
+  border-right: 2px solid var(--text-muted); border-bottom: 2px solid var(--text-muted);
+  transform: rotate(45deg); transition: transform 0.2s;
+}
+.explain[open] summary::after { transform: rotate(225deg); margin-top: -2px; }
+.explain summary:hover { background: var(--fill-subtle); }
+.ex-title { font-size: 14px; font-weight: 600; }
+.ex-sub { font-size: 12px; color: var(--text-muted); }
+.explain > :not(summary) { margin-left: 14px; margin-right: 14px; }
+.ex-lead { margin-top: 0; font-size: 13px; line-height: 1.5; color: var(--text-muted); }
+.explain ul.ex-list { list-style: none; padding: 0; margin-bottom: 4px; display: grid; gap: 10px; }
+.ex-list li { padding: 10px 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.06); }
+.ex-list li.is-driver { border-color: rgba(255, 170, 120, 0.45); background: rgba(255, 140, 80, 0.07); }
+.ex-list b { font-size: 13.5px; font-weight: 600; }
+.ex-here { margin-left: 8px; font-size: 11px; font-weight: 600; color: #ffb38a; }
+.ex-list p { margin: 4px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--text-muted); }
+.ex-h { margin: 16px 14px 6px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-faint); }
+.explain ul.ex-impact { padding-left: 32px; margin-top: 0; font-size: 12.5px; line-height: 1.5; color: var(--text-muted); }
+.ex-impact li { margin: 5px 0; }
+.ex-caveat { margin-bottom: 14px; padding: 10px 12px; border-radius: 12px; font-size: 12px; line-height: 1.5; color: var(--text-muted); border: 1px dashed rgba(255, 255, 255, 0.16); }
+.ex-cite { font-size: 11px; color: var(--text-faint); white-space: normal; }
+.ex-cite a { color: inherit; text-decoration: underline; text-decoration-color: rgba(255, 255, 255, 0.3); text-underline-offset: 2px; }
+.ex-cite a:hover { color: var(--text-muted); }

@@ -44,10 +44,14 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 
 .globe {
   /* Wider than the screen by the panel's width and shifted left, so the
-     globe's centre sits in the middle of the area the panel leaves free. */
+     globe's centre sits in the middle of the area the panel leaves free.
+     When the panel hides, the globe slides right by half the panel instead of
+     changing size: a size change resizes the WebGL canvas, which made it jump.
+     --globe-dx is animated by main.js (slideGlobe) inside the render loop, not by a CSS
+     transition, so the pins and labels move in the same frame as the Earth. */
   position: fixed; top: 0; bottom: 0;
-  left: calc(-1 * (var(--panel-offset) + var(--gap) * 2)); right: 0;
-  transition: transform 0.3s ease;
+  left: calc(-1 * (var(--panel-w) + var(--gap) * 2)); right: 0;
+  transform: translateX(var(--globe-dx, 0px));
 }
 .overlay { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
 
@@ -104,6 +108,7 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .map-tools {
   position: fixed; top: var(--gap); right: calc(var(--panel-offset) + var(--gap) * 2);
   display: grid; justify-items: end; gap: 14px; z-index: 4;
+  transition: right var(--panel-dur) var(--panel-ease);
 }
 
 .date-bar {
@@ -169,13 +174,11 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
   display: inline-block; width: 10px; height: 10px; margin-right: 5px; vertical-align: -1px;
   border: 1px dashed rgba(150, 175, 255, 0.7); border-radius: 3px;
 }
-.cal-range { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.1); }
-.cal-range-label { font-size: 12.5px; color: var(--text-muted); }
 .seg { display: flex; padding: 3px; gap: 2px; border-radius: var(--radius-pill); background: rgba(255, 255, 255, 0.06); }
 .seg button { min-height: 36px; padding: 0 10px; border-radius: var(--radius-pill); font-size: 12.5px; color: var(--text-muted); }
 .seg button:hover { color: var(--text); }
 .seg button[aria-pressed="true"] { background: var(--date-active); color: #fff; }
-.cal-today-btn { width: 100%; min-height: 40px; margin-top: 10px; border-radius: var(--radius-pill); font-size: 13px; background: var(--fill-subtle); }
+.cal-today-btn { width: 100%; min-height: 40px; margin-top: 12px; border-radius: var(--radius-pill); font-size: 13px; background: var(--fill-subtle); }
 .cal-today-btn:hover:not(:disabled) { background: var(--fill-hover); }
 .cal-today-btn:disabled { color: var(--text-faint); cursor: default; }
 
@@ -219,6 +222,7 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .chat {
   position: fixed; left: var(--gap); bottom: calc(var(--gap) + 14px); z-index: 3;
   width: min(490px, calc(100vw - var(--panel-offset) - 120px));
+  transition: width var(--panel-dur) var(--panel-ease);
   border-radius: var(--radius-xl); padding: 0;
   display: flex; flex-direction: column;
   border: 1px solid transparent;
@@ -357,7 +361,7 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 @media (max-width: 600px), (orientation: portrait) and (max-width: 900px) {
   :root { --panel-w: 0px; --sheet-h: 176px; }
   body[data-sheet="expanded"] { --sheet-h: 62vh; --sheet-h: 62dvh; }
-  .globe { left: 0; transform: translateY(calc(var(--sheet-h) / -2)); }
+  .globe { left: 0; transform: translateY(calc(var(--sheet-h) / -2)); transition: transform 0.3s ease; }
 
   .brand { top: 14px; left: 18px; font-size: 26px; }
   .layer-legend { top: 158px; left: var(--gap); width: min(240px, calc(100vw - 90px)); padding: 10px 12px 8px; }
