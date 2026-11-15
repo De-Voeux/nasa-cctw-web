@@ -33,7 +33,7 @@ export class FilterMenu {
         <div class="menu-list"></div>
         <div class="menu-actions">
           <button type="button" class="btn-cancel">Cancel</button>
-          <button type="button" class="btn-apply">Apply Filter</button>
+          <button type="button" class="btn-apply">Apply</button>
         </div>
       </div>`
     this.btn = root.querySelector(".chip")

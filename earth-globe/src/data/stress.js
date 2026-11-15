@@ -16,10 +16,10 @@ import elevated from "../assets/ui/levels/elevated.svg"
 import insufficient from "../assets/ui/levels/insufficient-data.svg"
 
 export const LEVELS = {
-  favorable: { label: "Favorable", icon: favorable, rank: 0 },
-  moderate: { label: "Moderate Risk", icon: moderate, rank: 1 },
-  elevated: { label: "Elevated Risk", icon: elevated, rank: 2 },
-  insufficient: { label: "Insufficient Data", icon: insufficient, rank: 3 },
+  favorable: { label: "Good conditions", icon: favorable, rank: 0 },
+  moderate: { label: "Moderate stress", icon: moderate, rank: 1 },
+  elevated: { label: "High stress", icon: elevated, rank: 2 },
+  insufficient: { label: "Not enough data", icon: insufficient, rank: 3 },
 }
 
 /** Order used by the Stress Level filter. */
@@ -33,11 +33,11 @@ const MOCK_DEFAULT = false
 const demoParam = new URLSearchParams(location.search).get("demo")
 export const DEMO = demoParam === "levels" || (MOCK_DEFAULT && demoParam !== "off")
 
-const NO_DATA = "No environmental data available for this region"
+const NO_DATA = "No ocean data yet"
 const DEMO_CONDITION = {
-  favorable: "Normal condition",
+  favorable: "Normal conditions",
   moderate: "Warm water",
-  elevated: "Warm water, high salinity",
+  elevated: "Warm, salty water",
   insufficient: NO_DATA,
 }
 

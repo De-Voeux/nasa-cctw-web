@@ -106,7 +106,10 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
   display: grid; justify-items: end; gap: 14px; z-index: 4;
 }
 
-.date-bar { border-radius: var(--radius-xl); padding: 8px 18px 14px; }
+.date-bar {
+  display: flex; align-items: flex-end; gap: 10px;
+  border-radius: var(--radius-xl); padding: 8px 14px 14px 18px;
+}
 .date-pills { display: flex; gap: 8px; align-items: flex-end; }
 .date-pill { display: grid; justify-items: center; gap: 4px; }
 .date-pill .today { font-size: 11px; color: var(--text-muted); height: 14px; }
@@ -119,9 +122,62 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .date-pill button:hover { background: var(--fill-hover); }
 .date-pill .mon { font-size: 14px; color: var(--text-muted); }
 .date-pill .day { font-size: 24px; font-weight: 500; line-height: 1.1; }
-.date-pill.past button { opacity: 0.45; }
+/* Past days: dimmer text, still readable and clearly clickable */
+.date-pill.past button { background: transparent; border-style: dashed; border-color: rgba(255, 255, 255, 0.2); }
+.date-pill.past .day { color: var(--text-muted); }
 .date-pill button[aria-pressed="true"] { background: var(--date-active); border-color: rgba(150, 175, 255, 0.55); opacity: 1; }
 .date-pill button[aria-pressed="true"] .mon { color: #dbe4ff; }
+
+/* Calendar button at the end of the date bar, and the calendar it opens */
+.date-sep { align-self: stretch; width: 1px; margin: 18px 0 0; background: rgba(255, 255, 255, 0.14); }
+.cal-slot { display: grid; justify-items: center; gap: 4px; }
+.cal-btn {
+  width: 48px; height: 72px; border-radius: var(--radius-pill);
+  display: grid; place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.16); background: rgba(255, 255, 255, 0.04);
+}
+.cal-btn:hover { background: var(--fill-hover); }
+.cal-btn[aria-expanded="true"] { background: rgba(225, 232, 245, 0.92); color: #1d2747; }
+.cal-btn svg { width: 22px; height: 22px; }
+
+.cal-pop {
+  /* top and left are set by datePills.js, under the date bar */
+  position: fixed; z-index: 6; width: 320px; max-width: calc(100vw - 24px); box-sizing: border-box;
+  border-radius: var(--radius-lg); padding: 14px 14px 12px;
+  background: rgba(16, 22, 36, 0.82);
+}
+.cal-pop[hidden] { display: none; }
+.cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.cal-title { margin: 0; font-size: 15px; font-weight: 600; }
+.cal-nav { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; }
+.cal-nav:hover:not(:disabled) { background: var(--fill-hover); }
+.cal-nav:disabled { opacity: 0.3; cursor: default; }
+.cal-nav svg { width: 20px; height: 20px; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.cal-wd { text-align: center; font-size: 11px; color: var(--text-muted); padding: 2px 0 4px; }
+.cal-day {
+  height: 40px; border-radius: 12px; font-size: 14px; font-variant-numeric: tabular-nums;
+  border: 1px solid transparent;
+}
+.cal-day:hover:not(:disabled) { background: var(--fill-hover); }
+.cal-day:disabled { color: var(--text-faint); text-decoration: line-through; text-decoration-color: rgba(255, 255, 255, 0.2); cursor: default; }
+.cal-day.is-forecast:not(:disabled) { border: 1px dashed rgba(150, 175, 255, 0.55); }
+.cal-day.is-today { font-weight: 700; color: #b9cbff; }
+.cal-day[aria-pressed="true"] { background: var(--date-active); color: #fff; border-color: rgba(150, 175, 255, 0.55); }
+.cal-note { margin: 10px 2px 0; font-size: 11.5px; line-height: 1.4; color: var(--text-muted); }
+.cal-key {
+  display: inline-block; width: 10px; height: 10px; margin-right: 5px; vertical-align: -1px;
+  border: 1px dashed rgba(150, 175, 255, 0.7); border-radius: 3px;
+}
+.cal-range { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255, 255, 255, 0.1); }
+.cal-range-label { font-size: 12.5px; color: var(--text-muted); }
+.seg { display: flex; padding: 3px; gap: 2px; border-radius: var(--radius-pill); background: rgba(255, 255, 255, 0.06); }
+.seg button { min-height: 36px; padding: 0 10px; border-radius: var(--radius-pill); font-size: 12.5px; color: var(--text-muted); }
+.seg button:hover { color: var(--text); }
+.seg button[aria-pressed="true"] { background: var(--date-active); color: #fff; }
+.cal-today-btn { width: 100%; min-height: 40px; margin-top: 10px; border-radius: var(--radius-pill); font-size: 13px; background: var(--fill-subtle); }
+.cal-today-btn:hover:not(:disabled) { background: var(--fill-hover); }
+.cal-today-btn:disabled { color: var(--text-faint); cursor: default; }
 
 .map-controls { position: relative; display: grid; gap: 18px; justify-items: center; }
 .round-btn { width: 62px; height: 62px; border-radius: 50%; display: grid; place-items: center; }
@@ -212,15 +268,34 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 
 .credit { position: fixed; left: var(--gap); bottom: 4px; margin: 0; font-size: 10.5px; color: var(--text-faint); z-index: 2;  max-width: calc(100vw - var(--panel-offset) - var(--gap) * 4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
+/* ---------------------------------------------------------------- ocean layer legend (top left, under the brand) */
+
+.layer-legend {
+  position: fixed; top: 92px; left: 36px; z-index: 3; width: 248px;
+  border-radius: var(--radius-lg); padding: 12px 14px 10px;
+  background: var(--glass-bg-strong);
+}
+.layer-legend[hidden] { display: none; }
+.legend-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+.legend-title { font-size: 14px; font-weight: 600; }
+.legend-unit { font-size: 12px; color: var(--text-muted); }
+.legend-bar { height: 10px; border-radius: 5px; }
+.legend-ticks { position: relative; height: 16px; margin-top: 4px; font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.legend-tick { position: absolute; top: 0; transform: translateX(-50%); }
+.legend-tick.first { transform: none; }
+.legend-tick.last { transform: translateX(-100%); }
+.legend-note { margin: 6px 0 0; font-size: 11px; color: var(--text-faint); line-height: 1.35; }
+
 /* ---------------------------------------------------------------- smaller screens */
 
 /* Laptops and small desktops: narrower panel, smaller controls */
 @media (max-width: 1280px) {
   :root { --panel-w: 340px; }
   .brand { font-size: 30px; top: 24px; left: 28px; }
+  .layer-legend { top: 78px; left: 28px; }
 }
 @media (max-width: 1100px) {
-  .date-pill button { width: 42px; height: 62px; }
+  .date-pill button, .cal-btn { width: 44px; height: 62px; }
   .date-pill .day { font-size: 20px; }
   .date-pill .mon { font-size: 12.5px; }
   .date-bar { padding: 6px 12px 10px; }
@@ -236,15 +311,18 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 @media (orientation: landscape) and (max-height: 560px) {
   :root { --panel-w: 300px; --gap: 8px; }
   .brand { font-size: 22px; top: 12px; left: 16px; }
+  .layer-legend { top: 48px; left: 16px; width: 220px; padding: 8px 12px; }
   .side-panel { overflow-y: auto; scrollbar-width: thin; }
   .panel-body { flex: none; overflow: visible; }
   .map-tools { gap: 8px; }
   .date-pill .today { display: none; }
-  .date-pill button { width: 36px; height: 48px; }
+  .date-pill button, .cal-btn { width: 44px; height: 48px; }
+  .date-sep { margin-top: 0; }
+  .cal-pop { max-height: calc(100vh - 90px); overflow-y: auto; }
   .date-pill .day { font-size: 16px; }
   .date-pill .mon { font-size: 11px; }
-  .date-bar { padding: 6px 8px; border-radius: 22px; }
-  .date-pills { gap: 5px; }
+  .date-bar { padding: 6px 8px; border-radius: 22px; gap: 5px; }
+  .date-pills { gap: 4px; }
   .map-controls { gap: 8px; }
   .round-btn, .zoom-pill { width: 42px; }
   .round-btn { height: 42px; }
@@ -270,14 +348,15 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
   .globe { left: 0; transform: translateY(calc(var(--sheet-h) / -2)); }
 
   .brand { top: 14px; left: 18px; font-size: 26px; }
+  .layer-legend { top: 158px; left: var(--gap); width: min(240px, calc(100vw - 90px)); padding: 10px 12px 8px; }
 
   .map-tools {
     top: var(--gap); left: var(--gap); right: var(--gap);
     display: flex; justify-content: space-between; align-items: flex-start;
   }
-  .date-bar { margin-top: 44px; padding: 4px 10px 8px; border-radius: 22px; }
-  .date-pills { gap: 6px; }
-  .date-pill button { width: 40px; height: 56px; }
+  .date-bar { margin-top: 44px; padding: 4px 6px 8px; border-radius: 22px; gap: 4px; }
+  .date-pills { gap: 4px; }
+  .date-pill button, .cal-btn { width: 44px; height: 56px; }
   .date-pill .day { font-size: 18px; }
   .date-pill .mon { font-size: 12px; }
   .round-btn, .zoom-pill { width: 48px; }

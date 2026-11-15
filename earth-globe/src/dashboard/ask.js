@@ -20,7 +20,7 @@ export function answer(question, locations) {
     return {
       focus: top[0],
       actions: top.map((l) => ({ label: `Show ${l.name}`, loc: l })),
-      html: `<p><b>${names}</b> ${top.length > 1 ? "appear" : "appears"} with the most host taxa in the research leads (${max}).</p>
+      html: `<p><b>${names}</b> ${top.length > 1 ? "appear" : "appears"} with the most seaweed types mentioned in research papers (${max}).</p>
         <p class="small muted">This counts mentions, not ice-ice cases.</p>`,
     }
   }

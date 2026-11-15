@@ -18,6 +18,7 @@ import { mountFlags } from "./flags.js"
 import { mountChat } from "./chat.js"
 import { mountPanelHandle } from "./panelHandle.js"
 import { mountLayersMenu } from "./layersMenu.js"
+import { mountOceanLayer } from "./oceanLayer.js"
 
 const HOME = { lat: 5, lon: 117, altitude: 1.35 }
 const ALL_SPECIES = "All species"
@@ -169,8 +170,20 @@ function refresh() {
   panel.showList(rows())
 }
 
-const dates = mountDatePills($("dates"), { onChange: (d) => panel.setDay(d) })
+// Coloured ocean layer (sea temperature, salinity, rainfall), picked in the Layers menu.
+const oceanLayer = mountOceanLayer(globe, $("layer-legend"))
+
+// Date bar: five days, plus a calendar for the last three months and the chart length.
+const dates = mountDatePills($("date-bar"), {
+  onChange: (d) => {
+    panel.setDay(d)
+    oceanLayer.setDate(d.date)
+  },
+  onRange: (days) => panel.setRange(days),
+})
 panel.day = dates.current
+panel.range = dates.range
+oceanLayer.setDate(dates.current.date)
 
 // Species
 const speciesSelect = $("species")
@@ -229,8 +242,8 @@ mountFlags($("flags"), {
 $("sort-btn").addEventListener("click", () => {
   state.sort = state.sort === "low" ? "high" : "low"
   const lowest = state.sort === "low"
-  $("sort-label").textContent = lowest ? "Lowest Risk" : "Highest Risk"
-  $("sort-btn").setAttribute("aria-label", `Sort order: ${lowest ? "lowest" : "highest"} risk first`)
+  $("sort-label").textContent = lowest ? "Lowest stress" : "Highest stress"
+  $("sort-btn").setAttribute("aria-label", `Sort: ${lowest ? "lowest" : "highest"} stress first`)
   refresh()
 })
 
@@ -358,4 +371,4 @@ $("brand").addEventListener("click", () => {
   globe.flyTo({ ...HOME, duration: 1600 })
 })
 
-mountLayersMenu($("layers-btn"), $("layers-menu"))
+mountLayersMenu($("layers-btn"), $("layers-menu"), { onChange: (id) => oceanLayer.show(id) })
