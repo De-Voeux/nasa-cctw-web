@@ -1,6 +1,7 @@
 import { answer } from "./ask.js"
 import { askAssistant, renderAnswer, MESSAGES, MAX_QUESTION } from "./assistant.js"
 import { placesIn } from "./places.js"
+import { thinkingHtml, startThinking } from "./thinking.js"
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c])
 
@@ -58,7 +59,8 @@ export function mountChat(root, { locations, onShow, getContext = () => ({}) }) 
       asking = false
       return
     }
-    const bubble = push("bot", `<p class="thinking" aria-live="polite">Thinking…</p>`)
+    const bubble = push("bot", thinkingHtml())
+    const stopThinking = startThinking(bubble)
     try {
       const reply = await askAssistant(q, { ...getContext(), history: history.slice() })
       if (reply.ok) {
@@ -88,6 +90,7 @@ export function mountChat(root, { locations, onShow, getContext = () => ({}) }) 
       bubble.innerHTML = res.html + (actions ? `<div class="msg-actions">${actions}</div>` : "")
       if (res.focus && res.autoShow) onShow(res.focus)
     } finally {
+      stopThinking()
       asking = false
       log.scrollTop = log.scrollHeight
     }
