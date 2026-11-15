@@ -48,7 +48,7 @@ export const SYSTEM_PROMPT = `You are the assistant inside SEAmon, an atlas of e
 
 Rules:
 - Use ONLY what your tools return. Never use outside knowledge for facts, numbers, thresholds or causes.
-- For questions about studies or literature, call search_evidence. Write its query in English even if the user wrote in another language. For measurements, call get_series (call list_sites first if you do not know the site id). 
+- For questions about studies or literature, call search_evidence. Usually ONE search, without a country or species filter, is enough: search again only if the results clearly do not cover the question, and never search country by country. Write its query in English even if the user wrote in another language. For measurements, call get_series (call list_sites first if you do not know the site id). 
 - Call final_answer exactly once to finish. Put each factual statement about literature in claims[], with the chunk_ids that support it; claims[] is for literature only, so leave it empty when you answer from measurements. Put the measurements you used in data_used[].
 - Numbers and dates come from get_series results only. Quote them as returned, with their unit and date range (min_day and max_day are the dates of the minimum and the maximum). Never state a date the tools did not return, and do not calculate new numbers.
 - The measurements are HISTORICAL files, not live data. list_sites shows, for every site, the products, variables and the first and last date we have. Check it before get_series. If the question is about a period outside that range (for example "last week"), say the data ends on its last date and answer for that period only if it helps, clearly labelled. Never present old data as current.
@@ -430,12 +430,13 @@ export async function handleAsk(request, env, { fetchImpl = fetch } = {}) {
   let toolCalls = 0
   let retried = false
   let nudged = false
+  let onlyFinal = false // once true, the model is offered final_answer and nothing else
   let giveUp = null // why the fixed abstention was used, for the log only
   let answer = null
 
   try {
     for (let turn = 0; turn < MAX_MODEL_TURNS && !answer; turn++) {
-      const reply = await llm.chat({ messages, tools })
+      const reply = await llm.chat({ messages, tools: onlyFinal ? tools.filter((t) => t.function.name === "final_answer") : tools })
       trace.model = `${reply.provider}:${reply.model}`
       const calls = reply.toolCalls
       // Keep only what the API needs back; providers add fields of their own.
@@ -447,7 +448,16 @@ export async function handleAsk(request, env, { fetchImpl = fetch } = {}) {
           break
         }
         nudged = true
-        messages.push({ role: "user", content: "Use the tools. Finish by calling final_answer; do not answer in plain text." })
+        // With sources already in hand the only useful next step is the answer, so the other tools are taken away:
+        // the model can no longer answer in plain text instead of calling a function by choosing a different one.
+        if (ctx.chunks.size > 0 || ctx.series.length > 0) onlyFinal = true
+        messages.push({
+          role: "user",
+          content:
+            ctx.chunks.size > 0 || ctx.series.length > 0
+              ? "You already have sources or measurements. Do not write plain text: call the final_answer function now, citing the chunk_ids you retrieved (or abstain with abstained=true if they do not help)."
+              : "Use the tools. Finish by calling final_answer; do not answer in plain text.",
+        })
         continue
       }
       const results = []
@@ -468,7 +478,8 @@ export async function handleAsk(request, env, { fetchImpl = fetch } = {}) {
           continue
         }
         if (++toolCalls > MAX_TOOL_CALLS) {
-          results.push({ role: "tool", tool_call_id: u.id, content: "Tool call limit reached. Call final_answer now." })
+          onlyFinal = true
+          results.push({ role: "tool", tool_call_id: u.id, content: "Tool call limit reached. Do not search again and do not write plain text: call the final_answer function now with what you already retrieved." })
           continue
         }
         let out
