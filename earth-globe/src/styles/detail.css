@@ -96,6 +96,14 @@
 .k-sen { height: 0; border-top: 2px dashed #fff; }
 .lt-detail { margin: 8px 0 0; font-size: 12.5px; line-height: 1.45; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 
+/* "What the data tells us" (longTermTrend.js insightsHtml): replaces "Not checked yet". */
+.insights-data { margin-top: 6px; padding: 2px 16px 12px; border-radius: var(--radius-md); background: var(--fill-subtle); border: 1px solid rgba(255, 255, 255, 0.08); }
+.insights-data .section-title { margin-top: 14px; }
+.insights-data h3 { margin: 14px 0 6px; font-size: 13.5px; font-weight: 700; color: var(--text); }
+.insights-data ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.5; color: var(--source-text); }
+.insights-data li { margin: 4px 0; }
+.insights-data b { color: var(--text); font-weight: 600; }
+
 .not-assessed { margin-top: 6px; padding: 2px 16px 12px; border-radius: var(--radius-md); border: 1px dashed rgba(255, 255, 255, 0.2); }
 .not-assessed .section-title { margin-top: 14px; }
 .not-assessed ul { margin: 0; padding: 0; list-style: none; font-size: 13px; color: var(--source-text); }

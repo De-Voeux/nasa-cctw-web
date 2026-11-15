@@ -54,7 +54,7 @@ jobs:
         run: npm test
 
       - name: Test the assistant Worker, the corpus tools and the data loader
-        run: node --test worker/ask.test.mjs scripts/rag/corpus.test.mjs scripts/env/parse.test.mjs
+        run: node --test worker/ask.test.mjs worker/knowledge.test.mjs scripts/rag/corpus.test.mjs scripts/env/parse.test.mjs
 
       - name: Build site bundle
         run: ./scripts/build-site.sh

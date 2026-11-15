@@ -40,3 +40,33 @@ test("section is empty for a region without long-term data", () => {
   assert.equal(longTermSection(doc, "PH-NE-BOHOL"), "")
   assert.match(longTermSection(doc, "PH-TAWI"), /Long-term change, 2003–2006/)
 })
+
+import fs from "node:fs"
+import { insightsHtml, changeLines, rangeLines } from "./longTermTrend.js"
+
+const real = JSON.parse(fs.readFileSync(new URL("../data/longTermTrends.json", import.meta.url), "utf8"))
+const KA = { sst: { min: 27, max: 30, source: "A" }, salinity: { min: 30, max: 35, source: "B" } }
+
+test("insights list clear changes with their meaning and group the rest", () => {
+  const { clear, flat } = changeLines(real.regions["PH-TAWI"])
+  assert.ok(clear.some((l) => /Sea surface temperature rose about/.test(l) && /warmer than it was twenty years ago/.test(l)))
+  assert.ok(clear.some((l) => /pH fell about/.test(l) && /ocean acidification/.test(l)))
+  assert.ok(flat.includes("rainfall"))
+})
+
+test("insights set the warmest and freshest month against the species range", () => {
+  const lines = rangeLines(real.regions["PH-TAWI"], real.years, KA, "Kappaphycus alvarezii")
+  assert.match(lines[0], /^Yearly sea temperature went from \d+\.\d °C \(2003–2007\) to \d+\.\d °C \(2019–2024 without 2023\)\. The warmest month, \w{3}, averages/)
+  assert.match(lines[1], /The freshest month, \w{3}, averages \d+\.\d PSU/)
+})
+
+test("insights section shows data and limits even without long-term data", () => {
+  const html = insightsHtml(real, "NOPE", { place: "Somewhere" })
+  assert.match(html, /What the data tells us/)
+  assert.match(html, /What these data cannot show/)
+  assert.doesNotMatch(html, /What changed/)
+  const full = insightsHtml(real, "PH-TAWI", { place: "Tawi-Tawi", rules: KA, species: "Kappaphycus alvarezii", ruleSources: ["A", "B"] })
+  assert.match(full, /What changed in Tawi-Tawi, 2003–2024/)
+  assert.match(full, /What it means for Kappaphycus alvarezii/)
+  assert.doesNotMatch(full, /NaN|undefined/)
+})

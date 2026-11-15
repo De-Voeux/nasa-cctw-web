@@ -156,6 +156,123 @@ export function longTermSection(doc, regionId) {
   })
   return `
     <h2 class="section-title">Long-term change, ${y0}–${y1}</h2>
-    <p class="muted small lt-intro">Yearly averages for this area. A trend counts as clear when the Mann-Kendall test gives p &lt; 0.05. These are satellite and model values for the wider area, not measurements at a farm, and a trend in the water is not a sign the seaweed is sick.</p>
+    <p class="muted small lt-intro">Yearly averages for this area. Open a card to see the change and how sure it is.</p>
     ${cards.join("")}`
+}
+
+// ------------------------------------------------------------------ insights (replaces "Not checked yet")
+
+/** What a clear rise or fall means, in plain words. */
+const MEANING = {
+  sst: { up: "The sea here is warmer than it was twenty years ago.", down: "The sea here is cooler than it was twenty years ago." },
+  air_temp: { up: "The air is warming along with the sea.", down: "The air is cooling." },
+  rain: { up: "It rains more than it used to.", down: "It rains less than it used to." },
+  salinity: { up: "The water is getting saltier.", down: "The water is getting slightly fresher." },
+  ph: { up: "The water is becoming less acidic.", down: "The water is slowly becoming more acidic, as in oceans worldwide (ocean acidification)." },
+  nitrate: { up: "There is more nitrate in the water (model estimate).", down: "There is less nitrate in the water (model estimate)." },
+  phosphate: { up: "There is more phosphate in the water (model estimate).", down: "There is less phosphate in the water (model estimate)." },
+}
+const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length
+
+/** Average of the first and last five complete years, e.g. {from:"2003–2007", a:28.7, to:"2020–2024", b:29.3}. */
+export function firstLast(series, years, n = 5) {
+  const pts = years.map((y, i) => [y, series.annual[i]]).filter(([, v]) => v != null)
+  if (pts.length < 2 * n) return null
+  const head = pts.slice(0, n)
+  const tail = pts.slice(-n)
+  // "2019–2024 without 2023" when an incomplete year sits inside the five.
+  const label = (run) => {
+    const y0 = run[0][0]
+    const y1 = run[n - 1][0]
+    const gaps = years.filter((y) => y > y0 && y < y1 && !run.some((p) => p[0] === y))
+    return `${y0}–${y1}${gaps.length ? ` without ${gaps.join(", ")}` : ""}`
+  }
+  return { from: label(head), a: mean(head.map((p) => p[1])), to: label(tail), b: mean(tail.map((p) => p[1])) }
+}
+
+/** Clear changes as sentences, and the variables with no clear change. */
+export function changeLines(region) {
+  const clear = []
+  const flat = []
+  for (const k of ORDER) {
+    const s = region.series[k]
+    if (!s?.trend) continue
+    if (!s.trend.significant) { flat.push(s.name.toLowerCase()); continue }
+    const dir = s.trend.slope_per_decade > 0 ? "up" : "down"
+    const amount = `${Math.abs(s.trend.change_over_period).toFixed(s.digits)}${s.unit ? ` ${s.unit}` : ""}`
+    clear.push(`<b>${esc(s.name)} ${dir === "up" ? "rose" : "fell"} about ${esc(amount)}</b> (${esc(signed(s.trend.slope_per_decade, s.digits))}${s.unit ? ` ${esc(s.unit)}` : ""} per decade). ${esc(MEANING[k][dir])}`)
+  }
+  return { clear, flat }
+}
+
+/** The long-term values set against the species' range: the warmest and the freshest month. */
+export function rangeLines(region, years, rules, species) {
+  const out = []
+  const sst = region.series.sst
+  if (rules?.sst && sst) {
+    const fl = firstLast(sst, years)
+    const c = sst.climatology.map((v, i) => [v, i]).filter(([v]) => v != null)
+    if (c.length === 12) {
+      const [hot, m] = c.reduce((a, b) => (b[0] > a[0] ? b : a))
+      const where = hot > rules.sst.max ? `above the ${rules.sst.max} °C upper limit` : `${(rules.sst.max - hot).toFixed(1)} °C below the ${rules.sst.max} °C upper limit`
+      out.push(`${fl ? `Yearly sea temperature went from ${fl.a.toFixed(1)} °C (${fl.from}) to ${fl.b.toFixed(1)} °C (${fl.to}). ` : ""}The warmest month, ${MONTHS[m]}, averages ${hot.toFixed(1)} °C, ${where} of the range used for ${species}.`)
+    }
+  }
+  const sal = region.series.salinity
+  if (rules?.salinity && sal) {
+    const c = sal.climatology.map((v, i) => [v, i]).filter(([v]) => v != null)
+    if (c.length === 12) {
+      const [low, m] = c.reduce((a, b) => (b[0] < a[0] ? b : a))
+      const where = low < rules.salinity.min ? `below the ${rules.salinity.min} PSU lower limit` : `${(low - rules.salinity.min).toFixed(1)} PSU above the ${rules.salinity.min} PSU lower limit`
+      out.push(`The freshest month, ${MONTHS[m]}, averages ${low.toFixed(1)} PSU, ${where}.`)
+    }
+  }
+  return out
+}
+
+/**
+ * "What the data tells us": what changed, what it means against the safe range, and which
+ * data are behind the page and what they cannot show.
+ * @param {{place:string, rules?:any, species?:string, ruleSources?:string[]}} opts
+ */
+export function insightsHtml(doc, regionId, { place, rules = null, species = null, ruleSources = [] } = {}) {
+  const region = regionId ? doc?.regions?.[regionId] : null
+  const y0 = doc?.years?.[0]
+  const y1 = doc?.years?.[doc.years.length - 1]
+  const blocks = []
+  if (region) {
+    const { clear, flat } = changeLines(region)
+    blocks.push(`
+      <h3>What changed in ${esc(place)}, ${y0}–${y1}</h3>
+      <ul>${clear.map((l) => `<li>${l}</li>`).join("")}
+        ${flat.length ? `<li>No clear change in ${esc(flat.join(", "))}. Their yearly values go up and down without a steady direction.</li>` : ""}</ul>`)
+    const ranges = rules ? rangeLines(region, doc.years, rules, species) : []
+    if (ranges.length) {
+      blocks.push(`
+      <h3>What it means for ${esc(species)}</h3>
+      <ul>${ranges.map((l) => `<li>${esc(l)}</li>`).join("")}
+        <li>A warmer or fresher sea is a stress on the seaweed, not a sign that it is sick.</li></ul>`)
+    }
+  }
+  const sources = region ? [...new Set(ORDER.map((k) => region.series[k]?.source).filter(Boolean))] : []
+  blocks.push(`
+      <h3>Data behind this page</h3>
+      <ul>
+        <li><b>Last 90 days, daily:</b> NASA MUR sea temperature (about 1 km), Copernicus Marine salinity (about 9 km) and nitrate, phosphate and pH (about 25 km), with a 3-day Copernicus forecast.</li>
+        ${sources.length ? `<li><b>${y0}–${y1}, monthly:</b> ${esc(sources.join("; "))}.</li>` : ""}
+        <li><b>Area:</b> the sea within 5 km of the coast where ice-ice was reported, averaged over the area. Not measurements at a farm.</li>
+        ${region ? `<li><b>Trend test:</b> Mann-Kendall on yearly averages, clear when p &lt; 0.05; size from Sen's slope with a 95% confidence interval.</li>` : ""}
+        ${ruleSources.length ? `<li><b>Safe ranges:</b> ${esc(ruleSources.join("; "))}. Provisional.</li>` : ""}
+      </ul>
+      <h3>What these data cannot show</h3>
+      <ul>
+        <li>Whether the seaweed is sick or which pathogen is present. Water conditions are a warning, not a diagnosis.</li>
+        <li>Nitrate, phosphate and pH have no validated safe range for these seaweeds, so they are shown but not rated.</li>
+        <li>Sunlight reaching the seaweed needs water-clarity data, which is not connected yet.</li>
+      </ul>`)
+  return `
+    <section class="insights-data">
+      <h2 class="section-title">What the data tells us</h2>
+      ${blocks.join("")}
+    </section>`
 }
