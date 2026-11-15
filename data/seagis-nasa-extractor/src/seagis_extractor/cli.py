@@ -172,6 +172,50 @@ def _concurrency(v: str) -> int:
     return n
 
 
+def cmd_export(args) -> int:
+    import json
+
+    from . import __version__, auth, export
+
+    cfg = load_config(Path(args.config))
+    root = cfg["_root"]
+    plan = json.loads((Path(args.plan) if args.plan else root / "outputs/plan.json").read_text())
+    roi_path = root / cfg.get("roi_directory", "data/roi") / "roi_candidates_v1.geojson"
+    mig = Path(args.migrations_dir) if args.migrations_dir else root.parent.parent / "supabase/migrations"
+    try:
+        inp = export.load_inputs(root, plan, root / "data/processed", roi_path)
+    except export.ExportError as e:
+        print(f"REFUSED: {e}", file=sys.stderr)
+        return 2
+    print(f"EXPORT plan {plan['plan_sha256'][:12]}..  period {plan['period']['start']}..{plan['period']['end']}")
+    for line in export.summary_lines(inp):
+        print(line)
+    if args.apply_migrations:
+        print("migrations: " + (", ".join(p.name for p in export.migration_files(mig)) or f"none found in {mig}"))
+    names = auth.apply_env(root / ".env")
+    try:
+        dsn = export.dsn_from_env()
+    except export.ExportError as e:
+        print(("DRY RUN: " if args.dry_run else "REFUSED: ") + str(e), file=sys.stderr)
+        return 0 if args.dry_run else 2
+    print(f"target: {export.describe(dsn)}" + (f" (from .env: {', '.join(sorted(names))}; values not shown)" if names else ""))
+    if args.dry_run:
+        print("DRY RUN: nothing was sent to the database.")
+        return 0
+    if args.confirm_host != export.dsn_host(dsn):
+        print(f"REFUSED: pass --confirm-host {export.dsn_host(dsn)} to write to this database", file=sys.stderr)
+        return 2
+    import psycopg
+    try:
+        with psycopg.connect(dsn, connect_timeout=20, application_name="seagis-extract") as conn:
+            res = export.export(conn, inp, plan, mig if args.apply_migrations else None, tool_version=__version__)
+    except (psycopg.Error, export.ExportError) as e:
+        print(f"FAILED (rolled back, nothing written): {type(e).__name__}: {str(e).splitlines()[0][:300]}", file=sys.stderr)
+        return 4
+    print(json.dumps(res, indent=1))
+    return 0
+
+
 def cmd_status(args) -> int:
     import json
 
@@ -311,7 +355,15 @@ def main(argv=None) -> int:
     st.add_argument("--plan", default=None, help="default outputs/plan.json")
     st.add_argument("--batch", type=int, default=None, help="batch number; omit for every unit in the plan")
     st.set_defaults(func=cmd_status)
-    for name in ("process", "validate", "export"):
+    ex = sub.add_parser("export", help="upsert data/processed Parquet into Postgres/Supabase (SEAGIS_DB_DSN)")
+    ex.add_argument("--config", default="config/extraction.yaml")
+    ex.add_argument("--plan", default=None, help="default outputs/plan.json")
+    ex.add_argument("--dry-run", action="store_true", help="summarise what would be loaded; no connection")
+    ex.add_argument("--confirm-host", default=None, help="must equal the DSN host to write")
+    ex.add_argument("--apply-migrations", action="store_true", help="apply pending supabase/migrations/*.sql first")
+    ex.add_argument("--migrations-dir", default=None, help="default <repo>/supabase/migrations")
+    ex.set_defaults(func=cmd_export)
+    for name in ("process", "validate"):
         sp = sub.add_parser(name, help="not implemented yet")
         sp.add_argument("rest", nargs="*")
         sp.set_defaults(func=_not_yet(name))
