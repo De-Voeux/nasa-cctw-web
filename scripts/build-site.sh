@@ -19,7 +19,7 @@ mkdir -p "$OUT"
 # Link-preview image at a fixed, unhashed URL: https://seamon.seagis.app/og-image.png
 # (the og:image tag in earth-globe/src/index.html points here). Parcel would hash the
 # name, so copy it after the build.
-cp earth-globe/src/assets/earth/ogimage-nasa.png "$OUT/og-image.png"
+cp earth-globe/src/assets/earth/ogimage.png "$OUT/og-image.png"
 
 # The dashboard used to live at /globe/. Send the old addresses to their new homes.
 # Rules are matched top to bottom, so the specific ones come first.
