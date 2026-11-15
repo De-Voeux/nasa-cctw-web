@@ -21,7 +21,8 @@ import yaml
 DSN_ENV = "SEAGIS_DB_DSN"
 MIGRATIONS_TABLE = "seagis_schema_migrations"
 EXTRACTOR_MIGRATION = "20261115000000_seagis_environment.sql"
-EXTRACTOR_MIGRATIONS = (EXTRACTOR_MIGRATION, "20261115010000_seagis_more_sources.sql")
+EXTRACTOR_MIGRATIONS = (EXTRACTOR_MIGRATION, "20261115010000_seagis_more_sources.sql",
+                        "20261115020000_seagis_monthly_metrics.sql")
 
 METRIC_COLUMNS = ["region_id", "subregion_id", "geometry_version", "dataset", "variable", "date", "units",
                   "mean", "min", "max", "std", "valid_pixel_count", "roi_pixel_count", "coverage_fraction",
