@@ -1,6 +1,6 @@
 # Long-term data window (proposal, 2026-11-15)
 
-**Status:** proposal. Nothing has been planned or fetched. A fetch needs a new plan, an approved hash and a DB schema decision.
+**Status (window now 2015–2024, see 2a):** built as [`scripts/monthly.py`](../../data/seagis-nasa-extractor/scripts/monthly.py), with table `seagis_monthly_metrics` ([migration](../../supabase/migrations/20261115020000_seagis_monthly_metrics.sql)). Smoke test on PH-TAWI/bongao passed for POWER, MUR and Copernicus; the IMERG and direct-Zarr Copernicus fixes are not tested yet. The full fetch has not run.
 
 ## 1. How the extractor and `research/data-access/` line up
 
@@ -39,10 +39,88 @@ The dates were read from CMR and Copernicus metadata on 2026-11-15. This window 
 ### Rules
 
 - **Do not splice products.** The recent window uses IMERG Late and Copernicus ANFC. The long-term window uses IMERG Final and Copernicus multi-year, which are different datasets. Keep them as separate `dataset` names and never fit one trend across the join.
-- **Currents:** a monthly mean of `uo`/`vo` gives the mean flow vector, but its magnitude underestimates the mean speed. Either use the daily (P1D) multi-year product for speed and steadiness, or store only the mean vector monthly. Decide this before planning.
-- **MUR monthly:** compute monthly means from daily files (all cells in the zone). This is 8,000 days × 48 zones through Harmony, the largest part of the job. A NOAA ERDDAP monthly MUR product may be cheaper; its existence and terms are **not verified**.
+- **Currents:** a monthly mean of `uo`/`vo` gives the mean flow vector, but its magnitude underestimates the mean speed. Decided: mean vector only (see 2a).
+- **MUR monthly:** use NOAA ERD's monthly mean of daily MUR (`jplMURSST41mday`, checked below). It is a NOAA-derived product: credit NASA JPL MUR and name NOAA ERD as distributor, as `research/data-access` already does. Two months are missing there (see 2a).
 - **POWER:** use the same parameters as the daily run, from the monthly endpoint. Add `PRECTOTCORR` only as a cross-check against IMERG.
 - **Storage:** `seagis_daily_metrics` is daily. Monthly values need a `seagis_monthly_metrics` table (or a period column), plus a new allowlisted migration.
+
+## 2a. Fetch plan (metadata checked 2026-11-15, nothing downloaded)
+
+Monthly values for 2003-01 .. 2024-12 (264 months), the same 48 zones and the same area weighting as the daily run.
+
+| Source | Product | Access | Checked | Requests | Transfer (est.) | Time (est.) |
+| --- | --- | --- | --- | --- | --- | --- |
+| SST | NOAA ERD `jplMURSST41mday`: monthly mean of daily MUR, 0.01°, same grid as MUR | ERDDAP griddap subset (NetCDF), no account | 2002-06 → 2026-10; **291 of 293 months: 2023-06 and 2025-12 are missing** | ~50 boxes × 22 years | ~200 MB | 30–60 min |
+| Rain | GPM IMERG Final monthly `GPM_3IMERGM` V07 (C2723754851) | Harmony subset, like daily IMERG | 264 of 264 granules | ~50 boxes | < 20 MB | 15–30 min |
+| Salinity | Copernicus `cmems_mod_glo_phy_my_0.083deg_P1M-m_202311` (`so`) | ARCO Zarr, like today | 1993-01 → 2026-08 | 19 regions | < 100 MB | ~10 min |
+| Currents | same product, `uo`, `vo`: monthly (P1M) or daily (P1D, `cmems_mod_glo_phy_my_0.083deg_P1D-m_202311`) | ARCO Zarr | both 1993 → 2026 | 19 regions | P1M small; P1D a few hundred MB | 10–40 min |
+| Nutrients, pH | `cmems_mod_glo_bgc_my_0.25deg_P1M-m_202406` (`no3`, `po4`, `ph`) | ARCO Zarr | 1993-01 → 2026-08 | 19 regions | < 50 MB | ~5 min |
+| Weather | POWER monthly point, same 7 parameters | POWER API | all 7 have MONTHLY | 48 | < 5 MB | ~2 min |
+
+Static masks exist for both multi-year products (`..._static_202311--ext--bathy`, `..._static_202406--ext--mask`). Expected result: about 230,000 monthly rows.
+
+Daily MUR through Harmony is ruled out: the 91-day run needed about 8,800 calls, so 22 years would need about 775,000 calls and ~37 GB.
+
+### Code needed
+
+1. A `cadence: monthly` setting. Plan, fetch and process key rows by month start, not by day.
+2. An ERDDAP client: URL allowlist, the MUR 0.01° grid guard, no credentials. Same membership tables as MUR.
+3. IMERG monthly. The units are expected to be mm/hr (to be confirmed in the plan); if so, store × 24 as mm/day and say so in `qc_flags`.
+4. POWER monthly parser. It drops month "13" (the annual value).
+5. New table `seagis_monthly_metrics` (allowlisted migration) and an export option for it.
+6. Tests for each new part.
+
+Then: `plan` → review and approve the hash → `fetch` → `export --confirm-host`. Afterwards, run `research/data-access/scripts/trend.py` on the zone series.
+
+Rough total: 3–4 h code and tests, 1–2 h fetch, 1 h export and trends.
+
+### Window cut to 2015–2024 (user, 2026-11-15, afternoon)
+
+At ~3.8 min per MUR zone and IMERG still to come, the 2003–2024 fetch would likely miss the deadline. The window is now **2015-01 .. 2024-12 (120 months) for every source**.
+
+- Ten years gives each calendar month 10 values, which is enough for seasonality and anomalies.
+- It is weak for trends: the window opens with the strong 2015/16 El Niño and ends with the 2023/24 one. Long-term trend claims keep using `research/data-access` (2003–2024, point sites).
+- Data already fetched for 2003–2024 stays on disk: POWER and Copernicus for all zones, MUR for 23 zones. Export trims it to the window, so the database holds the same 120 months for every source.
+- MUR and IMERG now run zones in parallel (`--workers`). A failed zone is logged and retried on the next run.
+- A month that the source lists but the response lacks now fails the zone. It is no longer stored as `missing_at_source`.
+
+### Decided earlier (user, 2026-11-15)
+
+
+- **Window: 2003-01 .. 2024-12** for every source. A 1996–2026 window was considered and rejected: MUR starts 2002-06, and IMERG Final starts 1998-01 and ends 2025-09. Reaching 1996 would mean replacing both NASA satellite products with model data. The window ends at 2024 so every year is complete for the annual-mean trends.
+
+- **MUR 2023-06 and 2025-12:** keep the rows with an empty value and a `missing_at_source` flag. Do not compute them from daily MUR. (2025-12 is outside the window anyway.)
+- **Currents:** monthly P1M `uo`, `vo`, so the long-term table holds only the mean flow vector. Store `uo`, `vo`, `current_direction` (of the mean vector) and `current_vector_speed` (|mean vector|). The monthly table has **no** `current_speed` or `current_steadiness`, because a monthly mean vector underestimates mean speed. The name `current_vector_speed` keeps it from being read as the daily `current_speed`. Transfer stays small (~10 min).
+- **Storage:** new table `seagis_monthly_metrics` with its own allowlisted migration. Daily and monthly rows never share a table.
+
+### Extending back to 2003
+
+Requested by the user on 2026-11-15, to run after the 2015–2024 IMERG fetch.
+
+- `list --start/--end --out` writes a separate request list. `fetch --requests` reads it, and the default `requests.json` (2015–2024) is untouched.
+- A zone is skipped when its files already hold every month of the window. New months go to `<zone>__<YYYY-MM>_<YYYY-MM>.parquet`.
+- POWER, Copernicus and 23 MUR zones already hold 2003–2024, so only MUR (25 zones) and IMERG (48 zones) are fetched.
+- `export --start --end` trims to the window. It refuses to write while any zone misses months or a dataset misses zones (`--allow-gaps` overrides).
+- Request list `outputs/monthly/requests_2003-2014.json`, sha256 `bdeef48226180cb8565975b17a273021250b725dfa956600a8c24f1caae37e36`.
+
+## 2b. How to run
+
+```bash
+cd data/seagis-nasa-extractor
+.venv/bin/python scripts/monthly.py list                     # metadata only; writes outputs/monthly/requests.json and its hash
+.venv/bin/python scripts/monthly.py fetch --approve <sha256>  # only listed requests; finished zones are skipped
+.venv/bin/python scripts/monthly.py export --confirm-host <db host> --dry-run
+```
+
+Implementation notes:
+
+- Copernicus is read straight from the public ARCO geoChunked Zarr, using only the chunk keys in `requests.json`. Through the toolbox, one region took ~10 min.
+- IMERG monthly is `Grid/precipitation` in mm/hr, stored × 24 as mm/day (`qc_flags` says so).
+- ERDDAP returns NetCDF-3, which needs `scipy`.
+- Smoke-test values for PH-TAWI/bongao:
+  - SST 27.4–30.5 °C (annual mean 28.6 → 29.3 °C, 2003 → 2024)
+  - salinity 31.8–34.3
+  - no3 0.002–0.05, pH 8.01–8.08
 
 ## 3. Statistics and forecast
 
@@ -51,7 +129,5 @@ The dates were read from CMR and Copernicus metadata on 2026-11-15. This window 
 
 ## Decisions needed
 
-1. Approve or change the window (2003–2024, monthly).
-2. Southern Luzon: Tayabas Bay or Calatagan for the research site.
-3. Currents at monthly scale: daily product or mean vector only.
-4. Whether to fetch at all before the submission deadline (2026-11-15 23:59), or to submit with the existing point-site trends plus the three-month zone data.
+1. Southern Luzon: Tayabas Bay or Calatagan for the research site.
+2. Whether to fetch at all before the submission deadline (2026-11-15 23:59), or to submit with the existing point-site trends plus the three-month zone data.

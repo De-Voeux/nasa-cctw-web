@@ -35,6 +35,7 @@ def test_migration_selection_ignores_application_migrations(tmp_path):
     assert [p.name for p in export.migration_files(tmp_path)] == [export.EXTRACTOR_MIGRATION]
     (tmp_path / "20261115000005_seagis_forecast.sql").write_text("-- extractor forecast")
     (tmp_path / "20261115010000_seagis_more_sources.sql").write_text("-- extractor comments")
+    (tmp_path / "20261115020000_seagis_monthly_metrics.sql").write_text("-- extractor monthly table")
     assert [p.name for p in export.migration_files(tmp_path)] == list(export.EXTRACTOR_MIGRATIONS)
 
 

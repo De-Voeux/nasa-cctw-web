@@ -25,6 +25,7 @@ EXTRACTOR_MIGRATIONS = (
     EXTRACTOR_MIGRATION,
     "20261115000005_seagis_forecast.sql",
     "20261115010000_seagis_more_sources.sql",
+    "20261115020000_seagis_monthly_metrics.sql",
 )
 
 METRIC_COLUMNS = ["region_id", "subregion_id", "geometry_version", "dataset", "variable", "date", "data_type", "units",
