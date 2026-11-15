@@ -1,16 +1,11 @@
 # SEAGIS NASA regional coastal extractor
 
-**Status (2026-11-15):** `catalog`, `regions build`, `plan` and `pilot` are implemented.
+**Status (2026-11-15):** `catalog`, `regions build`, `plan`, `pilot`, `fetch`, `status` and `export` are implemented; `process`/`validate` run inside `fetch`. See [HANDOVER.md](HANDOVER.md) for the current state and next steps.
 
-- `catalog` has been run against live NASA metadata ([docs/CATALOG_REVIEW.md](docs/CATALOG_REVIEW.md)).
-- `regions build` has produced 47 candidate zones in 17 regions ([docs/ROI_REVIEW.md](docs/ROI_REVIEW.md)).
-- `plan` has produced a metadata-only preflight ([docs/PLAN_REVIEW.md](docs/PLAN_REVIEW.md)).
-- `pilot` was run with the user's approval and PASSED (7 days, 2 zones).
-- `plan` was re-generated with the pilot calibration.
-- `fetch` is built and tested against fakes, but the full backfill has not been run.
-- `process`, `validate` and `export` (to the database) are not implemented.
+- Period 2026-08-15 .. 2026-11-14, plan `3e55cf0a…`. Batches 1 and 2 are fetched; 3-5 are not. Central Sulawesi (ID-CENT-SUL) is excluded.
+- `export` upserts `data/processed` into Postgres/Supabase; schema in [../../supabase/migrations](../../supabase/migrations).
 
-Only pilot data (~1 MB) has been downloaded. Pilot/fetch dependencies install with `uv pip install --python .venv '.[fetch]'`. Full specification: [TASK.md](TASK.md).
+Dependencies: `uv pip install --python .venv '.[fetch,db]'`. Full specification: [TASK.md](TASK.md).
 
 ```bash
 uv venv .venv && uv pip install --python .venv '.[dev]'   # reinstall after code changes
