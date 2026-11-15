@@ -52,6 +52,8 @@ export function renderMarkdown(text) {
     esc(line)
       .replace(/`([^`\n]+)`/g, "<code>$1</code>")
       .replace(/\*\*([^*\n]+?)\*\*/g, "<strong>$1</strong>")
+      // *italic*, as models write species names: a single star that touches text on both sides and is not part of a word
+      .replace(/(^|[^*\w])\*(?!\s)([^*\n]+?)(?<!\s)\*(?![*\w])/g, "$1<em>$2</em>")
   const out = []
   let para = []
   let list = null // { tag: "ul" | "ol", items: [] }
