@@ -8,6 +8,7 @@ Backend of the assistant described in [`docs/Radit/RAG_DESIGN.md`](../docs/Radit
 | `migrations/20261115000004_rag_usage.sql` | `rag.usage` and `rag_usage_hit`: the daily cap on assistant questions (applied to staging 2026-11-15) |
 | `migrations/20261115000002_rag_ingest.sql` | `rag_ingest_source`, `rag_source_hash` (used by `scripts/rag/ingest.mjs`) |
 | `migrations/20261115000003_env_ingest.sql` | `env_ingest` (used by `scripts/env/load.mjs`); `env_list_sites` now reports what data each site has; `env_get_series` takes an optional product |
+| `migrations/20261115000005_seagis_zone_tools.sql` | `seagis_coverage` and `seagis_zone_series`: read-only access for the assistant to the team's `seagis_*` tables (daily zone averages for 19 regions, 48 zones). Applied to staging 2026-11-15; changes no team table |
 | `functions/embed/` | Edge Function that embeds text with the built-in gte-small model (384 dimensions) |
 | `config.toml` | minimal CLI config |
 
