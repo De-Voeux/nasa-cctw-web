@@ -13,10 +13,11 @@ const use = (name, input, id = name + Math.random()) => ({ id, name, input })
 /** A fake network: `script` is the list of model turns (tool calls each); rpc maps function names to handlers.
  *  A turn may also be { status: 429 } to simulate a failing provider call. */
 function net(script, rpc = {}) {
-  const calls = { model: [], rpc: [], embed: 0 }
+  const calls = { model: [], rpc: [], embed: 0, usage: [], order: [] } // usage: the daily-count RPC, kept apart so tests can count the others
   const fetchImpl = async (url, init) => {
     const body = init?.body ? JSON.parse(init.body) : {}
     if (url.includes("/chat/completions")) {
+      calls.order.push("model")
       calls.model.push({ ...body, key: init.headers.authorization })
       const turn = script.shift()
       assert.ok(turn, "model called more times than scripted")
@@ -29,8 +30,9 @@ function net(script, rpc = {}) {
       return new Response(JSON.stringify({ embeddings: [[0.1, 0.2]] }), { status: 200 })
     }
     const name = url.split("/rpc/")[1]
-    calls.rpc.push([name, body])
-    const out = rpc[name]?.(body)
+    if (name === "rag_usage_hit") (calls.usage.push(body), calls.order.push("usage"))
+    else calls.rpc.push([name, body])
+    const out = name === "rag_usage_hit" && !rpc.rag_usage_hit ? [{ allowed: true, used: 1 }] : rpc[name]?.(body)
     if (out instanceof Error) return new Response(out.message, { status: 400 })
     return new Response(JSON.stringify(out ?? []), { status: 200 })
   }
@@ -539,4 +541,50 @@ test("list_sites: an empty answer for a country filter tells the model to look a
   const { calls } = await run("temperature at Maluku", [[use("list_sites", { country: "Maluku" })], FINAL_ABSTAIN], { env_list_sites: (b) => (b.filter_country ? [] : [{ id: "maluku", name: "Maluku" }]) })
   assert.match(JSON.stringify(calls.model[1].messages.at(-1)), /Call list_sites again with no arguments/)
   assert.match(calls.model[0].tools.find((t) => t.function.name === "list_sites").function.description, /COUNTRY name/)
+})
+
+// ------------------------------------------------------------------ daily limit
+import { dailyLimit, DEFAULT_DAILY_LIMIT } from "./ask.js"
+
+test("ASK_DAILY_LIMIT: default 100, a number, or off", () => {
+  assert.equal(dailyLimit({}), DEFAULT_DAILY_LIMIT)
+  assert.equal(DEFAULT_DAILY_LIMIT, 100)
+  assert.equal(dailyLimit({ ASK_DAILY_LIMIT: "25" }), 25)
+  assert.equal(dailyLimit({ ASK_DAILY_LIMIT: " 7.9 " }), 7)
+  assert.equal(dailyLimit({ ASK_DAILY_LIMIT: "0" }), 0)
+  assert.equal(dailyLimit({ ASK_DAILY_LIMIT: "OFF" }), 0)
+  assert.equal(dailyLimit({ ASK_DAILY_LIMIT: "banana" }), DEFAULT_DAILY_LIMIT) // a typo must not switch the cap off
+  assert.equal(dailyLimit({ ASK_DAILY_LIMIT: "-5" }), DEFAULT_DAILY_LIMIT)
+})
+
+test("a question takes one place from the daily count before any model call", async () => {
+  const { calls, res } = await run("question here", [FINAL_ABSTAIN], { rag_usage_hit: () => [{ allowed: true, used: 7 }] })
+  assert.equal(res.status, 200)
+  assert.deepEqual(calls.usage, [{ p_scope: "ask", p_limit: 100 }])
+  assert.equal(calls.order[0], "usage") // taken before the first model call
+})
+
+test("when the daily cap is reached: 503 quota, no model is called", async () => {
+  const { res, body, calls } = await run("question here", [], { rag_usage_hit: () => [{ allowed: false, used: 100 }] }, { ...ENV, ASK_DAILY_LIMIT: "100" })
+  assert.equal(res.status, 503)
+  assert.deepEqual(body, { error: "assistant_unavailable", reason: "quota" })
+  assert.equal(calls.model.length, 0)
+})
+
+test("if the count cannot be read the assistant is unavailable (fails closed, so a fault cannot lift the cap)", async () => {
+  const { res, body, calls } = await run("question here", [], { rag_usage_hit: () => new Error("db down") })
+  assert.equal(res.status, 503)
+  assert.deepEqual(body, { error: "assistant_unavailable", reason: "down" })
+  assert.equal(calls.model.length, 0)
+})
+
+test("greetings are not counted, and ASK_DAILY_LIMIT=off skips the count", async () => {
+  const n = net([])
+  const res = await handleAsk(ask("hai"), ENV, { fetchImpl: n.fetchImpl })
+  assert.equal(res.status, 200)
+  assert.equal(n.calls.rpc.length + n.calls.usage.length, 0)
+  const m = net([FINAL_ABSTAIN])
+  const res2 = await handleAsk(ask("question here"), { ...ENV, ASK_DAILY_LIMIT: "off" }, { fetchImpl: m.fetchImpl })
+  assert.equal(res2.status, 200)
+  assert.equal(m.calls.usage.length, 0)
 })
