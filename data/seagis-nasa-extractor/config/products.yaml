@@ -31,6 +31,13 @@ copernicus:
     variables: [so]
     depth: surface
     static_mask: {dataset_id: cmems_mod_glo_phy_anfc_0.083deg_static_202211--ext--bathy}
+  - key: cmems_phy_thetao
+    product_id: GLOBAL_ANALYSISFORECAST_PHY_001_024
+    dataset_id: cmems_mod_glo_phy-thetao_anfc_0.083deg_P1D-m_202406
+    variables: [thetao]
+    depth: surface
+    forecast_only: true
+    static_mask: {dataset_id: cmems_mod_glo_phy_anfc_0.083deg_static_202211--ext--bathy}
   # Ocean currents, added 2026-11-15. current_speed / current_direction / current_steadiness are
   # derived per zone and day from uo + vo (see process.current_stats). Same grid and mask as salinity.
   - key: cmems_phy_cur

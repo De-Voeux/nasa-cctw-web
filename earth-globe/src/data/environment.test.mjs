@@ -27,6 +27,35 @@ test("assessmentFor exposes observed data without assigning a biological level",
   assert.equal(result.data.items[0].baseline, null)
 })
 
+test("assessmentFor appends a three-day outlook without scoring it as current", () => {
+  const forecastPayload = {
+    ...payload,
+    regions: {
+      "PH-TAWI": {
+        ...payload.regions["PH-TAWI"],
+        series: {
+          ...payload.regions["PH-TAWI"].series,
+          sst: {
+            ...payload.regions["PH-TAWI"].series.sst,
+            forecast_dates: ["2026-11-15", "2026-11-16", "2026-11-17"],
+            forecast_values: [30.1, 30.2, 30.3],
+            forecast_coverage: [1, 1, 1],
+            forecast_source: "Copernicus Marine",
+            forecast_product_version: "forecast",
+          },
+        },
+      },
+    },
+  }
+  const result = assessmentFor({ dataRegionId: "PH-TAWI" }, forecastPayload, "Kappaphycus alvarezii")
+  const item = result.data.items[0]
+  assert.equal(result.data.todayIndex, 1)
+  assert.deepEqual(item.values, [29, 30, 30.1, 30.2, 30.3])
+  assert.equal(item.todayIndex, 1)
+  assert.equal(result.data.confidence, "Observed + 3-day outlook")
+  assert.equal(result.scored, false)
+})
+
 test("assessmentFor keeps missing or unmapped regions insufficient", () => {
   assert.equal(assessmentFor({}, payload).observed, false)
   assert.equal(assessmentFor({ dataRegionId: "ID-MALUKU" }, payload).condition, "No observed data available for this region")

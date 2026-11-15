@@ -46,7 +46,7 @@ ASSUMPTIONS = {
 
 FINAL_SCHEMA = [
     ("date", "date32"), ("region_id", "string"), ("subregion_id", "string"), ("dataset", "string"),
-    ("variable", "string"), ("units", "string"), ("valid_pixel_count", "int32"), ("roi_pixel_count", "int32"),
+    ("variable", "string"), ("data_type", "string"), ("units", "string"), ("valid_pixel_count", "int32"), ("roi_pixel_count", "int32"),
     ("coverage_fraction", "float32"), ("mean", "float32"), ("min", "float32"), ("max", "float32"),
     ("std", "float32"), ("area_weighted", "bool"), ("source_granule", "string"), ("product_version", "string"),
     ("geometry_version", "string"), ("qc_flags", "string"),

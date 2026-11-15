@@ -91,7 +91,10 @@ def cmd_plan(args) -> int:
         from . import copernicus
         from .http import MetadataClient
 
-        specs = [dict(s, depth=cm_cfg.get("depth", s.get("depth", "surface"))) for s in cfg["_products"]["copernicus"]]
+        data_type = cm_cfg.get("data_type", "observed")
+        specs = [dict(s, depth=cm_cfg.get("depth", s.get("depth", "surface")))
+                 for s in cfg["_products"]["copernicus"]
+                 if not s.get("forecast_only") or data_type == "forecast"]
         period = {k: str(v) for k, v in cm_cfg["period"].items()}
         max_cells = int(cfg["execution"].get("max_request_cells", 10_000))
 
