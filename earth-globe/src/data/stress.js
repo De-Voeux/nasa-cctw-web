@@ -7,8 +7,7 @@
  * say Favorable, Moderate Risk or Elevated Risk for a real region until an
  * assessment backs it; replace `assess()` with a lookup of real results when they exist.
  *
- * The mock (see MOCK_DEFAULT below) hands out made-up levels so the four card designs
- * can be reviewed. The panel then says the values are demo values; none is real data.
+ * The mock (see MOCK_DEFAULT below) is available only for an explicit design review.
  */
 import favorable from "../assets/ui/levels/favorable.svg"
 import moderate from "../assets/ui/levels/moderate.svg"
@@ -26,18 +25,14 @@ export const LEVELS = {
 export const LEVEL_ORDER = ["favorable", "moderate", "elevated", "insufficient"]
 
 /*
- * MOCK ON BY DEFAULT (decided with Radit, 2026-11-15, to match the design mock).
- * The levels and conditions below are made up for the design review. They are NOT
- * assessments and must not ship to a public site as if they were. The panel shows a
- * banner saying so while this is on. Before real use: set MOCK_DEFAULT to false (or
- * delete the demo branch of assess()) so every region reads "Insufficient Data"
- * until real results exist. `?demo=off` turns the mock off, `?demo=levels` forces it on.
+ * Demo levels and conditions are made up for design review. They are not assessments
+ * and must never be the default. `?demo=levels` enables them explicitly.
  */
-const MOCK_DEFAULT = true
+const MOCK_DEFAULT = false
 const demoParam = new URLSearchParams(location.search).get("demo")
 export const DEMO = demoParam === "levels" || (MOCK_DEFAULT && demoParam !== "off")
 
-const NO_DATA = "Environmental layers not connected yet"
+const NO_DATA = "No environmental data available for this region"
 const DEMO_CONDITION = {
   favorable: "Normal condition",
   moderate: "Warm water",

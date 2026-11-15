@@ -124,7 +124,7 @@ node scripts/env/load.mjs --daily PRECTOTCORR   # POWER harian untuk variabel pi
 - **Sumber pertama.** 5 sampai 10 sumber terverifikasi: makalah acuan dari brief (DOI `10.1007/s10499-026-02486-2`) ditambah makalah tentang *Kappaphycus*, ice-ice, dan suhu atau salinitas. Siapa memilih, siapa memverifikasi?
 - **Set evaluasi.** 40 sampai 60 pertanyaan yang ditulis orang yang paham domainnya, dengan jawaban yang diharapkan: jawab dengan sumber X, atau memang harus "belum cukup bukti". Belum ada, dan inilah yang dipakai untuk memilih model dan menyetel ambang kemiripan (`MIN_SIMILARITY`, tebakan awal 0,8).
 - **Lisensi dan penyimpanan teks** (bagian 3.2), dan **lama penyimpanan log pertanyaan**. Log sekarang hanya mencatat nama tool dan id potongan, tanpa teks pertanyaan dan alamat.
-- Level stres pada kartu lokasi masih **mock** (`MOCK_DEFAULT` di `earth-globe/src/data/stress.js`), bukan hasil asesmen. Jangan menafsirkannya sebagai data.
+- Pada branch `feat/live-seagis-data`, mock level hanya aktif dengan `?demo=levels`. Jalur default membaca seri observasi melalui `/api/environment`; level biologis tetap `Insufficient Data` sampai aturan spesies ditinjau dan diaktifkan. Jangan menafsirkan observasi sebagai diagnosis penyakit.
 
 ## 7. Masalah yang sering muncul
 

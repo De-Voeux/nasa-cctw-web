@@ -8,7 +8,8 @@ import ocean from "../assets/earth/ocean.png"
 // import clouds from "../assets/earth/clouds.jpg"
 import lights from "../assets/earth/lights.png"
 import { LOCATIONS, PLACE_LABELS } from "../data/reportedLocations.js"
-import { LEVELS, LEVEL_ORDER, assess } from "../data/stress.js"
+import { LEVELS, LEVEL_ORDER, DEMO, assess } from "../data/stress.js"
+import { assessmentFor, loadEnvironment } from "../data/environment.js"
 import { GlobeOverlay } from "./overlay.js"
 import { mountDatePills } from "./datePills.js"
 import { SidePanel } from "./sidePanel.js"
@@ -224,6 +225,15 @@ $("search").addEventListener("input", (e) => {
 offerRegions()
 paintPins()
 panel.showList(rows())
+
+if (!DEMO) {
+  loadEnvironment()
+    .then((payload) => {
+      for (const loc of LOCATIONS) assessments.set(loc.id, assessmentFor(loc, payload))
+      refresh()
+    })
+    .catch((error) => console.warn("SEAmon environmental data unavailable", error))
+}
 
 // Collapse button: hides the list / details so more of the map shows. The choice is remembered
 // in this browser only; storage may be blocked, so it is optional.
