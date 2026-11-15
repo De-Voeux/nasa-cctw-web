@@ -291,7 +291,8 @@ export class SidePanel {
       const w = this._window(d.dates || data.dates, d.values, chartToday)
       const cut = d.values.length - w.values.length
       // Shade the species' safe range (environmentRules.js) when there is one, else the usual range of sample data.
-      const rule = ENVIRONMENT_RULES[this.species]?.[d.key]
+      const ruleSpecies = ENVIRONMENT_RULES[this.species] ? this.species : a.ruleSpecies
+      const rule = ENVIRONMENT_RULES[ruleSpecies]?.[d.key]
       const band = rule ? [rule.min, rule.max] : d.baseline
       const chart = () =>
         trendChart({ ...d, values: w.values, baseline: band, bandLabel: rule ? "Safe range" : "Usual range" }, w.dates, w.todayIndex,
@@ -302,16 +303,23 @@ export class SidePanel {
       const src = isForecast ? (d.forecastSource || d.source) : d.source
       const version = isForecast ? d.forecastProductVersion : d.product_version
       const fullSource = `${src || ""}${version ? ` · product ${version}` : ""}`
+      // The picked day's value against the range, so a forecast or past day outside it is flagged too.
+      // (The place's level is still set by the latest measurement only.)
+      const v = d.values[index]
+      const off = rule && Number.isFinite(v) ? (v > rule.max ? "above" : v < rule.min ? "below" : null) : null
+      const head = off
+        ? `${isForecast ? "Forecast: " : ""}${off} the safe range (${rule.min}–${rule.max} ${d.unit})`
+        : (isForecast ? (d.forecastHeadline || "Forecast value") : (d.headline || "Measured value"))
       return `
-      <article class="driver${d.driver ? " is-driver" : ""}">
+      <article class="driver${d.driver || off ? " is-driver" : ""}">
         <header>
           <h3>${esc(d.name)}</h3>
           <p class="driver-value">${d.values[index].toFixed(d.digits)}<span> ${esc(d.unit)}</span></p>
         </header>
-        <p class="driver-head">${esc(isForecast ? (d.forecastHeadline || "Forecast value") : (d.headline || "Measured value"))}</p>
+        <p class="driver-head">${esc(head.charAt(0).toUpperCase() + head.slice(1))}</p>
         ${charted ? chart() : ""}
         ${insightHtml(d, d.values[index], charted ? w : null)}
-        <p class="driver-src" title="${esc(fullSource)}">Data: ${esc(shortSource(src))}${rule ? `<br>Safe range for ${esc(this.species)}: ${esc(rule.source)} (provisional)` : ` · No safe range set for this yet`}</p>
+        <p class="driver-src" title="${esc(fullSource)}">Data: ${esc(shortSource(src))}${rule ? `<br>Safe range for ${esc(ruleSpecies)}: ${esc(rule.source)} (provisional)` : ` · No safe range set for this yet`}</p>
       </article>`
     }
 

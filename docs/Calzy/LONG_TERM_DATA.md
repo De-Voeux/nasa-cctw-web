@@ -1,6 +1,6 @@
 # Long-term data window (proposal, 2026-11-15)
 
-**Status (window now 2015–2024, see 2a):** built as [`scripts/monthly.py`](../../data/seagis-nasa-extractor/scripts/monthly.py), with table `seagis_monthly_metrics` ([migration](../../supabase/migrations/20261115020000_seagis_monthly_metrics.sql)). Smoke test on PH-TAWI/bongao passed for POWER, MUR and Copernicus; the IMERG and direct-Zarr Copernicus fixes are not tested yet. The full fetch has not run.
+**Status (2026-11-15, evening):** loaded. `seagis_monthly_metrics` holds **215,424 rows, 2003-01 .. 2024-12, 48 zones × 264 months for every dataset**. Empty means only where expected: MUR 2023-06 (48 rows) and the 3 Lingayen zones without a Copernicus BGC sea cell. The 2003–2014 part was loaded one dataset per transaction (`export --dataset`) because a single ~117k-row COPY over a slow link would pass the statement timeout.
 
 ## 1. How the extractor and `research/data-access/` line up
 

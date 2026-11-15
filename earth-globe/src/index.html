@@ -32,12 +32,18 @@
     <!-- Side panel (Radit's design): species, flags, filters, region cards, region detail -->
     <link rel="stylesheet" href="./styles/sidebar.css" />
     <link rel="stylesheet" href="./styles/detail.css" />
+    <link rel="stylesheet" href="./styles/detective.css" />
   </head>
   <body>
     <div id="globe" class="globe" aria-hidden="true"></div>
     <div id="overlay" class="overlay"></div>
 
     <button id="brand" class="brand" type="button" aria-label="SEAmon, back to Southeast Asia">SEAmon</button>
+    <button id="detective-btn" class="glass detective-btn" type="button" aria-haspopup="dialog">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17l5-5 4 4 8-8" /><path d="M14 8h6v6" /></svg>
+      Trend Detective
+    </button>
+    <dialog id="detective" class="glass detective" aria-label="Trend Detective"></dialog>
 
     <!-- Top right of the map: date bar, then layers and zoom -->
     <div class="map-tools">

@@ -695,6 +695,9 @@ def cmd_export(args) -> int:
         print(f"WARNING: datasets with fewer than {n_zones} zones: {few}")
         if not args.allow_gaps and not args.dry_run:
             raise SystemExit("not exporting while zones are missing; fetch the rest, or pass --allow-gaps")
+    if args.dataset:    # load one dataset at a time on a slow link; the checks above still ran on all of them
+        df = df[df["dataset"].isin(args.dataset)].copy()
+        print(f"--dataset {' '.join(args.dataset)}: {len(df)} rows")
     df["units"] = [export.display_unit(v, u) if u else "" for v, u in zip(df["variable"], df["units"])]
     # monthly table has no data_type column: every monthly row is observation/reanalysis, never forecast
     cols = [c if c != "date" else "month" for c in export.METRIC_COLUMNS if c != "data_type"]
@@ -715,7 +718,7 @@ def cmd_export(args) -> int:
     mig = ROOT.parents[1] / "supabase/migrations" / MIGRATION
     with psycopg.connect(dsn) as conn, conn.transaction(), conn.cursor() as cur:
         # Supabase's role default timeout stops a ~100k-row COPY over the pooler; this transaction only
-        cur.execute("set local statement_timeout = '30min'")
+        cur.execute("set local statement_timeout = '60min'")
         cur.execute(f"select 1 from public.{export.MIGRATIONS_TABLE} where name = %s", (MIGRATION,))
         if not cur.fetchone():
             cur.execute(mig.read_text())
@@ -760,6 +763,7 @@ def main(argv=None) -> int:
     e.add_argument("--confirm-host", required=True)
     e.add_argument("--dry-run", action="store_true")
     e.add_argument("--allow-gaps", action="store_true", help="export even if some zones miss months of the window")
+    e.add_argument("--dataset", nargs="+", help="load only these datasets (each run is its own transaction)")
     e.add_argument("--start", default=START.isoformat(), help="window start written to the DB (default %(default)s)")
     e.add_argument("--end", default=END.isoformat(), help="window end (default %(default)s)")
     e.add_argument("--requests", nargs="+", default=[str(REQUESTS)], help="approved request list(s) behind the files")
