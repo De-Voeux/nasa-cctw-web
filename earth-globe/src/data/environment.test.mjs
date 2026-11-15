@@ -77,3 +77,54 @@ test("provisional scoring uses the existing favorable/moderate/elevated levels",
 test("loadEnvironment rejects non-success responses", async () => {
   await assert.rejects(() => loadEnvironment(async () => new Response("down", { status: 503 })), /environment request failed/)
 })
+
+const twoVar = {
+  ...payload,
+  regions: {
+    "PH-TAWI": {
+      latest_date: "2026-11-14",
+      series: {
+        sst: { ...payload.regions["PH-TAWI"].series.sst, values: [29, 30.5] },
+        salinity: { key: "salinity", name: "Salinity", unit: "PSU", digits: 1, dates: ["2026-11-13", "2026-11-14"], values: [33, 33], coverage: [1, 1] },
+      },
+    },
+  },
+}
+
+test("All species rates a place with the rules of the seaweed reported there, keeping the worst", () => {
+  const loc = { dataRegionId: "PH-TAWI", taxa: ["Eucheuma denticulatum", "Kappaphycus alvarezii", "Kappaphycus striatus"] }
+  const result = assessmentFor(loc, twoVar, "All species")
+  assert.equal(result.scored, true)
+  assert.equal(result.level, "moderate") // SST 30.5 is above both ranges
+  assert.match(result.condition, /for E\. denticulatum|for K\. alvarezii/)
+  assert.ok(["Eucheuma denticulatum", "Kappaphycus alvarezii"].includes(result.ruleSpecies))
+})
+
+test("Kappaphycus striatus is rated with the ASEAN/FAO farm-site range", () => {
+  const result = assessmentFor({ dataRegionId: "PH-TAWI", taxa: ["Kappaphycus striatus"] }, twoVar, "All species")
+  assert.equal(result.scored, true)
+  assert.equal(result.ruleSpecies, "Kappaphycus striatus")
+  assert.equal(result.level, "moderate") // SST 30.5 is above 25–30
+})
+
+test("Gracilaria is rated with the pond range and says the sea values are only a rough guide", () => {
+  const loc = { dataRegionId: "PH-TAWI", taxa: ["Gracilaria verrucosa", "Kappaphycus alvarezii"] }
+  const picked = assessmentFor(loc, twoVar, "Gracilaria verrucosa")
+  assert.equal(picked.scored, true)
+  assert.equal(picked.level, "elevated") // SST 30.5 > 29 and salinity 33 > 28
+  assert.match(picked.condition, /farmed in coastal ponds/)
+  // With All species, the sea-farmed seaweed decides, not the pond one.
+  assert.equal(assessmentFor(loc, twoVar, "All species").ruleSpecies, "Kappaphycus alvarezii")
+})
+
+test("every species named in the leads has a rule", async () => {
+  const { LOCATIONS } = await import("./reportedLocations.js")
+  const { ENVIRONMENT_RULES } = await import("./environmentRules.js")
+  for (const t of new Set(LOCATIONS.flatMap((l) => l.taxa))) assert.ok(ENVIRONMENT_RULES[t], t)
+})
+
+test("a place whose seaweed has no rule stays unrated and says why", () => {
+  const result = assessmentFor({ dataRegionId: "PH-TAWI", taxa: ["Caulerpa lentillifera"] }, twoVar, "All species")
+  assert.equal(result.scored, false)
+  assert.match(result.condition, /No published safe range yet for the seaweed reported here \(Caulerpa lentillifera\)/)
+})

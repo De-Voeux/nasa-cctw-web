@@ -19,6 +19,8 @@ import { mountChat } from "./chat.js"
 import { mountPanelHandle } from "./panelHandle.js"
 import { mountLayersMenu } from "./layersMenu.js"
 import { mountOceanLayer } from "./oceanLayer.js"
+import { mountDetective } from "./detective.js"
+import LONG_TERM from "../data/longTermTrends.json"
 
 const HOME = { lat: 5, lon: 117, altitude: 1.35 }
 const ALL_SPECIES = "All species"
@@ -433,3 +435,12 @@ $("brand").addEventListener("click", () => {
 })
 
 mountLayersMenu($("layers-btn"), $("layers-menu"), { onChange: (id) => oceanLayer.show(id) })
+
+// --------------------------------------------------------------- Trend Detective (long-term data, guided)
+
+const detective = mountDetective($("detective"), {
+  doc: LONG_TERM,
+  places: LOCATIONS,
+  onOpenPlace: (id) => select(id), // opens the place even when the species or country filter hides its pin
+})
+$("detective-btn").addEventListener("click", () => detective.open())
