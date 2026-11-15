@@ -104,4 +104,41 @@ def aggregate_copernicus(ds, membership: list[dict], roi: dict, key: str, versio
             qc = f"sea_cells={len(keep)};land_cells_dropped={len(membership) - len(sea)}"
             rows.append(_row(dt.date.fromisoformat(day), roi, key, var, units, _stats(vals, w), len(membership),
                              key, version, qc))
+    if "uo" in ds.data_vars and "vo" in ds.data_vars:
+        u = np.asarray(ds["uo"].values, dtype=float).reshape(len(times), lat.size, lon.size)
+        v = np.asarray(ds["vo"].values, dtype=float).reshape(len(times), lat.size, lon.size)
+        units = ds["uo"].attrs.get("units", "m s-1")
+        qc = f"sea_cells={len(keep)};land_cells_dropped={len(membership) - len(sea)};derived_from=uo,vo"
+        for t, day in enumerate(times):
+            uu = np.array([u[t, i, j] for i, j, _ in keep]) if keep else np.array([])
+            vv = np.array([v[t, i, j] for i, j, _ in keep]) if keep else np.array([])
+            w = np.array([f for _, _, f in keep]) if keep else np.array([])
+            for var, un, st in current_stats(uu, vv, w, units):
+                rows.append(_row(dt.date.fromisoformat(day), roi, key, var, un, st, len(membership), key, version, qc))
     return rows
+
+
+def current_stats(u: np.ndarray, v: np.ndarray, w: np.ndarray, units: str) -> list[tuple[str, str, dict]]:
+    """Derived current variables from eastward (u) and northward (v) components of the same cells.
+
+    - current_speed: weighted mean of per-cell speed hypot(u, v); min/max/std over cells.
+    - current_direction: direction of the weighted mean vector, degrees clockwise from north, the
+      way the water flows TO (oceanographic convention). A circular quantity, so min/max/std are null.
+    - current_steadiness: |mean vector| / mean speed, 0..1. Near 1 = cells flow the same way;
+      near 0 = directions cancel out and current_direction is not meaningful.
+    """
+    ok = np.isfinite(u) & np.isfinite(v) & (w > 0) if len(u) else np.array([], bool)
+    speed = np.hypot(u, v) if len(u) else np.array([])
+    sp = _stats(np.where(ok, speed, np.nan), w) if len(u) else _stats(np.array([]), np.array([]))
+    empty = {"valid_pixel_count": 0, "mean": None, "min": None, "max": None, "std": None}
+    if not ok.any():
+        return [("current_speed", units, sp), ("current_direction", "degree", empty), ("current_steadiness", "1", empty)]
+    ww = w[ok]
+    um, vm = float(np.sum(u[ok] * ww) / np.sum(ww)), float(np.sum(v[ok] * ww) / np.sum(ww))
+    mag = float(np.hypot(um, vm))
+    n = int(ok.sum())
+    direction = round(float(np.degrees(np.arctan2(um, vm)) % 360.0), 3)
+    steady = round(mag / sp["mean"], 6) if sp["mean"] else None
+    return [("current_speed", units, sp),
+            ("current_direction", "degree", {"valid_pixel_count": n, "mean": direction, "min": None, "max": None, "std": None}),
+            ("current_steadiness", "1", {"valid_pixel_count": n, "mean": steady, "min": None, "max": None, "std": None})]
