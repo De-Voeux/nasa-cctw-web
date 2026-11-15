@@ -20,6 +20,7 @@ import yaml
 
 DSN_ENV = "SEAGIS_DB_DSN"
 MIGRATIONS_TABLE = "seagis_schema_migrations"
+EXTRACTOR_MIGRATION = "20261115000000_seagis_environment.sql"
 
 METRIC_COLUMNS = ["region_id", "subregion_id", "geometry_version", "dataset", "variable", "date", "units",
                   "mean", "min", "max", "std", "valid_pixel_count", "roi_pixel_count", "coverage_fraction",
@@ -123,7 +124,14 @@ def summary_lines(inp: dict) -> list[str]:
 # ---------------------------------------------------------------- database
 
 def migration_files(migrations_dir: Path) -> list[Path]:
-    return sorted(p for p in migrations_dir.glob("*.sql"))
+    """Return only the extractor-owned migration.
+
+    The repository also contains the web application's RAG and environment
+    migrations. The extractor must never apply those or maintain a second
+    migration history for them.
+    """
+    path = migrations_dir / EXTRACTOR_MIGRATION
+    return [path] if path.is_file() else []
 
 
 def apply_migrations(conn, migrations_dir: Path, log=print) -> list[str]:

@@ -1,6 +1,6 @@
-# SEAGIS — NASA Space Apps web atlas
+# SEAmon — NASA Space Apps web atlas
 
-SEAGIS is a proposed species-aware coastal environmental risk atlas for seaweed aquaculture. It aims to combine NASA Earth observations, Copernicus Marine ocean products, and Open-Meteo weather data to explain regional water stress. The map must show source coverage, time, uncertainty, and evidence behind every assessed cell.
+SEAmon is a proposed species-aware coastal environmental risk atlas for seaweed aquaculture. It aims to combine NASA Earth observations, Copernicus Marine ocean products, and Open-Meteo weather data to explain regional water stress. The map must show source coverage, time, uncertainty, and evidence behind every assessed cell.
 
 This repository is an **initial scaffold**, not a working environmental assessment. No live datasets, scientific thresholds, or disease predictions are shipped yet.
 

@@ -4,6 +4,16 @@
 !.env.example
 node_modules/
 dist/
+.wrangler/
 .next/
 coverage/
 *.log
+
+# Supabase CLI local state
+supabase/.temp/
+supabase/.branches/
+supabase/.env*
+
+# Local secrets for `wrangler dev`
+.dev.vars
+.dev.vars.*

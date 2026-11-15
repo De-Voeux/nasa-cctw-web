@@ -6,7 +6,7 @@
 
 ## Responsibility and goal
 
-Describe your area of work and what you are trying to achieve for SEAGIS.
+Describe your area of work and what you are trying to achieve for SEAmon.
 
 ## Work completed
 

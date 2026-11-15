@@ -1,4 +1,4 @@
-# Research scope for the SEAGIS challenge
+# Research scope for the SEAmon challenge
 
 This checklist expands the research phase. It is a work plan, not evidence that an item has been verified. Preserve the relationship **species → location → condition → environment → time → source**, including evidence level and missing information.
 
