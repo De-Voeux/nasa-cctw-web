@@ -37,6 +37,7 @@ test("client maps statuses: 503, 404 and network errors fall back; 429 does not"
   assert.deepEqual(await askAssistant("q", {}, resp(404)), { ok: false, reason: "unavailable", why: undefined })
   assert.deepEqual(await askAssistant("q", {}, async () => { throw new TypeError("offline") }), { ok: false, reason: "unavailable" })
   assert.deepEqual(await askAssistant("q", {}, resp(429, {})), { ok: false, reason: "limited" })
+  assert.deepEqual(await askAssistant("q", {}, resp(400, { error: "bad_question" })), { ok: false, reason: "invalid" })
   assert.deepEqual(await askAssistant("q", {}, resp(502, {})), { ok: false, reason: "error" })
   assert.deepEqual(await askAssistant("q", {}, resp(200, { answer_md: "a" })), { ok: true, data: { answer_md: "a" } })
 })
@@ -83,4 +84,11 @@ test("markdown: *italic* for species names, without catching stars that are not 
   assert.equal(renderMarkdown("a*b*c"), "<p>a*b*c</p>") // inside a word
   assert.equal(renderMarkdown("*<img src=x onerror=1>*"), "<p><em>&lt;img src=x onerror=1&gt;</em></p>") // still escaped
   assert.equal(renderMarkdown("* item one\n* item two"), "<ul><li>item one</li><li>item two</li></ul>") // list bullets stay lists
+})
+
+test("the over-length message states the limit", async () => {
+  const { MESSAGES, MAX_QUESTION } = await import("./assistant.js")
+  assert.equal(MAX_QUESTION, 500)
+  assert.match(MESSAGES.tooLong, /500 characters/)
+  assert.match(MESSAGES.invalid, /500 characters/)
 })

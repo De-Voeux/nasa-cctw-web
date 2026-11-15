@@ -627,3 +627,25 @@ test("an answer that leaks chunk ids reaches the browser without them", async ()
   assert.equal(body.answer_md, "Cause: stress.")
   assert.equal(body.claims[0].text, "Stress causes it.")
 })
+
+test("the species and country chosen in the page are not given to the model (they are defaults, not the question)", async () => {
+  const n = net([FINAL_ABSTAIN])
+  const req = new Request("https://site/api/ask", { method: "POST", body: JSON.stringify({ question: "where does ice-ice occur most?", species: "Kappaphycus alvarezii", country: "Indonesia" }), headers: { "content-type": "application/json" } })
+  await handleAsk(req, ENV, { fetchImpl: n.fetchImpl })
+  const user = n.calls.model[0].messages.find((m) => m.role === "user").content
+  assert.equal(user, "Question: where does ice-ice occur most?")
+})
+
+test("the prompt covers all of Asia and asks for partial answers instead of abstaining", () => {
+  assert.match(SYSTEM_PROMPT, /not one country/)
+  assert.match(SYSTEM_PROMPT, /never narrow an answer to a country or species the question did not mention/)
+  assert.match(SYSTEM_PROMPT, /partly answer the question, say what they DO say/)
+  assert.match(SYSTEM_PROMPT, /abstained=true only when nothing relevant/)
+})
+
+test("a question over the limit is refused with the reason too_long", async () => {
+  const res = await handleAsk(ask("x".repeat(501)), ENV)
+  assert.equal(res.status, 400)
+  assert.deepEqual(await res.json(), { error: "bad_question", reason: "too_long", max: 500 })
+  assert.equal((await (await handleAsk(ask("  "), ENV)).json()).reason, "empty")
+})

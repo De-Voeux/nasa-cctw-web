@@ -24,6 +24,7 @@ export async function askAssistant(question, { species, country } = {}, fetchImp
     return { ok: false, reason: "unavailable" }
   }
   if (res.status === 429) return { ok: false, reason: "limited" }
+  if (res.status === 400) return { ok: false, reason: "invalid" }
   if (res.status === 503 || res.status === 404 || res.status === 405) {
     // 503 may say why: "quota" (daily limit spent) or "down" (providers unreachable).
     let why
@@ -126,7 +127,12 @@ export function renderAnswer(a) {
   return parts.join("")
 }
 
+/** Longest question the server accepts (worker/ask.js MAX_QUESTION). */
+export const MAX_QUESTION = 500
+
 export const MESSAGES = {
   limited: `<p>That is a lot of questions in a short time. Please wait a minute and ask again.</p>`,
   error: `<p>The assistant could not answer just now. Please try again.</p>`,
+  invalid: `<p>I could not read that question. Please ask it in a sentence or two (up to ${MAX_QUESTION} characters).</p>`,
+  tooLong: `<p>That question is too long for me: the limit is ${MAX_QUESTION} characters. Please shorten it to a sentence or two.</p>`,
 }

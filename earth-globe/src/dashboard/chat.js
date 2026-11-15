@@ -1,5 +1,5 @@
 import { answer } from "./ask.js"
-import { askAssistant, renderAnswer, MESSAGES } from "./assistant.js"
+import { askAssistant, renderAnswer, MESSAGES, MAX_QUESTION } from "./assistant.js"
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c])
 
@@ -45,6 +45,12 @@ export function mountChat(root, { locations, onShow, getContext = () => ({}) }) 
     setOpen(true)
     push("user", esc(q))
     input.value = ""
+    if (q.length > MAX_QUESTION) {
+      // Say so at once instead of sending it to the server to be refused.
+      push("bot", MESSAGES.tooLong)
+      asking = false
+      return
+    }
     const bubble = push("bot", `<p class="thinking" aria-live="polite">Thinking…</p>`)
     try {
       const reply = await askAssistant(q, getContext())
