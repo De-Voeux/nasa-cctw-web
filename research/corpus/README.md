@@ -30,9 +30,9 @@ Rules:
 - Unverified sources can be loaded early. They are stored but never retrieved.
 - Do not put text here that the licence does not allow us to redistribute. Store a short quoted passage with its page, or ask first.
 
-## Sources added so far (all UNVERIFIED)
+## Sources added so far
 
-Prepared on 2026-11-15 from open-access papers. None has `verified_by`, so none is searchable yet. A reviewer must check each against the original (citation, species, places, licence, and that the converted text matches) and then add `verified_by` and `verified_on`.
+Prepared on 2026-11-15 from open-access papers. **Both were marked verified by Radit on 2026-11-15** (his statement; the assistant that prepared the files did not re-check them), which makes them searchable. A source without `verified_by` is stored but never retrieved. For a new source, a reviewer checks it against the original (citation, species, places, licence, and that the converted text matches) and then adds `verified_by` and `verified_on`.
 
 | File | Source | How the text was obtained | Left out |
 |---|---|---|---|
