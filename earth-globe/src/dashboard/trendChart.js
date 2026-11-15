@@ -31,7 +31,7 @@ export function trendChart(item, dates, todayIndex, selIndex) {
   const sel = Math.min(n - 1, Math.max(0, selIndex))
 
   const f = (v) => v.toFixed(digits)
-  const label = `${item.name}, ${SHORT.format(dates[0])} to ${SHORT.format(dates[n - 1])}: ${f(values[0])} to ${f(values[todayIndex])} ${unit} today, forecast ${f(values[n - 1])} ${unit}. Baseline ${f(baseline[0])}–${f(baseline[1])} ${unit}.`
+  const label = `${item.name}, ${SHORT.format(dates[0])} to ${SHORT.format(dates[n - 1])}: ${f(values[0])} to ${f(values[todayIndex])} ${unit} today, forecast ${f(values[n - 1])} ${unit}. Usual range ${f(baseline[0])}–${f(baseline[1])} ${unit}.`
 
   return `
   <figure class="trend" role="img" aria-label="${label}">
@@ -52,8 +52,8 @@ export function trendChart(item, dates, todayIndex, selIndex) {
       <span>${SHORT.format(dates[n - 1])}</span>
     </div>
     <figcaption class="trend-legend">
-      <span><i class="k-band"></i>Baseline</span>
-      <span><i class="k-obs"></i>Observed</span>
+      <span><i class="k-band"></i>Usual range</span>
+      <span><i class="k-obs"></i>Measured</span>
       <span><i class="k-fc"></i>Forecast</span>
       <span class="t-sel">● ${SHORT.format(dates[sel])}</span>
     </figcaption>

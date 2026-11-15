@@ -1,13 +1,13 @@
 import { thermometerIcon, dropletIcon as dropIcon, rainIcon } from "./icons.js"
 
 /**
- * Environmental layers the atlas will show, one at a time. None is connected
- * to the globe yet: picking one only marks it as chosen and says so.
+ * Environmental layers that colour the sea, one at a time (see oceanLayer.js).
+ * The ids must match OCEAN_LAYERS there.
  */
 export const DATA_LAYERS = [
-  { id: "sst", name: "Sea Water Temperature", source: "NASA GHRSST MUR L4 · 0.01°", icon: thermometerIcon },
-  { id: "salinity", name: "Salinity", source: "Copernicus Global Ocean Physics · 0.083°", icon: dropIcon },
-  { id: "rain", name: "Rainfall", source: "NASA GPM IMERG · Open-Meteo forecast", icon: rainIcon },
+  { id: "sst", name: "Sea temperature", source: "NASA satellite (MUR)", icon: thermometerIcon },
+  { id: "salinity", name: "Salinity", source: "NASA satellite (SMAP)", icon: dropIcon },
+  { id: "rain", name: "Rainfall", source: "NASA satellite (GPM IMERG)", icon: rainIcon },
 ]
 
 export function mountLayersMenu(btn, menu, { onChange } = {}) {
@@ -19,7 +19,7 @@ export function mountLayersMenu(btn, menu, { onChange } = {}) {
         (l) => `<li><button type="button" class="layer-item" data-layer="${l.id}" aria-pressed="${l.id === active}">
           ${l.icon}<span><span class="layer-name">${l.name}</span><span class="layer-src">${l.source}</span></span></button></li>`,
       ).join("")}</ul>
-      <p class="layer-status">${active ? "This layer isn't connected to the globe yet." : "Layers aren't connected to the globe yet."}</p>`
+      <p class="layer-status">${active ? "Tap it again to hide the colours." : "Pick one to colour the sea."}</p>`
   }
   render()
 

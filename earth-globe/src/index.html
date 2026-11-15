@@ -39,9 +39,7 @@
 
     <!-- Top right of the map: date bar, then layers and zoom -->
     <div class="map-tools">
-      <nav class="glass date-bar" aria-label="Date">
-        <div id="dates" class="date-pills" role="group"></div>
-      </nav>
+      <nav id="date-bar" class="glass date-bar" aria-label="Date"></nav>
       <div class="map-controls">
         <div id="layers-menu" class="glass layers-menu" hidden></div>
         <button id="layers-btn" class="glass round-btn" aria-label="Layers" aria-expanded="false" aria-controls="layers-menu">
@@ -53,6 +51,9 @@
         </div>
       </div>
     </div>
+
+    <!-- Colour scale of the ocean layer picked in Layers -->
+    <section id="layer-legend" class="glass layer-legend" aria-live="polite" hidden></section>
 
     <!-- Side panel (right; a bottom sheet on narrow screens) -->
     <aside class="glass side-panel" aria-label="Locations" data-mode="list">
@@ -73,9 +74,9 @@
         <div class="chips">
           <div id="regions-chip"></div>
           <div id="levels-chip"></div>
-          <button id="sort-btn" class="sort-btn" type="button" aria-label="Sort order: lowest risk first">
+          <button id="sort-btn" class="sort-btn" type="button" aria-label="Sort: lowest stress first">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16M7 4 3 8M7 4l4 4M17 20V4M17 20l-4-4M17 20l4-4" /></svg>
-            <span id="sort-label">Lowest Risk</span>
+            <span id="sort-label">Lowest stress</span>
           </button>
         </div>
       </div>
