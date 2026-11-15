@@ -47,7 +47,7 @@ Verified on 2026-11-15 after the deploy:
 
 Added 2026-11-15, **built and checked locally, not yet deployed**.
 
-- The asset is `earth-globe/src/assets/earth/ogimage-nasa.png` (supplied by Radit): 1200×457 px, PNG, 431,670 bytes. `scripts/build-site.sh` copies it, byte for byte, to `/og-image.png` (a fixed address, because Parcel would hash the name).
+- The asset is `earth-globe/src/assets/earth/ogimage.png` (supplied by Radit, replaced on 2026-11-15 by a new version that reads "SEAmon · Created for the 2026 NASA Space Apps Challenge" over the globe): 1200×457 px, PNG, 430,791 bytes. `scripts/build-site.sh` copies it, byte for byte, to `/og-image.png` (a fixed address, because Parcel would hash the name).
 - The tags live in the dashboard page, `earth-globe/src/index.html`, which is now the site root: 10 `og:*` tags and 5 `twitter:*` tags (card type `summary_large_image`), plus the page title and a description. They were first on the old static root page and were moved here when the dashboard became `/`. The image address is absolute, `https://seamon.seagis.app/og-image.png`, as the protocol requires (it was `nasa.seagis.app` until the domain change). The demo page has no tags.
 - **`robots.txt` changed.** It used to disallow every robot, which would also stop link-preview crawlers from reading the page and the image. It now allows Twitterbot, facebookexternalhit, LinkedInBot, Slackbot, Discordbot, WhatsApp and TelegramBot, and still disallows everything else (checked with Python's robots parser: those seven may fetch the page and the image; Googlebot, bingbot and an unknown bot may not). The crawler names come from general knowledge, not from testing against each platform. The `noindex` header is unchanged.
 
