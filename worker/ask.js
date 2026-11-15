@@ -181,12 +181,16 @@ export function validateAnswer(input, ctx) {
       if (!ctx.chunks.has(id)) return { ok: false, problem: `chunk_id ${id} was not retrieved in this request` }
     }
   }
-  for (const d of used) {
-    if (!ctx.series.some((s) => s.site_id === d.site_id && s.variable === d.variable)) {
-      return { ok: false, problem: `data_used ${d.site_id}/${d.variable} was not fetched in this request` }
-    }
+  // data_used lists measurements, and only measurements that were fetched may be listed. Models sometimes put a
+  // literature topic in it ("Philippines/ice-ice disease prevalence"). Such an entry is dropped rather than refusing
+  // the whole answer, which used to end in the fixed abstention; the answer stands only if the cited sources (or a
+  // real measurement) still back it.
+  const valid = used.filter((d) => ctx.series.some((s) => s.site_id === d.site_id && s.variable === d.variable))
+  if (valid.length < used.length && claims.length === 0 && valid.length === 0) {
+    const d = used.find((x) => !valid.includes(x))
+    return { ok: false, problem: `data_used ${d.site_id}/${d.variable} was not fetched in this request` }
   }
-  return { ok: true, answer: shape({ ...a, claims, data_used: used }, ctx) }
+  return { ok: true, answer: shape({ ...a, claims, data_used: valid }, ctx) }
 }
 
 /** Internal chunk ids must never reach the reader, whatever the model wrote: "(chunks 24, 33)", "chunk 26", "[chunk 6]". */
@@ -426,6 +430,7 @@ export async function handleAsk(request, env, { fetchImpl = fetch } = {}) {
   let toolCalls = 0
   let retried = false
   let nudged = false
+  let giveUp = null // why the fixed abstention was used, for the log only
   let answer = null
 
   try {
@@ -437,7 +442,10 @@ export async function handleAsk(request, env, { fetchImpl = fetch } = {}) {
       messages.push({ role: "assistant", content: reply.message.content ?? null, ...(calls.length ? { tool_calls: reply.message.tool_calls } : {}) })
       if (calls.length === 0) {
         // Free models sometimes answer in plain text. Plain text is never shown: ask once for the tools.
-        if (nudged) break
+        if (nudged) {
+          giveUp = "no_tool_call"
+          break
+        }
         nudged = true
         messages.push({ role: "user", content: "Use the tools. Finish by calling final_answer; do not answer in plain text." })
         continue
@@ -451,7 +459,10 @@ export async function handleAsk(request, env, { fetchImpl = fetch } = {}) {
             break
           }
           console.log(JSON.stringify({ event: "answer_rejected", problem: v.problem.slice(0, 200), retry: !retried }))
-          if (retried) break
+          if (retried) {
+            giveUp = "invalid_twice"
+            break
+          }
           retried = true
           results.push({ role: "tool", tool_call_id: u.id, content: `Rejected: ${v.problem}. Fix it and call final_answer again, or abstain.` })
           continue
@@ -484,7 +495,10 @@ export async function handleAsk(request, env, { fetchImpl = fetch } = {}) {
   }
 
   const final = answer ?? shape({ ...ABSTAIN }, ctx)
+  // Why the page got an abstention (never the question or the answer text): nothing was retrieved, the model gave
+  // an invalid answer twice, it never called a tool, it ran out of turns, or it chose to abstain itself.
+  const reason = answer === null ? giveUp ?? "turn_limit" : final.answer_md === ABSTAIN.answer_md ? "nothing_retrieved" : final.abstained ? "model_abstained" : null
   // Logged without the question text or any address; the retention decision is still open.
-  console.log(JSON.stringify({ event: "ask", abstained: final.abstained, model: trace.model, tools: trace.tools, chunk_ids: trace.chunk_ids, ms: Date.now() - started }))
+  console.log(JSON.stringify({ event: "ask", abstained: final.abstained, reason, model: trace.model, tools: trace.tools, chunk_ids: trace.chunk_ids, ms: Date.now() - started }))
   return json(200, final)
 }

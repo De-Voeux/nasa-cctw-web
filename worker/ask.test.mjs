@@ -153,11 +153,15 @@ test("measurements: the model gets a computed summary and may cite only what was
   assert.deepEqual(body.data_used[0].products, ["MUR"])
 })
 
-test("data_used for a series that was never fetched is rejected", () => {
+test("data_used for a series that was never fetched: dropped when cited sources back the answer, rejected when nothing else does", () => {
   const ctx = { chunks: new Map([[7, CHUNK]]), series: [] }
-  const r = validateAnswer({ answer_md: "x", claims: [{ text: "t", chunk_ids: [7] }], data_used: [{ site_id: "maluku", variable: "sst" }], confidence: "low", abstained: false }, ctx)
-  assert.equal(r.ok, false)
-  assert.match(r.problem, /was not fetched/)
+  const mixed = validateAnswer({ answer_md: "x", claims: [{ text: "t", chunk_ids: [7] }], data_used: [{ site_id: "maluku", variable: "sst" }], confidence: "low", abstained: false }, ctx)
+  assert.equal(mixed.ok, true)
+  assert.deepEqual(mixed.answer.data_used, [])
+  assert.equal(mixed.answer.claims.length, 1)
+  const alone = validateAnswer({ answer_md: "x", claims: [], data_used: [{ site_id: "maluku", variable: "sst" }], confidence: "low", abstained: false }, ctx)
+  assert.equal(alone.ok, false)
+  assert.match(alone.problem, /was not fetched/)
 })
 
 test("the tool call budget stops a looping model", async () => {
@@ -727,4 +731,29 @@ test("a filtered search that finds nothing is retried once without the filter be
   // an unfiltered search that finds nothing is the end of it
   const r = await run("question here", [[use("search_evidence", { query_en: "q" })], FINAL_ABSTAIN], { rag_search: () => [] })
   assert.match(JSON.stringify(r.calls.model[1].messages.at(-1)), /call final_answer now with abstained=true/)
+})
+
+test("the log says why an abstention happened, without the question or the answer", async () => {
+  const logs = []
+  const orig = console.log
+  console.log = (m) => logs.push(String(m))
+  try {
+    await run("question here", [[use("search_evidence", { query_en: "q" })], FINAL_ABSTAIN], { rag_search: () => [] }) // model abstains itself
+    await run("question here", [[], []], {}) // never calls a tool
+    const bad = () => use("final_answer", { answer_md: "x", claims: [{ text: "t", chunk_ids: [999] }], data_used: [], confidence: "high", abstained: false })
+    await run("question here", [[use("search_evidence", { query_en: "q" })], [bad()], [bad()]], { rag_search: () => [CHUNK] }) // invalid twice
+  } finally {
+    console.log = orig
+  }
+  const reasons = logs.map((l) => { try { return JSON.parse(l) } catch { return null } }).filter((j) => j?.event === "ask").map((j) => j.reason)
+  assert.deepEqual(reasons, ["model_abstained", "no_tool_call", "invalid_twice"])
+  assert.ok(!logs.some((l) => l.includes("question here")))
+})
+
+test("a literature answer that lists a topic in data_used is no longer thrown away", async () => {
+  const final = use("final_answer", { answer_md: "Reported in the Philippines.", claims: [{ text: "Fixture says X.", chunk_ids: [7] }], data_used: [{ site_id: "Philippines", variable: "ice-ice disease prevalence" }], confidence: "low", abstained: false })
+  const { body, calls } = await run("where is it common?", [[use("search_evidence", { query_en: "q" })], [final]], { rag_search: () => [CHUNK] })
+  assert.equal(body.abstained, false)
+  assert.deepEqual(body.data_used, [])
+  assert.equal(calls.model.length, 2) // no second attempt was needed
 })
