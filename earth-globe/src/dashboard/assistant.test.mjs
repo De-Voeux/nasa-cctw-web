@@ -63,7 +63,7 @@ test("markdown: nothing from the text can become markup", () => {
   ].join("\n\n")
   const html = renderMarkdown(nasty)
   // Every "<" in the output must open or close one of the few tags we generate, with no attributes.
-  assert.ok(!/<(?!\/?(p|strong|code|ul|ol|li|br)>)/.test(html), html)
+  assert.ok(!/<(?!\/?(p|strong|em|code|ul|ol|li|br)>)/.test(html), html)
   // Links and images are not supported: the source text stays visible as inert text.
   assert.ok(html.includes("[click](javascript:alert(1))") && html.includes("![x](https://e.org/x.png)"), html)
   assert.ok(html.includes("&lt;img src=x onerror=alert(1)&gt;"), html)
@@ -74,4 +74,13 @@ test("markdown: unmatched markers and tables stay as text", () => {
   assert.equal(renderMarkdown("| a | b |\n|---|---|"), "<p>| a | b |<br>|---|---|</p>")
   assert.equal(renderMarkdown(""), "")
   assert.equal(renderMarkdown("one\n\n\n\ntwo"), "<p>one</p><p>two</p>")
+})
+
+test("markdown: *italic* for species names, without catching stars that are not italics", () => {
+  assert.equal(renderMarkdown("for *Kappaphycus alvarezii* in Indonesia"), "<p>for <em>Kappaphycus alvarezii</em> in Indonesia</p>")
+  assert.equal(renderMarkdown("**bold** and *it*"), "<p><strong>bold</strong> and <em>it</em></p>")
+  assert.equal(renderMarkdown("2 * 3 * 4"), "<p>2 * 3 * 4</p>") // spaces inside: arithmetic, not italics
+  assert.equal(renderMarkdown("a*b*c"), "<p>a*b*c</p>") // inside a word
+  assert.equal(renderMarkdown("*<img src=x onerror=1>*"), "<p><em>&lt;img src=x onerror=1&gt;</em></p>") // still escaped
+  assert.equal(renderMarkdown("* item one\n* item two"), "<ul><li>item one</li><li>item two</li></ul>") // list bullets stay lists
 })
