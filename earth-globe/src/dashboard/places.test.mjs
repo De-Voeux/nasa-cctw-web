@@ -13,6 +13,7 @@ const L = [
   { id: "ph-tawi-tawi", name: "Tawi-Tawi" },
   { id: "my-sabah", name: "Sabah" },
   { id: "vn-khanh-hoa", name: "Khanh Hoa" },
+  { id: "id-ntb", name: "West Nusa Tenggara" },
 ]
 const ids = (t, max) => placesIn(t, L, max).map((l) => l.id)
 
@@ -29,14 +30,15 @@ test("a longer place name wins over the shorter one inside it", () => {
 
 test("accents, short forms and spacing", () => {
   assert.deepEqual(ids("Khánh Hòa province"), ["vn-khanh-hoa"])
-  assert.deepEqual(ids("in Zamboanga and Davao"), ["ph-zamboanga", "ph-davao-norte"])
-  assert.deepEqual(ids("Davao del   Norte"), ["ph-davao-norte"])
+  assert.deepEqual(ids("Zamboanga City and Davao del   Norte"), ["ph-zamboanga", "ph-davao-norte"])
+  assert.deepEqual(ids("NTB and North-eastern Bohol"), ["id-ntb", "ph-ne-bohol"])
 })
 
 test("it never guesses: countries, species, other places and partial words match nothing", () => {
   assert.deepEqual(ids("Indonesia, the Philippines and Kappaphycus alvarezii"), [])
   assert.deepEqual(ids("Sabahan culture and Malukuan food"), [])
   assert.deepEqual(ids("Camarines Norte, Calaguas Is."), [])
+  assert.deepEqual(ids("Zamboanga del Norte, the gulf of Davao"), []) // a different place than the dashboard's Zamboanga City / Davao del Norte
   assert.deepEqual(ids(""), [])
 })
 

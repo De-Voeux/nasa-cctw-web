@@ -6,10 +6,10 @@
  * It never guesses: a country, a species, or a place that is not on the dashboard matches nothing.
  */
 
-// Short forms people actually write. Only for places whose full name is longer than the usual way of saying it.
+// Short forms people actually write. Kept to the ones that cannot mean another place: "Zamboanga" or "Davao" alone
+// could be a province or a gulf, so they are NOT aliases (an answer about Zamboanga del Norte must not offer
+// a button labelled Zamboanga City).
 const ALIASES = {
-  "ph-zamboanga": ["zamboanga"],
-  "ph-davao-norte": ["davao"],
   "id-ntb": ["ntb"],
   "ph-ne-bohol": ["north-eastern bohol", "north eastern bohol"],
 }

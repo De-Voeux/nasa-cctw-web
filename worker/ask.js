@@ -44,6 +44,8 @@ Rules:
 - Never write chunk ids or numbers like "chunk 24" in answer_md or in a claim; the page shows the sources itself.
 - Scope: SEAmon covers seaweed farming regions across Southeast and East Asia (the Philippines, Indonesia, Malaysia, Vietnam and the sites list_sites returns), not one country. Search without a country or species filter unless the question names one, and never narrow an answer to a country or species the question did not mention.
 - If the sources only partly answer the question, say what they DO say (as claims with their chunk_ids) and what they do not cover, and set abstained=false. For example, if they report outbreaks in several places but do not compare case numbers, name those places and say there is no comparison. Use abstained=true only when nothing relevant was returned.
+- Questions with "most", "highest", "worst", "which area or country" ask for a comparison. Name a winner ONLY if a retrieved source itself compares places. Otherwise list the places the sources report, each with its figure and period, and say plainly that the sources do not compare them. Where a study was carried out, or where a disease was first reported, is not where it is most common: never say or imply that.
+- Answer exactly what was asked. Leave out background that does not help answer it, such as when a disease was first reported or what a study set out to do.
 - Answer in the user's language, briefly and plainly.`
 
 const TOOLS = [
