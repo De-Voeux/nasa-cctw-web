@@ -5,6 +5,7 @@ import { trendChart } from "./trendChart.js"
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c])
 const WORDS = ["None", "One", "Two", "Three", "Four"]
+const countLabel = (count) => WORDS[count] || String(count)
 const chevronRight = `<svg class="rc-go" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>`
 
 /**
@@ -132,12 +133,14 @@ export class SidePanel {
     const sel = data ? this._selectedIndex(data) : 0
     const drivers = data ? data.items.filter((d) => d.driver) : []
     const others = data ? data.items.filter((d) => !d.driver) : []
-    const total = data ? WORDS[data.items.length].toLowerCase() : ""
+    // Live observations can contain more indicators than the demo copy was
+    // written for. Keep detail rendering total for any item count.
+    const total = data ? countLabel(data.items.length).toLowerCase() : ""
     const summary = a.observed
       ? `${esc(a.condition)}. These are environmental observations; no biological stress level has been assigned.`
       : !data
       ? `${esc(a.condition)}. There isn't enough data to assess this region, which is not the same as low stress.`
-      : `${drivers.length ? `${WORDS[drivers.length]} of ${total}` : `None of the ${total}`} evaluated stressors ${drivers.length === 1 ? "is" : "are"} outside the species reference range. This is an environmental warning, not a disease diagnosis.`
+      : `${drivers.length ? `${countLabel(drivers.length)} of ${total}` : `None of the ${total}`} evaluated stressors ${drivers.length === 1 ? "is" : "are"} outside the species reference range. This is an environmental warning, not a disease diagnosis.`
 
     const card = (d) => {
       const index = Math.min(d.values.length - 1, d.dates ? this._selectedIndex({ dates: d.dates, todayIndex: d.values.length - 1 }) : sel)
@@ -149,7 +152,7 @@ export class SidePanel {
           <p class="driver-value">${d.values[index].toFixed(d.digits)}<span> ${esc(d.unit)}</span></p>
         </header>
         <p class="driver-head">${esc(d.headline || "Observed environmental value")}</p>
-        ${data.observed || d.driver ? trendChart(d, d.dates || data.dates, chartToday, index) : ""}
+        ${a.observed || d.driver ? trendChart(d, d.dates || data.dates, chartToday, index) : ""}
         <p class="driver-src">${esc(d.source)}${d.product_version ? ` · product ${esc(d.product_version)}` : ""}<br>Species reference range: not yet reviewed</p>
       </article>`
     }
