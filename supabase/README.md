@@ -27,6 +27,7 @@ browser ─▶ /api/ask (Cloudflare Worker, worker/) ─▶ model + tools ─▶
 
 | Where | Name | Notes |
 |---|---|---|
+| Cloudflare Worker binding (in `wrangler.jsonc`, no key) | `AI` (Workers AI) | The assistant tries Workers AI first (`@cf/qwen/qwen3-30b-a3b-fp8`, then `glm-4.7-flash`, then `gemma-4-26b-a4b-it`; override with `ASK_CF_MODELS`). **Not free of charge in the strict sense**: every Workers AI model has a per-token price, and only the account's daily allocation (10,000 neurons a day on the Workers Free plan) costs nothing. On the Free plan requests are refused after that; on a Workers Paid plan the overage is billed. Check the plan under Billing. |
 | Cloudflare Worker secrets (`wrangler secret put`) | `OPENROUTER_API_KEY` | the model provider. Until at least one key is set `/api/ask` answers 503 and the page uses its built-in answers |
 | | `OPENROUTER_API_KEY_2` ... `_9`, or `OPENROUTER_API_KEYS` | optional extra OpenRouter keys (a comma list in the second form). **Only keys starting with `sk-or-` are used**; a key for another provider is skipped and never sent to OpenRouter. A refused key (401/402/403) or one that hit a daily or credit limit is skipped for the request |
 | | `SUPABASE_URL` | `https://<project-ref>.supabase.co` |
@@ -48,6 +49,7 @@ A source without `verified_by` and `verified_on` is stored but never retrieved. 
 ## Not done and not verified
 
 - **No real model call has been made.** The Worker is tested against a fake model (29 tests across the Worker and the corpus tools). Nobody has yet asked it a real question with a real OpenRouter key.
+- **Workers AI is first, OpenRouter second.** Checked live on 2026-11-15 through `wrangler dev` (the `AI` binding is always remote): the Maluku 2024 temperature question was answered with the real minimum, maximum and their dates (they match the database), a literature question abstained, and a greeting was answered instantly. Latency was 6 to 26 seconds per question. The usage per question was not measured; estimate it from the Workers AI usage page before relying on the daily allocation.
 - **Free models are weaker and less predictable.** The Worker checks that every citation and number comes from what the tools returned in the same request, but it cannot check that a cited chunk actually supports the sentence next to it. A weak model can misread a real source; the evaluation set (RAG_DESIGN.md, section 8) is the control for that, and the model list should be chosen on it.
 - **Free tiers have request limits and different data terms.** OpenRouter limits free-model requests per minute and per day, and some free providers may keep or train on prompts. Check the current limits and each model's data policy; users' questions are sent to them.
 - **Retrieval quality is unknown** until real sources are loaded. gte-small is mostly an English model; the Worker makes the model write the search query in English, and Indonesian and English phrasings of one sentence scored 0.84 cosine similarity in a quick check. `MIN_SIMILARITY` (0.8) is a first guess to tune on the evaluation set.

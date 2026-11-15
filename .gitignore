@@ -13,3 +13,7 @@ coverage/
 supabase/.temp/
 supabase/.branches/
 supabase/.env*
+
+# Local secrets for `wrangler dev`
+.dev.vars
+.dev.vars.*
