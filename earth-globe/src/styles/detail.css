@@ -77,6 +77,25 @@
 .k-fc { height: 0; border-top: 2px dashed var(--warn-text); }
 .t-sel { margin-left: auto; color: var(--text); }
 
+/* Long-term change cards (longTermTrend.js): collapsed to a name + verdict, chart inside. */
+.lt-intro { margin: 0 0 10px; line-height: 1.45; }
+.lt-card summary { display: flex; justify-content: space-between; align-items: center; gap: 12px; cursor: pointer; list-style: none; }
+.lt-card summary::-webkit-details-marker { display: none; }
+.lt-card summary::after { content: "▾"; color: var(--text-muted); font-size: 12px; transition: rotate 0.15s; }
+.lt-card[open] summary::after { rotate: 180deg; }
+.lt-name { flex: 1; font-size: 15px; font-weight: 600; }
+.lt-badge { padding: 3px 10px; border-radius: var(--radius-pill); font-size: 12.5px; font-weight: 700; white-space: nowrap; background: var(--fill-hover); color: var(--text-muted); }
+.lt-up { background: rgba(255, 155, 115, 0.2); color: var(--warn-text); }
+.lt-down { background: rgba(120, 170, 255, 0.2); color: #9ec2ff; }
+.lt-trend { margin-top: 18px; }
+.t-annual { fill: none; stroke: var(--ok); stroke-width: 2; }
+.t-sen { stroke: rgba(255, 255, 255, 0.45); stroke-width: 1.5; stroke-dasharray: 5 4; }
+.t-sen.sig { stroke: #fff; }
+.t-pt { position: absolute; width: 5px; height: 5px; margin: -2.5px 0 0 -2.5px; border-radius: 50%; background: var(--ok); }
+.k-annual { height: 2px; background: var(--ok); }
+.k-sen { height: 0; border-top: 2px dashed #fff; }
+.lt-detail { margin: 8px 0 0; font-size: 12.5px; line-height: 1.45; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
 .not-assessed { margin-top: 6px; padding: 2px 16px 12px; border-radius: var(--radius-md); border: 1px dashed rgba(255, 255, 255, 0.2); }
 .not-assessed .section-title { margin-top: 14px; }
 .not-assessed ul { margin: 0; padding: 0; list-style: none; font-size: 13px; color: var(--source-text); }

@@ -6,6 +6,8 @@ import { PAPERS, INSIGHTS, IMPACTS, CAVEAT } from "../data/iceIceLinks.js"
 import { ENVIRONMENT_RULES } from "../data/environmentRules.js"
 import { driversFor, NOT_ASSESSED, DUMMY_NOTE } from "../data/sampleDrivers.js"
 import { trendChart } from "./trendChart.js"
+import { longTermSection } from "./longTermTrend.js"
+import LONG_TERM from "../data/longTermTrends.json"
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c])
 const WORDS = ["None", "One", "Two", "Three", "Four"]
@@ -333,12 +335,13 @@ export class SidePanel {
         ${drivers.length ? drivers.map(card).join("") : `<p class="muted small">${a.observed && !a.scored ? "We haven’t rated these yet. The cards below show measurements only." : "Nothing is outside the safe range."}</p>`}
         <h2 class="section-title">${a.observed && !a.scored ? "Measurements" : "Normal right now"}</h2>
         ${others.map(card).join("")}` : ""}
+        ${longTermSection(LONG_TERM, loc.dataRegionId)}
         <section class="not-assessed">
           <h2 class="section-title">Not checked yet</h2>
           <ul>${(data?.notAssessed || (data ? NOT_ASSESSED : [{ name: "Ocean conditions", why: "Satellite data isn’t connected yet." }]))
             .map((x) => `<li><b>${esc(x.name)}</b> · ${esc(x.why)}</li>`).join("")}</ul>
         </section>
-        ${a.demo ? `<p class="fineprint">${esc(DUMMY_NOTE)} The stress level is a sample too, and the safe ranges for each seaweed are still being checked.</p>` : ""}
+        ${a.demo ? `<p class="fineprint">${esc(DUMMY_NOTE)} The stress level is a sample too. Safe ranges exist only for some seaweeds and are provisional.</p>` : ""}
         ${impactHtml()}
         <h2 class="section-title">About this place</h2>`
   }
