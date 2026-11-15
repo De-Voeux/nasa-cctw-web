@@ -1,0 +1,6 @@
+{
+  "/api/environment": {
+    "target": "https://seamon.seagis.app",
+    "changeOrigin": true
+  }
+}

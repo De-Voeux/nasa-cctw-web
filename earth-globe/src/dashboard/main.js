@@ -153,6 +153,7 @@ function select(id) {
   setBody(false, false) // a place was picked: show its details, but keep the remembered choice
   setSheet(true)
   setPressed(id)
+  panel.species = state.species
   panel.showLocation(loc, assessments.get(id))
   const alt = Math.min(globe.getView().altitude, 0.7)
   globe.flyTo({ lat: loc.lat, lon: loc.lon, altitude: alt, duration: 1600 })
