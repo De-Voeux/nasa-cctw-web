@@ -33,6 +33,7 @@ def test_migration_selection_ignores_application_migrations(tmp_path):
     (tmp_path / "20261115000000_seagis_environment.sql").write_text("-- extractor")
     (tmp_path / "20261115000001_rag_foundation.sql").write_text("-- application")
     assert [p.name for p in export.migration_files(tmp_path)] == [export.EXTRACTOR_MIGRATION]
+    (tmp_path / "20261115000005_seagis_forecast.sql").write_text("-- extractor forecast")
     (tmp_path / "20261115010000_seagis_more_sources.sql").write_text("-- extractor comments")
     assert [p.name for p in export.migration_files(tmp_path)] == list(export.EXTRACTOR_MIGRATIONS)
 
@@ -45,7 +46,8 @@ def test_round_trip_upsert_is_idempotent():
     import psycopg
     plan = {"plan_sha256": "a" * 64}
     m = pd.DataFrame([{"region_id": "T-R", "subregion_id": "z", "geometry_version": "v1", "dataset": "mur_sst",
-                       "variable": "analysed_sst", "date": dt.date(2026, 8, 15), "units": "degree_C", "mean": 29.1,
+                       "variable": "analysed_sst", "date": dt.date(2026, 8, 15), "data_type": "observed",
+                       "units": "degree_C", "mean": 29.1,
                        "min": 28.0, "max": 30.0, "std": 0.2, "valid_pixel_count": 5, "roi_pixel_count": 6,
                        "coverage_fraction": 0.83, "area_weighted": True, "source_granule": "g",
                        "product_version": "p", "qc_flags": ""}])

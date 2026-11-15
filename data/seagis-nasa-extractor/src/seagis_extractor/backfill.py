@@ -295,7 +295,10 @@ class Backfill:
             bad = [c for c in validate.copernicus_checks(sub, u["dataset"], row, dates, mem) if c["status"] == "FAIL"]
             if bad:
                 raise FetchError(f"{u['dataset']} {key[1]}: " + "; ".join(f"{c['check']}: {c['detail']}" for c in bad))
-            rows = process.aggregate_copernicus(sub, mem, rois[key], u["dataset"], spec["dataset_id"])
+            rows = process.aggregate_copernicus(
+                sub, mem, rois[key], u["dataset"], spec["dataset_id"],
+                (self.cfg.get("products", {}).get("copernicus", {}) or {}).get("data_type", "observed"),
+            )
             written.append(_write_parquet(rows, self.processed_dir / u["dataset"] / key[0] / f"{key[1]}.parquet"))
         if not written:
             return {"path": "", "sha256": "", "rows": 0, "bytes": 0, "issues": issues, "files": []}
@@ -359,9 +362,18 @@ class Backfill:
                         raise f.exception()
                     results.append(f.result())
                     report(results[-1], futs[f], len(results), n)
-        for u in cm:
-            results.append(self._run_one(u))
-            report(results[-1], u, len(results), n)
+        with ThreadPoolExecutor(max_workers=self.concurrency) as pool:
+            futs = {pool.submit(self._run_one, u): u for u in cm}
+            pending = set(futs)
+            while pending:
+                done, pending = wait(pending, return_when=FIRST_COMPLETED)
+                for f in done:
+                    if f.exception():
+                        for p in pending:
+                            p.cancel()
+                        raise f.exception()
+                    results.append(f.result())
+                    report(results[-1], futs[f], len(results), n)
         summary = {"units_total": len(units), "units_skipped_done": skipped, "units_run": len(results),
                    "ok": sum(r["status"] == "ok" for r in results), "failed": [r["key"] for r in results if r["status"] != "ok"],
                    "with_issues": {r["key"]: r["issues"] for r in results if r.get("issues")},
