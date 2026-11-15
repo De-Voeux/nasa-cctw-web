@@ -76,6 +76,8 @@ Rough total: 3–4 h code and tests, 1–2 h fetch, 1 h export and trends.
 
 ### Decided (user, 2026-11-15)
 
+- **Window: 2003-01 .. 2024-12** for every source. A 1996–2026 window was considered and rejected: MUR starts 2002-06, and IMERG Final starts 1998-01 and ends 2025-09. Reaching 1996 would mean replacing both NASA satellite products with model data. The window ends at 2024 so every year is complete for the annual-mean trends.
+
 - **MUR 2023-06 and 2025-12:** keep the rows with an empty value and a `missing_at_source` flag. Do not compute them from daily MUR. (2025-12 is outside the window anyway.)
 - **Currents:** monthly P1M `uo`, `vo`, so the long-term table holds only the mean flow vector. Store `uo`, `vo`, `current_direction` (of the mean vector) and `current_vector_speed` (|mean vector|). The monthly table has **no** `current_speed` or `current_steadiness`, because a monthly mean vector underestimates mean speed. The name `current_vector_speed` keeps it from being read as the daily `current_speed`. Transfer stays small (~10 min).
 - **Storage:** new table `seagis_monthly_metrics` with its own allowlisted migration. Daily and monthly rows never share a table.
@@ -87,6 +89,5 @@ Rough total: 3–4 h code and tests, 1–2 h fetch, 1 h export and trends.
 
 ## Decisions needed
 
-1. Approve or change the window (2003–2024, monthly).
-2. Southern Luzon: Tayabas Bay or Calatagan for the research site.
-3. Whether to fetch at all before the submission deadline (2026-11-15 23:59), or to submit with the existing point-site trends plus the three-month zone data.
+1. Southern Luzon: Tayabas Bay or Calatagan for the research site.
+2. Whether to fetch at all before the submission deadline (2026-11-15 23:59), or to submit with the existing point-site trends plus the three-month zone data.
