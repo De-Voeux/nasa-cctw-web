@@ -32,7 +32,6 @@ export const LOCATIONS = [
   { id: "ph-eastern-samar", dataRegionId: "PH-E-SAMAR", name: "Eastern Samar", country: "Philippines", lat: 11.5, lon: 125.65, taxa: [KA] },
   { id: "ph-palawan", dataRegionId: "PH-PALAWAN", name: "Palawan", country: "Philippines", lat: 9.6, lon: 118.95, taxa: [KA, KS] },
   { id: "ph-ne-bohol", dataRegionId: "PH-NE-BOHOL", name: "Northeastern Bohol", country: "Philippines", lat: 10.15, lon: 124.45, taxa: [ED, KA] },
-  { id: "ph-bohol", name: "Bohol", country: "Philippines", lat: 9.6, lon: 124.0, taxa: [KS] },
   { id: "ph-zamboanga", dataRegionId: "PH-ZAMBOANGA", name: "Zamboanga City", country: "Philippines", lat: 6.85, lon: 122.1, taxa: [KS] },
   { id: "ph-davao-norte", dataRegionId: "PH-DAVAO-N", name: "Davao del Norte", country: "Philippines", lat: 7.25, lon: 125.75, taxa: [KS] },
   { id: "ph-tawi-tawi", dataRegionId: "PH-TAWI", name: "Tawi-Tawi", country: "Philippines", lat: 5.05, lon: 119.9, taxa: [ED, KSPP, KA, KS] },
