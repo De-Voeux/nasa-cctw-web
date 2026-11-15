@@ -1,6 +1,6 @@
 # Handover: seagis-nasa-extractor
 
-State on **2026-11-15**, branch `feat/data-pulling`. None of this session's work is committed yet; the last commit is `a59ed60`.
+State on **2026-11-15**, branch `feat/data-pulling` (merged with `origin/main`).
 
 ## What this is
 
@@ -27,9 +27,8 @@ Every source, with links, DOIs and licences, is listed in [docs/DATA_SOURCES.md]
 | Approved plan hash | `d5e5783e301c7ffde6628df6ead1a6103a534bfb4a95ac1b07ff582c9307511a` (renames PH-NE-BOHOL to PH-BOHOL; `4ebfe10c…` added currents, IMERG and POWER; `af7f572b…` added PH-S-LUZON) |
 | Zones in plan | 48 zones; 19 regions, of which PH-NE-BOHOL has no zone yet. PH-S-LUZON resolved to Calatagan, Batangas |
 | Bohol | The old `PH-NE-BOHOL/bohol` zone was the whole province, so it is now `PH-BOHOL/bohol` (Faisan et al. 2021). Local Parquet and the manifest were rewritten in place, with the same values and no re-fetch. `PH-NE-BOHOL` (Largo et al. 1995) waits for a named study coast. The DB rename is `sql/2026-11-15_rename_bohol.sql` |
-| Fetched locally | MUR and no3/po4/pH/salinity for **all 6 batches: 48 zones, 25,572 daily rows** in `data/processed/` |
-| In Supabase | Batches 1-3 only: 27 zones, 14,850 rows. Batches 4-6 still need `export` |
-| Not fetched | 258 units: currents (18 dataset-regions), IMERG (192 ROI-months) and POWER (48 zones) |
+| Fetched | **All 504 units**: every source for all 48 zones, 2026-08-15..2026-11-14 (MUR and IMERG to 11-13, not yet published for 11-14) |
+| In Supabase | **82,932 daily rows, 48 zones, 19 regions** (export run `ff59a1d9`, 2026-11-15). Both extractor migrations applied; units are display labels |
 | Central Sulawesi | Briefly excluded after Harmony connection resets on `tomini_tojo_una_una`, then re-fetched with `--region ID-CENT-SUL --concurrency 2` (23/23 ok) and restored to batch 2. Nothing is excluded now. |
 | Missing date | MUR 2026-11-14, not yet published by NASA on 2026-11-15. Copernicus has that date. |
 
@@ -79,11 +78,11 @@ caffeinate -i .venv/bin/seagis-extract fetch --batch 6 --concurrency 8 --approve
 | `seagis_load_runs` | `run_id` | one row per export, for provenance |
 
 - **Row level security** is on for all four tables. `anon` and `authenticated` can **read only**; writes need the DB owner or the service role. This was checked locally: an anon insert is rejected.
-- **Applying migrations.** `export --apply-migrations` applies pending files and records them in `seagis_schema_migrations`. Alternatively use `supabase db push` after `supabase init && supabase link`. In that case, run `export` without `--apply-migrations` so the two trackers don't disagree.
+- **Applying migrations.** `export --apply-migrations` applies only the extractor's own files, `20261115000000_seagis_environment.sql` and `20261115010000_seagis_more_sources.sql` (comments only), and records them in `seagis_schema_migrations`. It never applies the web application's RAG or `env` migrations. Alternatively use `supabase db push` after `supabase init && supabase link`; in that case, run `export` without `--apply-migrations` so the two trackers don't disagree.
 - **Units.** `export` writes display labels to `units`: °C, mmol/m³, PSU, pH, m/s, ° and 0–1 (steadiness). The mapping is `export.DISPLAY_UNITS`. These are labels only, so no value changes: `1e-3` becomes PSU, and the `kelvin` of `analysis_error` (a temperature difference) becomes °C. Parquet keeps the source strings. An unknown unit stops the export, instead of passing through unlabelled.
 - **The export is one transaction.** It upserts on the keys above, so rerunning is safe and updates rows in place. It never deletes anything. It refuses unless `--confirm-host` equals the DSN host.
 - **Connection.** Set `SEAGIS_DB_DSN` in `.env` to a `postgresql://` connection string; in Supabase, Connect → Session pooler. `SEAGIS_DB_URL` is the https project URL and cannot run SQL.
-- **Status (2026-11-15): pushed to Supabase.** Target was the pooler host `aws-1-ap-southeast-2.pooler.supabase.com`, project `aemqvswrqgkdefzfvnug`, which the user confirmed is safe to write.
+- **Historical status (2026-11-15): reported as pushed to Supabase.** The recorded target was pooler host `aws-1-ap-southeast-2.pooler.supabase.com`, project `aemqvswrqgkdefzfvnug`. This checkpoint did not re-query that project because the connected Supabase workspace exposed a different project. Treat the counts below as handover claims until the approved staging project is checked read-only.
   - The `public` schema was empty beforehand.
   - The migration was applied. All 5 `seagis_*` tables have RLS on, including `seagis_schema_migrations`, which has no policy.
   - Loaded 18 regions, 42 zones and **6,050 daily rows** (batches 1-2, 11 zones).
@@ -111,7 +110,7 @@ caffeinate -i .venv/bin/seagis-extract fetch --batch 6 --concurrency 8 --approve
 | `roi.py` | ROI builder |
 | `auth.py` | `.env` loading |
 
-Tests: `.venv/bin/python -m pytest -q` gives 87 passed and 1 skipped. Set `SEAGIS_TEST_DSN` to a scratch Postgres to run the DB round trip too, which makes it 88.
+Tests: `.venv/bin/python -m pytest -q` gives 88 passed and 1 skipped. Set `SEAGIS_TEST_DSN` to a scratch Postgres to run the DB round trip too, which removes the skip.
 
 Install non-editable after code changes, because iCloud hides `.pth` files: `uv pip install -q --python .venv --reinstall-package seagis-nasa-extractor .`
 
@@ -134,11 +133,23 @@ Install non-editable after code changes, because iCloud hides `.pth` files: `uv 
 3. **Progress output.** Progress printed only when every MUR unit had finished. It now prints per unit.
 4. **New commands and options.** `status` was added, and so was `fetch --concurrency`.
 
+## Web integration on `feat/live-seagis-data`
+
+- `GET /api/environment` reads `public.seagis_daily_metrics` through the Worker and keeps the service-role key server-side.
+- It returns the latest 14 observed days for NASA MUR SST and Copernicus `so`, `no3`, `po4`, and `ph`, paging PostgREST responses and weighting subregions by valid pixel count.
+- Dashboard locations carry explicit extractor `region_id` mappings.
+- Mock levels are opt-in with `?demo=levels`; the default dashboard shows observed series where rows exist.
+- Observed data remains `Insufficient Data` for biological classification until a species rule is reviewed and activated. It is not a disease diagnosis.
+- Charts do not extend observations into a fabricated forecast or baseline.
+
+The code path is covered by the Worker, frontend, extractor, and production-build checks. A read-only request against the approved staging project is still required before deployment.
+
 ## Known gaps / next steps
 
-1. **Fetch the new sources**, then export again. This also loads batches 4-6. Upserts are incremental, and `--apply-migrations` adds `20261115010000_seagis_more_sources.sql`, which only adds column comments:
+1. **Done 2026-11-15:** all sources fetched and exported. Rerun `export` after any new fetch; upserts are incremental:
    `.venv/bin/seagis-extract export --apply-migrations --confirm-host aws-1-ap-southeast-2.pooler.supabase.com`
-2. **Web app access.** Read through Supabase with the anon key from tables `seagis_daily_metrics`, `seagis_zones` and `seagis_regions`. The polygons are not in the DB; serve `data/roi/roi_candidates_v1.geojson`, or a simplified copy, if the map needs them.
+2. **Staging verification.** Confirm the Worker's `SUPABASE_URL` points to the approved extractor/staging project, then request `/api/environment` and verify a loaded region such as `PH-TAWI` and its latest date. Do not use the connected IoT project for this data.
+3. **Web app access.** The Worker reads `seagis_daily_metrics`, `seagis_zones` and `seagis_regions` with its server-side service role. The polygons are not in the DB; serve `data/roi/roi_candidates_v1.geojson`, or a simplified copy, if the map needs them.
 4. **ROI review still open:**
    - Samal sits in Davao del Norte.
    - Seram Barat islets.
@@ -146,5 +157,5 @@ Install non-editable after code changes, because iCloud hides `.pth` files: `uv 
    - PH-S-LUZON resolved to Calatagan, Batangas (Alimin et al. 2026; Solis et al. 2010).
    - Lingayen Gulf BGC is intentionally empty (no model sea cell).
 5. **CSV export** (TASK.md step 8) is not built; the output is Parquet and DB only.
-6. **Commit.** Nothing from this session is committed. `.env`, `data/processed` and `outputs/` are gitignored. Commit the code, tests, configs, docs and `supabase/migrations/`.
-7. **Docs.** `docs/PLAN_REVIEW.md` has dated notes for each period and hash change. `CATALOG_REVIEW.md` and `COPERNICUS_REVIEW.md` still quote the old 2022-2026 figures.
+7. **Commit.** Commit the code, tests, configs, and docs on `feat/live-seagis-data` after staging verification. `.env`, `data/processed`, `outputs/`, `dist/` and `.venv/` are gitignored.
+8. **Docs.** `docs/PLAN_REVIEW.md` has dated notes for each period and hash change. `CATALOG_REVIEW.md` and `COPERNICUS_REVIEW.md` still quote the old 2022-2026 figures.

@@ -29,6 +29,14 @@ def test_migration_is_idempotent_sql():
     assert "primary key (region_id, subregion_id, geometry_version, dataset, variable, date)" in sql
 
 
+def test_migration_selection_ignores_application_migrations(tmp_path):
+    (tmp_path / "20261115000000_seagis_environment.sql").write_text("-- extractor")
+    (tmp_path / "20261115000001_rag_foundation.sql").write_text("-- application")
+    assert [p.name for p in export.migration_files(tmp_path)] == [export.EXTRACTOR_MIGRATION]
+    (tmp_path / "20261115010000_seagis_more_sources.sql").write_text("-- extractor comments")
+    assert [p.name for p in export.migration_files(tmp_path)] == list(export.EXTRACTOR_MIGRATIONS)
+
+
 @pytest.mark.skipif(not os.environ.get("SEAGIS_TEST_DSN"), reason="set SEAGIS_TEST_DSN to a scratch Postgres")
 def test_round_trip_upsert_is_idempotent():
     import datetime as dt

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/png" href="./assets/earth/favicon.png" />
+    <title>Blue Marble globe</title>
+    <style>
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        background: #02040a;
+        color: #d7dde8;
+        font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+      #container {
+        position: fixed;
+        inset: 0;
+      }
+      #panel {
+        position: fixed;
+        top: 12px;
+        left: 12px;
+        padding: 10px 12px;
+        background: rgba(2, 4, 10, 0.72);
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        border-radius: 6px;
+        max-width: min(260px, calc(100vw - 24px));
+      }
+      #panel button {
+        font: inherit;
+        color: inherit;
+        background: transparent;
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        border-radius: 4px;
+        padding: 3px 8px;
+        margin: 4px 4px 0 0;
+        cursor: pointer;
+      }
+      #panel button:hover,
+      #panel button:focus-visible {
+        border-color: #8fb4ff;
+        outline: none;
+      }
+      #readout {
+        margin: 0 0 4px;
+        white-space: pre;
+      }
+      #credit {
+        position: fixed;
+        bottom: 8px;
+        left: 12px;
+        right: 12px;
+        font-size: 11px;
+        opacity: 0.6;
+      }
+      #credit a {
+        color: inherit;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="container"></div>
+    <div id="panel">
+      <p id="readout">loading…</p>
+      <button data-fly="-6.2,106.8,0.6">Jakarta</button>
+      <button data-fly="51.48,0,0.6">Greenwich</button>
+      <button data-fly="0,0,3">Zoom out</button>
+      <button id="spin">Auto-rotate: on</button>
+      <p id="clicked" style="margin: 6px 0 0"></p>
+    </div>
+    <div id="credit">Surface: NASA Earth Observatory, Blue Marble Next Generation. Clouds, ocean, relief, lights: NASA, via franky-adl/threejs-earth. Sky: Photo by <a href="https://unsplash.com/@loganvoss?utm_source=unsplash&amp;utm_medium=referral&amp;utm_content=creditCopyText">Logan Voss</a> on <a href="https://unsplash.com/photos/a-dark-sky-filled-with-countless-tiny-stars-sOvC2p6seUc?utm_source=unsplash&amp;utm_medium=referral&amp;utm_content=creditCopyText">Unsplash</a>.</div>
+    <script src="./demo.js" type="module"></script>
+  </body>
+</html>
