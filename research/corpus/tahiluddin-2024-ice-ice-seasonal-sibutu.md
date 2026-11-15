@@ -9,6 +9,8 @@ year: 2024
 species: [Kappaphycus alvarezii, Kappaphycus striatus]
 countries: [Philippines]
 license: CC-BY-4.0 (MDPI open access; stated in the article)
+verified_by: Radit (as stated by Radit on 2026-11-15; not re-checked by the assistant)
+verified_on: 2026-11-15
 ---
 ## Abstract
 

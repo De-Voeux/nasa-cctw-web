@@ -9,6 +9,8 @@ year: 2021
 species: [Kappaphycus spp., Eucheuma spp., Kappaphycus alvarezii, Kappaphycus striatus, Eucheuma denticulatum]
 countries: [Philippines, Indonesia, Malaysia, Tanzania, India, China]
 license: CC-BY (journal licence per DOAJ and OpenAlex; the PDF itself carries no licence statement, so confirm the version)
+verified_by: Radit (as stated by Radit on 2026-11-15; not re-checked by the assistant)
+verified_on: 2026-11-15
 ---
 ## Abstract
 
