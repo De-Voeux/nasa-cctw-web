@@ -607,9 +607,11 @@ def cmd_export(args) -> int:
         raise SystemExit("nothing in data/processed_monthly")
     df = pd.concat([pd.read_parquet(f) for f in files], ignore_index=True)
     df["units"] = [export.display_unit(v, u) if u else "" for v, u in zip(df["variable"], df["units"])]
-    cols = [c if c != "date" else "month" for c in export.METRIC_COLUMNS]
+    # monthly table has no data_type column: every monthly row is observation/reanalysis, never forecast
+    cols = [c if c != "date" else "month" for c in export.METRIC_COLUMNS if c != "data_type"]
     df = df[cols]
-    dup = df.duplicated([c if c != "date" else "month" for c in export.METRIC_KEY]).sum()
+    key = [c if c != "date" else "month" for c in export.METRIC_KEY if c != "data_type"]
+    dup = df.duplicated(key).sum()
     if dup:
         raise SystemExit(f"{dup} duplicate keys")
     print(f"{len(df)} rows from {len(files)} files; datasets:")
@@ -622,7 +624,6 @@ def cmd_export(args) -> int:
         print("dry run: nothing written")
         return 0
     mig = ROOT.parents[1] / "supabase/migrations" / MIGRATION
-    key = [c if c != "date" else "month" for c in export.METRIC_KEY]
     with psycopg.connect(dsn) as conn, conn.transaction(), conn.cursor() as cur:
         cur.execute(f"select 1 from public.{export.MIGRATIONS_TABLE} where name = %s", (MIGRATION,))
         if not cur.fetchone():

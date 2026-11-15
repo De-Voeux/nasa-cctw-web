@@ -36,9 +36,9 @@ def _stats(vals: np.ndarray, w: np.ndarray) -> dict:
             "max": round(float(v.max()), 6), "std": round(std, 6)}
 
 
-def _row(date, roi, dataset, variable, units, stats, n_roi, source, version, qc):
+def _row(date, roi, dataset, variable, units, stats, n_roi, source, version, qc, data_type="observed"):
     return {"date": date.isoformat(), "region_id": roi["region_id"], "subregion_id": roi["subregion_id"],
-            "dataset": dataset, "variable": variable, "units": units,
+            "dataset": dataset, "variable": variable, "data_type": data_type, "units": units,
             "valid_pixel_count": stats["valid_pixel_count"], "roi_pixel_count": n_roi,
             "coverage_fraction": round(stats["valid_pixel_count"] / n_roi, 4) if n_roi else 0.0,
             "mean": stats["mean"], "min": stats["min"], "max": stats["max"], "std": stats["std"],
@@ -46,7 +46,8 @@ def _row(date, roi, dataset, variable, units, stats, n_roi, source, version, qc)
             "geometry_version": roi.get("geometry_version", "v1"), "qc_flags": qc}
 
 
-def aggregate_mur(dss: list, membership: list[dict], grid, roi: dict, date: dt.date, source: str) -> tuple[list[dict], dict]:
+def aggregate_mur(dss: list, membership: list[dict], grid, roi: dict, date: dt.date, source: str,
+                  data_type: str = "observed") -> tuple[list[dict], dict]:
     """One day of one ROI. `dss` are the day's tiles (one per approved request box)."""
     lookups = []
     for ds in dss:
@@ -81,11 +82,12 @@ def aggregate_mur(dss: list, membership: list[dict], grid, roi: dict, date: dt.d
         if not any(var in ds for ds in dss):
             continue
         a = np.where(have & sea, vals[var], np.nan)
-        rows.append(_row(date, roi, "mur_sst", var, units, _stats(a, w), n, source, "MUR v4.1", qc))
+        rows.append(_row(date, roi, "mur_sst", var, units, _stats(a, w), n, source, "MUR v4.1", qc, data_type))
     return rows, info
 
 
-def aggregate_copernicus(ds, membership: list[dict], roi: dict, key: str, version: str) -> list[dict]:
+def aggregate_copernicus(ds, membership: list[dict], roi: dict, key: str, version: str,
+                         data_type: str = "observed") -> list[dict]:
     lat = np.asarray(ds["latitude"].values, dtype=float)
     lon = np.asarray(ds["longitude"].values, dtype=float)
     lat_ix = {round(float(x), 4): i for i, x in enumerate(lat)}
@@ -103,7 +105,7 @@ def aggregate_copernicus(ds, membership: list[dict], roi: dict, key: str, versio
             w = np.array([f for _, _, f in keep]) if keep else np.array([])
             qc = f"sea_cells={len(keep)};land_cells_dropped={len(membership) - len(sea)}"
             rows.append(_row(dt.date.fromisoformat(day), roi, key, var, units, _stats(vals, w), len(membership),
-                             key, version, qc))
+                             key, version, qc, data_type))
     if "uo" in ds.data_vars and "vo" in ds.data_vars:
         u = np.asarray(ds["uo"].values, dtype=float).reshape(len(times), lat.size, lon.size)
         v = np.asarray(ds["vo"].values, dtype=float).reshape(len(times), lat.size, lon.size)
@@ -114,7 +116,8 @@ def aggregate_copernicus(ds, membership: list[dict], roi: dict, key: str, versio
             vv = np.array([v[t, i, j] for i, j, _ in keep]) if keep else np.array([])
             w = np.array([f for _, _, f in keep]) if keep else np.array([])
             for var, un, st in current_stats(uu, vv, w, units):
-                rows.append(_row(dt.date.fromisoformat(day), roi, key, var, un, st, len(membership), key, version, qc))
+                rows.append(_row(dt.date.fromisoformat(day), roi, key, var, un, st, len(membership),
+                                 key, version, qc, data_type))
     return rows
 
 

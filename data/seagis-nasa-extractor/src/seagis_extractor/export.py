@@ -21,18 +21,22 @@ import yaml
 DSN_ENV = "SEAGIS_DB_DSN"
 MIGRATIONS_TABLE = "seagis_schema_migrations"
 EXTRACTOR_MIGRATION = "20261115000000_seagis_environment.sql"
-EXTRACTOR_MIGRATIONS = (EXTRACTOR_MIGRATION, "20261115010000_seagis_more_sources.sql",
-                        "20261115020000_seagis_monthly_metrics.sql")
+EXTRACTOR_MIGRATIONS = (
+    EXTRACTOR_MIGRATION,
+    "20261115000005_seagis_forecast.sql",
+    "20261115010000_seagis_more_sources.sql",
+    "20261115020000_seagis_monthly_metrics.sql",
+)
 
-METRIC_COLUMNS = ["region_id", "subregion_id", "geometry_version", "dataset", "variable", "date", "units",
+METRIC_COLUMNS = ["region_id", "subregion_id", "geometry_version", "dataset", "variable", "date", "data_type", "units",
                   "mean", "min", "max", "std", "valid_pixel_count", "roi_pixel_count", "coverage_fraction",
                   "area_weighted", "source_granule", "product_version", "qc_flags"]
-METRIC_KEY = ["region_id", "subregion_id", "geometry_version", "dataset", "variable", "date"]
+METRIC_KEY = ["region_id", "subregion_id", "geometry_version", "dataset", "variable", "date", "data_type"]
 
 # Display labels written to the DB (decided 2026-11-15). Labels only: every pair is the same unit,
 # so no value changes. Parquet in data/processed keeps the source's own unit strings.
 DISPLAY_UNITS = {
-    "degree_C": "°C", "C": "°C",
+    "degree_C": "°C", "degrees_C": "°C", "C": "°C",
     "kelvin": "°C",             # MUR analysis_error is a temperature difference: 1 K = 1 °C
     "mmol m-3": "mmol/m³",
     "1e-3": "PSU",              # Copernicus salinity (practical salinity, ~ PSU)
@@ -122,8 +126,14 @@ def load_inputs(root: Path, plan: dict, processed_dir: Path, roi_path: Path) -> 
         keep &= inz
         inp = (d["date"] >= start) & (d["date"] <= end)
         skipped["outside_period"] += int((keep & ~inp).sum())
-        frames.append(d[keep & inp])
+        frame = d[keep & inp].copy()
+        if "data_type" not in frame:
+            frame["data_type"] = "observed"
+        frames.append(frame)
     metrics = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame(columns=METRIC_COLUMNS)
+    if "data_type" not in metrics:
+        metrics["data_type"] = "observed"
+    metrics["data_type"] = metrics["data_type"].fillna("observed")
     metrics = metrics[METRIC_COLUMNS].copy()
     if len(metrics):
         pairs = metrics[["variable", "units"]].drop_duplicates()

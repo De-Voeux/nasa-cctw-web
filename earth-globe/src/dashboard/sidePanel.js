@@ -251,7 +251,7 @@ export class SidePanel {
       : `${drivers.length ? `${countLabel(drivers.length)} of ${total}` : `None of the ${total}`} water conditions ${drivers.length === 1 ? "is" : "are"} outside the safe range for this seaweed. This is a warning about the water, not a sign the seaweed is sick.`
 
     const card = (d) => {
-      const index = Math.min(d.values.length - 1, d.dates ? this._selectedIndex({ dates: d.dates, todayIndex: d.values.length - 1 }) : sel)
+      const index = Math.min(d.values.length - 1, d.dates ? this._selectedIndex({ dates: d.dates, todayIndex: d.todayIndex ?? d.values.length - 1 }) : sel)
       const chartToday = Math.min(d.values.length - 1, d.todayIndex ?? (d.dates ? d.values.length - 1 : data.todayIndex))
       // Cut the series to the chosen chart length; the dot stays on the chosen day.
       const w = this._window(d.dates || data.dates, d.values, chartToday)
@@ -263,9 +263,9 @@ export class SidePanel {
           <h3>${esc(d.name)}</h3>
           <p class="driver-value">${d.values[index].toFixed(d.digits)}<span> ${esc(d.unit)}</span></p>
         </header>
-        <p class="driver-head">${esc(d.headline || "Measured value")}</p>
+        <p class="driver-head">${esc(index > (d.todayIndex ?? d.values.length - 1) ? (d.forecastHeadline || "Forecast value") : (d.headline || "Measured value"))}</p>
         ${a.observed || d.driver ? chart() : ""}
-        <p class="driver-src">${esc(d.source)}${d.product_version ? ` · product ${esc(d.product_version)}` : ""}<br>Safe range for this seaweed: still being checked</p>
+        <p class="driver-src">${esc(index > (d.todayIndex ?? d.values.length - 1) ? (d.forecastSource || d.source) : d.source)}${(index > (d.todayIndex ?? d.values.length - 1) ? d.forecastProductVersion : d.product_version) ? ` · product ${esc(index > (d.todayIndex ?? d.values.length - 1) ? d.forecastProductVersion : d.product_version)}` : ""}<br>Safe range for this seaweed: still being checked</p>
       </article>`
     }
 

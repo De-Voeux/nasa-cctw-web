@@ -192,7 +192,8 @@ def run_pilot(root: Path, cfg: dict, plan: dict, *, out_dir: Path, raw_dir: Path
                           "bytes": dest.stat().st_size, "sha256": sha})
             mem = process.read_membership(membership_dir / f"{spec['key']}__{key[0]}__{key[1]}__v1.csv.gz")
             checks += [c | {"roi": "/".join(key)} for c in validate.copernicus_checks(ds, spec["key"], row, dates, mem)]
-            rows += process.aggregate_copernicus(ds, mem, roi, spec["key"], spec["dataset_id"])
+            rows += process.aggregate_copernicus(ds, mem, roi, spec["key"], spec["dataset_id"],
+                                                 (cfg.get("products", {}).get("copernicus", {}) or {}).get("data_type", "observed"))
 
     # ------------------------------------------------ report
     mur_bytes = sum(f["bytes"] for f in files if f["source"] == "mur_sst")

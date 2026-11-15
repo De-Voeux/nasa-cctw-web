@@ -18,6 +18,7 @@ products:
     endpoint: discover_from_catalog
   copernicus:
     enabled: true
+    data_type: observed   # use forecast for the separate 3-day outlook run
     period: {start: '2026-08-15', end: '2026-11-14'}   # aligned with MUR
     depth: surface          # shallowest model level (0.494 m)
     batch: region_whole_period   # one subset per region x dataset; chunks span ~155 days
