@@ -649,3 +649,9 @@ test("a question over the limit is refused with the reason too_long", async () =
   assert.deepEqual(await res.json(), { error: "bad_question", reason: "too_long", max: 500 })
   assert.equal((await (await handleAsk(ask("  "), ENV)).json()).reason, "empty")
 })
+
+test("the prompt handles comparison questions without crowning a winner from where studies were done", () => {
+  assert.match(SYSTEM_PROMPT, /Name a winner ONLY if a retrieved source itself compares places/)
+  assert.match(SYSTEM_PROMPT, /where a disease was first reported, is not where it is most common/)
+  assert.match(SYSTEM_PROMPT, /Answer exactly what was asked/)
+})
