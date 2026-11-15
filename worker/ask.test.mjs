@@ -610,3 +610,20 @@ test("a real question is never mistaken for small talk, with or without a greeti
     "thanks for nothing what is the temperature at Maluku",
   ]) assert.equal(smalltalkReply(q), null, q)
 })
+
+import { scrubChunkRefs } from "./ask.js"
+
+test("chunk ids are removed from text shown to the reader, and normal text is left alone", () => {
+  assert.equal(scrubChunkRefs("Polyculture reduces incidence (chunks 24, 33). Pre-soaking works (chunk 26)."), "Polyculture reduces incidence. Pre-soaking works.")
+  assert.equal(scrubChunkRefs("Farm management helps [chunk 6] and nutrients too."), "Farm management helps and nutrients too.")
+  assert.equal(scrubChunkRefs("See chunk 12 and chunk 14 for details."), "See for details.")
+  assert.equal(scrubChunkRefs("Ice-ice affects 24 farms in chunks of 33 plots."), "Ice-ice affects 24 farms in chunks of 33 plots.") // no id pattern: unchanged
+  assert.equal(scrubChunkRefs("Temperature of 33 °C (see Table 2) matters."), "Temperature of 33 °C (see Table 2) matters.")
+})
+
+test("an answer that leaks chunk ids reaches the browser without them", async () => {
+  const final = use("final_answer", { answer_md: "Cause: stress (chunk 7).", claims: [{ text: "Stress causes it (chunks 7).", chunk_ids: [7] }], data_used: [], confidence: "low", abstained: false })
+  const { body } = await run("why ice-ice here?", [[use("search_evidence", { query_en: "q" })], [final]], { rag_search: () => [CHUNK] })
+  assert.equal(body.answer_md, "Cause: stress.")
+  assert.equal(body.claims[0].text, "Stress causes it.")
+})
