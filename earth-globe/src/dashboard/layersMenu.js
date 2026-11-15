@@ -10,6 +10,9 @@ export const DATA_LAYERS = [
   { id: "rain", name: "Rainfall", source: "NASA satellite (GPM IMERG)", icon: rainIcon },
 ]
 
+/** Where NASA publishes the base map; the globe credit links here (see earth/README.md). */
+export const BLUE_MARBLE_URL = "https://science.nasa.gov/earth/earth-observatory/blue-marble-next-generation/base-map"
+
 export function mountLayersMenu(btn, menu, { onChange } = {}) {
   let active = null
   const render = () => {
@@ -19,7 +22,8 @@ export function mountLayersMenu(btn, menu, { onChange } = {}) {
         (l) => `<li><button type="button" class="layer-item" data-layer="${l.id}" aria-pressed="${l.id === active}">
           ${l.icon}<span><span class="layer-name">${l.name}</span><span class="layer-src">${l.source}</span></span></button></li>`,
       ).join("")}</ul>
-      <p class="layer-status">${active ? "Tap it again to hide the colours." : "Pick one to colour the sea."}</p>`
+      <p class="layer-status">${active ? "Tap it again to hide the colours." : "Pick one to colour the sea."}</p>
+      <p class="layer-credit">Globe surface: <a href="${BLUE_MARBLE_URL}" target="_blank" rel="noopener noreferrer">NASA Earth Observatory, Blue Marble Next Generation</a>. Ocean, relief and lights: NASA, via franky-adl/threejs-earth.</p>`
   }
   render()
 
