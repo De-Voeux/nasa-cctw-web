@@ -145,3 +145,55 @@ def test_gate_refuses_uncalibrated_plan(tmp_path):
         backfill.verify_fetch_plan(plan, plan["plan_sha256"], tmp_path)
     plan, _ = make_fetch_plan(tmp_path)
     backfill.verify_fetch_plan(plan, plan["plan_sha256"], tmp_path)
+
+
+def test_run_lock_blocks_a_second_live_run_and_clears_stale(tmp_path):
+    import os
+    lock = tmp_path / "fetch.lock"
+    with backfill.RunLock(lock):
+        assert lock.read_text() == str(os.getpid())
+        with pytest.raises(fetch.FetchError, match="another fetch"):
+            backfill.RunLock(lock).__enter__()
+    assert not lock.exists()
+    lock.write_text("999999")                       # stale pid from a killed run
+    with backfill.RunLock(lock):
+        pass
+
+
+def test_concurrency_override_runs_and_keeps_plan_hash(tmp_path):
+    plan, mdir = make_fetch_plan(tmp_path)
+    h = plan["plan_sha256"]
+    cfg = {"_products": {"copernicus": [SPEC]}, "roi": {"pilot_first": ["PH-T"]}}
+    bf = backfill.Backfill(tmp_path, cfg, plan, out_dir=tmp_path / "out", raw_dir=tmp_path / "raw",
+                           processed_dir=tmp_path / "processed", membership_dir=mdir,
+                           harmony=Harmony(plan).client(plan), cm_opener=cm_opener, log=lambda *a: None,
+                           sleep=lambda s: None, concurrency=8)
+    assert bf.concurrency == 8
+    assert bf.run(backfill.build_units(plan, cfg))["ok"] == 3
+    backfill.verify_fetch_plan(plan, h, tmp_path)
+
+
+def test_cli_concurrency_bounds():
+    import argparse
+    from seagis_extractor import cli
+    assert cli._concurrency("12") == 12
+    for bad in ("0", "17"):
+        with pytest.raises(argparse.ArgumentTypeError):
+            cli._concurrency(bad)
+
+
+def test_status_counts_done_remaining_and_eta(tmp_path):
+    import os
+    plan, mdir = make_fetch_plan(tmp_path)
+    cfg, bf = make_bf(tmp_path, plan, mdir, Harmony(plan, fail_month="2022-07"))
+    units = backfill.build_units(plan, cfg)
+    bf.run(units)
+    lock, log = tmp_path / "out/fetch.lock", tmp_path / "out/batch1.log"
+    s = backfill.status(units, tmp_path / "out/fetch_manifest.jsonl", lock, tmp_path / "raw")
+    assert (s["done"], s["remaining"], s["running"]) == (2, 1, False)
+    assert s["failed_last_attempt"] == ["mur/PH-T/a/2022-07"]
+    lock.write_text(str(os.getpid()))
+    log.write_text("3 units, 0 already done, running 3\n")
+    s = backfill.status(units, tmp_path / "out/fetch_manifest.jsonl", lock, tmp_path / "raw", log,
+                        now=lock.stat().st_mtime + 600)
+    assert s["running"] and s["done_this_run"] == 2 and s["elapsed_min"] == 10.0 and s["eta_min"] == 5.0

@@ -2,9 +2,15 @@
 
 `seagis-extract plan` (metadata and local geometry only, **0 science bytes**). Outputs (gitignored, reproducible): `outputs/plan.json`, `outputs/estimate.csv` (one row per ROI × month, 511 rows), `outputs/plan_summary.txt`, and `outputs/membership/*.csv.gz` (grid-cell weight table per ROI).
 
-**PLAN SHA256: `b5a03161b2de7b911aa5b576be54545c651a4cea7e08341412bd5456a40d371e`** (calibrated backfill plan; the pilot ran under `85f62d82…`)
+**PLAN SHA256: `5e8befeee46ed29752fa91ee1f883682213efbeb3c1037402e6158ab21084918`** (calibrated backfill plan; the pilot ran under `85f62d82…`)
 
 The hash covers the plan contents and the SHA-256 of every input (catalog, ROI GeoJSON, configs). Timestamps are excluded, so re-running `plan` on unchanged inputs gives the same hash. Any change to the ROIs, the period, or the limits gives a new hash.
+
+> **Updated 2026-11-15 (request edges):** every MUR request edge now sits at least a quarter cell inside its expected extent. Tile edges lay exactly on cell boundaries and Harmony returned one extra row there (lat -0.665, batch 2), which the guard rejected. 58 of 73 boxes moved inward; the cells requested are unchanged, so earlier outputs stay valid. New plan hash below.
+
+> **Updated 2026-11-15 (three months):** the period is now **2026-08-15 .. 2026-11-14** for every source (supersedes the one-year note below). Transfer about **527 MiB** (MUR 357 / 396 / 495 MiB LOW / EXPECTED / HIGH, Copernicus 131 MiB per region). Approved plan hash: `3e55cf0ae7ddaaf9bc2cd619380ad1a8703ba769ff031f114e93f4ac6750b336`.
+
+> **Superseded, one year:** the period is now **2025-11-15 .. 2026-11-14** for every source; the 2022-06-01 start below is superseded. Same 47 zones and 73 MUR boxes. Transfer: MUR 1.39 / **1.55** / 1.94 GiB (LOW / EXPECTED / HIGH), Copernicus 393 MiB per region (212 MiB with a shared chunk cache), about **1.9 GiB** in total. 2026-11-14 is not published yet and stays missing. Approved plan hash: `5e8befeee46ed29752fa91ee1f883682213efbeb3c1037402e6158ab21084918`. Data from the earlier partial fetch (2022-06..2024-02) was deleted; its manifest is in `outputs/archive_2022-2026/`.
 
 > **Updated 2026-11-15:** all sources now start **2022-06-01**, the first day of daily Copernicus salinity. The plan also covers the Copernicus Marine datasets no3, po4, pH and salinity. Their transfer is exact, 129.4 MiB; see [COPERNICUS_REVIEW.md](COPERNICUS_REVIEW.md). Combined transfer is about 481 MiB. The tables below are the MUR part.
 >
@@ -167,6 +173,8 @@ Pilot values for 1–7 June 2022:
 
 - `--dry-run` counts the work.
 - `--max-units N` stops after N units, for example to measure speed.
+- `--concurrency N` (1-16) runs N units at once instead of `execution.concurrency` (4). Speed only: the plan hash and the downloaded boxes do not change. The bottleneck is Harmony subsetting, about 5 s per daily file (a month takes ~150 s), not bandwidth. If Harmony returns 429 (too many requests), lower N; failed units retry and can be rerun.
+- `seagis-extract status --batch N` is read-only: units done and remaining for the batch, whether a fetch holds the lock, elapsed time, and an ETA from the units finished in this run (start count read from `outputs/fetch/batchN.log`). Without `--batch` it counts every unit in the plan.
 - `--region` (repeatable) limits the run to given regions.
 - `--source mur|copernicus` limits the run to one source.
 
@@ -191,5 +199,5 @@ Backfill, after reviewing this calibrated plan:
 ```
 
 ```bash
-.venv/bin/seagis-extract fetch --approve-plan b5a03161b2de7b911aa5b576be54545c651a4cea7e08341412bd5456a40d371e
+.venv/bin/seagis-extract fetch --approve-plan 5e8befeee46ed29752fa91ee1f883682213efbeb3c1037402e6158ab21084918
 ```

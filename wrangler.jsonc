@@ -18,6 +18,8 @@
   // *.workers.dev address back.
   "workers_dev": false,
   "preview_urls": false,
+  // Workers AI (no key needed): the assistant tries these models first, see worker/llm.js.
+  "ai": { "binding": "AI" },
   "assets": {
     "directory": "./dist/site",
     "binding": "ASSETS",

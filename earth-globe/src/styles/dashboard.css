@@ -46,7 +46,7 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
   /* Wider than the screen by the panel's width and shifted left, so the
      globe's centre sits in the middle of the area the panel leaves free. */
   position: fixed; top: 0; bottom: 0;
-  left: calc(-1 * (var(--panel-w) + var(--gap) * 2)); right: 0;
+  left: calc(-1 * (var(--panel-offset) + var(--gap) * 2)); right: 0;
   transition: transform 0.3s ease;
 }
 .overlay { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
@@ -102,7 +102,7 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 /* ---------------------------------------------------------------- top right tools */
 
 .map-tools {
-  position: fixed; top: var(--gap); right: calc(var(--panel-w) + var(--gap) * 2);
+  position: fixed; top: var(--gap); right: calc(var(--panel-offset) + var(--gap) * 2);
   display: grid; justify-items: end; gap: 14px; z-index: 4;
 }
 
@@ -218,7 +218,7 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 
 .chat {
   position: fixed; left: var(--gap); bottom: calc(var(--gap) + 14px); z-index: 3;
-  width: min(490px, calc(100vw - var(--panel-w) - 120px));
+  width: min(490px, calc(100vw - var(--panel-offset) - 120px));
   border-radius: var(--radius-xl); padding: 0;
   display: flex; flex-direction: column;
   border: 1px solid transparent;
@@ -266,7 +266,7 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
 .send-btn { width: 56px; height: 56px; border-radius: 50%; display: grid; place-items: center; flex: none; }
 .send-btn svg { width: 24px; height: 24px; }
 
-.credit { position: fixed; left: var(--gap); bottom: 4px; margin: 0; font-size: 10.5px; color: var(--text-faint); z-index: 2;  max-width: calc(100vw - var(--panel-w) - var(--gap) * 4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.credit { position: fixed; left: var(--gap); bottom: 4px; margin: 0; font-size: 10.5px; color: var(--text-faint); z-index: 2;  max-width: calc(100vw - var(--panel-offset) - var(--gap) * 4); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 /* ---------------------------------------------------------------- ocean layer legend (top left, under the brand) */
 
@@ -303,7 +303,7 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
   .round-btn { height: 52px; }
   .zoom-pill button { height: 44px; }
   .layers-menu { right: 64px; }
-  .chat { width: min(440px, calc(100vw - var(--panel-w) - 110px)); }
+  .chat { width: min(440px, calc(100vw - var(--panel-offset) - 110px)); }
 }
 
 /* Short landscape screens (phones on their side): side panel, everything compact,
@@ -331,7 +331,7 @@ svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width:
   .zoom-pill button { height: 36px; }
   .zoom-pill svg { width: 20px; height: 20px; }
   .layers-menu { right: 52px; max-height: calc(100vh - 80px); overflow-y: auto; }
-  .chat { bottom: var(--gap); width: min(420px, calc(100vw - var(--panel-w) - 90px)); }
+  .chat { bottom: var(--gap); width: min(420px, calc(100vw - var(--panel-offset) - 90px)); }
   .chat.glass { padding: 4px 8px 8px; }
   .chat-log { max-height: 42vh; }
   .msg { font-size: 14px; padding: 8px 14px; }

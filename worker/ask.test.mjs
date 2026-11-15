@@ -13,10 +13,11 @@ const use = (name, input, id = name + Math.random()) => ({ id, name, input })
 /** A fake network: `script` is the list of model turns (tool calls each); rpc maps function names to handlers.
  *  A turn may also be { status: 429 } to simulate a failing provider call. */
 function net(script, rpc = {}) {
-  const calls = { model: [], rpc: [], embed: 0 }
+  const calls = { model: [], rpc: [], embed: 0, usage: [], order: [] } // usage: the daily-count RPC, kept apart so tests can count the others
   const fetchImpl = async (url, init) => {
     const body = init?.body ? JSON.parse(init.body) : {}
     if (url.includes("/chat/completions")) {
+      calls.order.push("model")
       calls.model.push({ ...body, key: init.headers.authorization })
       const turn = script.shift()
       assert.ok(turn, "model called more times than scripted")
@@ -29,8 +30,9 @@ function net(script, rpc = {}) {
       return new Response(JSON.stringify({ embeddings: [[0.1, 0.2]] }), { status: 200 })
     }
     const name = url.split("/rpc/")[1]
-    calls.rpc.push([name, body])
-    const out = rpc[name]?.(body)
+    if (name === "rag_usage_hit") (calls.usage.push(body), calls.order.push("usage"))
+    else calls.rpc.push([name, body])
+    const out = name === "rag_usage_hit" && !rpc.rag_usage_hit ? [{ allowed: true, used: 1 }] : rpc[name]?.(body)
     if (out instanceof Error) return new Response(out.message, { status: 400 })
     return new Response(JSON.stringify(out ?? []), { status: 200 })
   }
@@ -409,4 +411,180 @@ test("when every key has hit its daily limit the answer is a 503 with reason quo
 
 test("not configured stays a plain 503 without a reason", async () => {
   assert.deepEqual(await (await handleAsk(ask("a real question"), {})).json(), { error: "assistant_unavailable" })
+})
+
+// ------------------------------------------------------------------ Cloudflare Workers AI
+import { cfModelList, CF_MODELS, normalizeCf } from "./llm.js"
+
+/** A fake `env.AI`: `script` entries are objects returned, or Error instances thrown, one per call. */
+function fakeAi(script) {
+  const calls = []
+  return {
+    calls,
+    run: async (model, input) => {
+      calls.push({ model, input })
+      const next = script.shift()
+      assert.ok(next !== undefined, "Workers AI called more times than scripted")
+      if (next instanceof Error) throw next
+      return next
+    },
+  }
+}
+const cfTurn = (toolCalls) => ({ choices: [{ message: { role: "assistant", content: null, tool_calls: toolCalls.map((u) => ({ id: u.id, type: "function", function: { name: u.name, arguments: JSON.stringify(u.input) } })) } }] })
+const CF_ENV = { SUPABASE_URL: "https://x.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "s" } // no OpenRouter keys at all
+
+test("with only the AI binding configured (no keys) the assistant answers through Workers AI", async () => {
+  const ai = fakeAi([cfTurn(FINAL_ABSTAIN)])
+  const n = net([])
+  const res = await handleAsk(ask("question here"), { ...CF_ENV, AI: ai }, { fetchImpl: n.fetchImpl })
+  assert.equal(res.status, 200)
+  assert.equal((await res.json()).abstained, true)
+  assert.equal(ai.calls.length, 1)
+  assert.equal(ai.calls[0].model, CF_MODELS[0]) // the cheapest first
+  assert.equal(n.calls.model.length, 0) // OpenRouter untouched
+  assert.equal(ai.calls[0].input.messages[0].role, "system")
+  assert.equal(ai.calls[0].input.tools[0].type, "function")
+})
+
+test("both Workers AI response shapes become the same message", () => {
+  const a = normalizeCf(cfTurn([{ id: "t1", name: "list_sites", input: { country: "X" } }]))
+  assert.equal(a.tool_calls[0].function.name, "list_sites")
+  const b = normalizeCf({ response: null, tool_calls: [{ name: "list_sites", arguments: { country: "X" } }] })
+  assert.equal(b.tool_calls[0].function.name, "list_sites")
+  assert.equal(b.tool_calls[0].function.arguments, JSON.stringify({ country: "X" }))
+  assert.equal(b.tool_calls[0].id, "call_0")
+  assert.equal(normalizeCf({ response: "plain text" }).content, "plain text")
+  assert.equal(normalizeCf({}), null)
+  assert.equal(normalizeCf(null), null)
+})
+
+test("a Workers AI model that errors is skipped for the request and the next one is tried", async () => {
+  const ai = fakeAi([new Error("5006: model unavailable"), cfTurn(FINAL_ABSTAIN)])
+  const res = await handleAsk(ask("question here"), { ...CF_ENV, AI: ai }, { fetchImpl: net([]).fetchImpl })
+  assert.equal(res.status, 200)
+  assert.deepEqual(ai.calls.map((c) => c.model), [CF_MODELS[0], CF_MODELS[1]])
+})
+
+test("when the daily Workers AI allocation is used up, every Workers AI model is skipped and OpenRouter takes over", async () => {
+  const ai = fakeAi([new Error("AiError: 4006: you have used up your daily free allocation of 10,000 neurons")])
+  const n = net([FINAL_ABSTAIN])
+  const res = await handleAsk(ask("question here"), { ...CF_ENV, AI: ai, OPENROUTER_API_KEY: "sk-or-k1" }, { fetchImpl: n.fetchImpl })
+  assert.equal(res.status, 200)
+  assert.equal(ai.calls.length, 1) // one try, then none of the other Workers AI models
+  assert.equal(n.calls.model.length, 1)
+})
+
+test("allocation used up and nothing else configured: 503 with reason quota, so the page falls back", async () => {
+  const ai = fakeAi([new Error("4006: you have used up your daily free allocation of 10,000 neurons")])
+  const res = await handleAsk(ask("question here"), { ...CF_ENV, AI: ai }, { fetchImpl: net([]).fetchImpl })
+  assert.equal(res.status, 503)
+  assert.deepEqual(await res.json(), { error: "assistant_unavailable", reason: "quota" })
+})
+
+test("a hung Workers AI call times out and moves on", async () => {
+  const hung = { calls: [], run: async (model) => (hung.calls.push(model), hung.calls.length === 1 ? new Promise(() => {}) : cfTurn(FINAL_ABSTAIN)) }
+  const { createLlm } = await import("./llm.js")
+  const llm = createLlm({ AI: hung }, fetch, { timeoutMs: 30 })
+  const out = await llm.chat({ messages: [{ role: "user", content: "x" }], tools: [] })
+  assert.equal(out.provider, "workers-ai")
+  assert.equal(hung.calls.length, 2)
+})
+
+test("ASK_CF_MODELS overrides the Workers AI model list", () => {
+  assert.deepEqual(cfModelList({ ASK_CF_MODELS: "@cf/a/b, @cf/c/d" }), ["@cf/a/b", "@cf/c/d"])
+  assert.deepEqual(cfModelList({}), CF_MODELS)
+  assert.ok(CF_MODELS.every((m) => m.startsWith("@cf/")))
+})
+
+test("Workers AI is never sent `content: null` (it rejects it); other providers get the message as it was", async () => {
+  const ai = fakeAi([cfTurn([{ id: "t1", name: "list_sites", input: {} }]), cfTurn(FINAL_ABSTAIN)])
+  const n = net([], { env_list_sites: () => [] })
+  await handleAsk(ask("question here"), { ...CF_ENV, AI: ai }, { fetchImpl: n.fetchImpl })
+  assert.equal(ai.calls.length, 2)
+  const second = ai.calls[1].input.messages
+  assert.ok(second.every((m) => typeof m.content === "string"), JSON.stringify(second.map((m) => [m.role, m.content])))
+  assert.equal(second.find((m) => m.role === "assistant").tool_calls[0].function.name, "list_sites") // tool calls kept
+})
+
+test("summaries carry the real dates of the minimum and the maximum", () => {
+  const rows = [
+    { day: "2024-01-01", value: 28, unit: "C", product: "M", product_version: "v1" },
+    { day: "2024-02-01", value: 25, unit: "C", product: "M", product_version: "v1" },
+    { day: "2024-03-01", value: 31, unit: "C", product: "M", product_version: "v1" },
+  ]
+  const s = summarize(rows, "2024-01-01", "2024-03-01")
+  assert.deepEqual([s.min, s.min_day, s.max, s.max_day], [25, "2024-02-01", 31, "2024-03-01"])
+})
+
+test("a date the tools never returned is rejected, then the model may fix it", async () => {
+  const rows = [
+    { day: "2024-01-13", value: 28, unit: "degree_C", product: "MUR", product_version: "v4.1" },
+    { day: "2024-08-10", value: 26, unit: "degree_C", product: "MUR", product_version: "v4.1" },
+  ]
+  const series = use("get_series", { site_id: "maluku", variable: "analysed_sst", from: "2024-01-01", to: "2024-12-31" })
+  const answer = (text) => use("final_answer", { answer_md: text, claims: [], data_used: [{ site_id: "maluku", variable: "analysed_sst" }], confidence: "moderate", abstained: false })
+  const { body, calls } = await run("temperature at Maluku?", [[series], [answer("The lowest was 26 on 2024-05-05.")], [answer("The lowest was 26 on 2024-08-10.")]], { env_get_series: () => rows })
+  assert.equal(body.abstained, false)
+  assert.match(body.answer_md, /2024-08-10/)
+  assert.match(JSON.stringify(calls.model[2].messages.at(-1)), /date 2024-05-05 does not appear/)
+})
+
+test("dates inside the question window the model asked about are fine when the tool returned them", async () => {
+  const rows = [{ day: "2024-01-13", value: 28, unit: "degree_C", product: "MUR", product_version: "v4.1" }]
+  const series = use("get_series", { site_id: "maluku", variable: "analysed_sst", from: "2024-01-01", to: "2024-12-31" })
+  const final = use("final_answer", { answer_md: "From 2024-01-01 to 2024-12-31 the only value was 28 on 2024-01-13.", claims: [], data_used: [{ site_id: "maluku", variable: "analysed_sst" }], confidence: "low", abstained: false })
+  const { body } = await run("q here", [[series], [final]], { env_get_series: () => rows })
+  assert.equal(body.abstained, false)
+})
+
+test("list_sites: an empty answer for a country filter tells the model to look at all sites", async () => {
+  const { calls } = await run("temperature at Maluku", [[use("list_sites", { country: "Maluku" })], FINAL_ABSTAIN], { env_list_sites: (b) => (b.filter_country ? [] : [{ id: "maluku", name: "Maluku" }]) })
+  assert.match(JSON.stringify(calls.model[1].messages.at(-1)), /Call list_sites again with no arguments/)
+  assert.match(calls.model[0].tools.find((t) => t.function.name === "list_sites").function.description, /COUNTRY name/)
+})
+
+// ------------------------------------------------------------------ daily limit
+import { dailyLimit, DEFAULT_DAILY_LIMIT } from "./ask.js"
+
+test("ASK_DAILY_LIMIT: default 100, a number, or off", () => {
+  assert.equal(dailyLimit({}), DEFAULT_DAILY_LIMIT)
+  assert.equal(DEFAULT_DAILY_LIMIT, 100)
+  assert.equal(dailyLimit({ ASK_DAILY_LIMIT: "25" }), 25)
+  assert.equal(dailyLimit({ ASK_DAILY_LIMIT: " 7.9 " }), 7)
+  assert.equal(dailyLimit({ ASK_DAILY_LIMIT: "0" }), 0)
+  assert.equal(dailyLimit({ ASK_DAILY_LIMIT: "OFF" }), 0)
+  assert.equal(dailyLimit({ ASK_DAILY_LIMIT: "banana" }), DEFAULT_DAILY_LIMIT) // a typo must not switch the cap off
+  assert.equal(dailyLimit({ ASK_DAILY_LIMIT: "-5" }), DEFAULT_DAILY_LIMIT)
+})
+
+test("a question takes one place from the daily count before any model call", async () => {
+  const { calls, res } = await run("question here", [FINAL_ABSTAIN], { rag_usage_hit: () => [{ allowed: true, used: 7 }] })
+  assert.equal(res.status, 200)
+  assert.deepEqual(calls.usage, [{ p_scope: "ask", p_limit: 100 }])
+  assert.equal(calls.order[0], "usage") // taken before the first model call
+})
+
+test("when the daily cap is reached: 503 quota, no model is called", async () => {
+  const { res, body, calls } = await run("question here", [], { rag_usage_hit: () => [{ allowed: false, used: 100 }] }, { ...ENV, ASK_DAILY_LIMIT: "100" })
+  assert.equal(res.status, 503)
+  assert.deepEqual(body, { error: "assistant_unavailable", reason: "quota" })
+  assert.equal(calls.model.length, 0)
+})
+
+test("if the count cannot be read the assistant is unavailable (fails closed, so a fault cannot lift the cap)", async () => {
+  const { res, body, calls } = await run("question here", [], { rag_usage_hit: () => new Error("db down") })
+  assert.equal(res.status, 503)
+  assert.deepEqual(body, { error: "assistant_unavailable", reason: "down" })
+  assert.equal(calls.model.length, 0)
+})
+
+test("greetings are not counted, and ASK_DAILY_LIMIT=off skips the count", async () => {
+  const n = net([])
+  const res = await handleAsk(ask("hai"), ENV, { fetchImpl: n.fetchImpl })
+  assert.equal(res.status, 200)
+  assert.equal(n.calls.rpc.length + n.calls.usage.length, 0)
+  const m = net([FINAL_ABSTAIN])
+  const res2 = await handleAsk(ask("question here"), { ...ENV, ASK_DAILY_LIMIT: "off" }, { fetchImpl: m.fetchImpl })
+  assert.equal(res2.status, 200)
+  assert.equal(m.calls.usage.length, 0)
 })

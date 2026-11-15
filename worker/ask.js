@@ -16,13 +16,26 @@ const CONFIDENCE = ["high", "moderate", "low", "none"]
 // evaluation set (RAG_DESIGN.md section 8) and set MIN_SIMILARITY in the Worker vars.
 const DEFAULT_MIN_SIMILARITY = 0.8
 
+/** Default cap on questions that reach a model, per UTC day. About half of what the Workers AI free allocation
+ *  should cover on a rough estimate (not measured), leaving room for the estimate being wrong. */
+export const DEFAULT_DAILY_LIMIT = 100
+
+/** ASK_DAILY_LIMIT: unset -> 100; a positive number -> that; "0" or "off" -> no cap. */
+export function dailyLimit(env) {
+  const raw = String(env.ASK_DAILY_LIMIT ?? "").trim().toLowerCase()
+  if (raw === "") return DEFAULT_DAILY_LIMIT
+  if (raw === "0" || raw === "off") return 0
+  const n = Math.floor(Number(raw))
+  return Number.isFinite(n) && n > 0 ? n : DEFAULT_DAILY_LIMIT
+}
+
 export const SYSTEM_PROMPT = `You are the assistant inside SEAmon, an atlas of environmental conditions around seaweed farms in Southeast Asia. You help with questions about ice-ice disease and the environment.
 
 Rules:
 - Use ONLY what your tools return. Never use outside knowledge for facts, numbers, thresholds or causes.
 - For questions about studies or literature, call search_evidence. Write its query in English even if the user wrote in another language. For measurements, call get_series (call list_sites first if you do not know the site id). 
-- Call final_answer exactly once to finish. Put each factual statement about literature in claims[], with the chunk_ids that support it. Put the measurements you used in data_used[].
-- Numbers come from get_series summaries only. Quote them as returned, with their unit and date range. Do not calculate new numbers.
+- Call final_answer exactly once to finish. Put each factual statement about literature in claims[], with the chunk_ids that support it; claims[] is for literature only, so leave it empty when you answer from measurements. Put the measurements you used in data_used[].
+- Numbers and dates come from get_series results only. Quote them as returned, with their unit and date range (min_day and max_day are the dates of the minimum and the maximum). Never state a date the tools did not return, and do not calculate new numbers.
 - The measurements are HISTORICAL files, not live data. list_sites shows, for every site, the products, variables and the first and last date we have. Check it before get_series. If the question is about a period outside that range (for example "last week"), say the data ends on its last date and answer for that period only if it helps, clearly labelled. Never present old data as current.
 - Products differ in time resolution: MUR-30d is one sea-surface temperature value every 30 days, POWER-monthly is a monthly mean dated the first of the month, POWER-daily is daily. Say which one you used. Do not call a 30-day sample or a monthly mean "daily".
 - If the tools returned nothing relevant, set abstained=true, confidence="none" and say plainly that the sources we have do not answer it. Do not guess.
@@ -46,8 +59,8 @@ const TOOLS = [
   },
   {
     name: "list_sites",
-    description: "List monitored sites with the data we hold for each: product, variables and the first and last date, plus the unit of every variable.",
-    input_schema: { type: "object", properties: { country: { type: "string" } } },
+    description: "List monitored sites with the data we hold for each: product, variables and the first and last date, plus the unit of every variable. Call it with no arguments to see every site. The optional country filter takes a COUNTRY name (Indonesia, Malaysia, Philippines, Vietnam); a place name such as Maluku is a site name, not a country.",
+    input_schema: { type: "object", properties: { country: { type: "string", description: "A country name, not a place name" } } },
   },
   {
     name: "get_series",
@@ -126,6 +139,13 @@ export function validateAnswer(a, ctx) {
     return { ok: true, answer: shape({ ...ABSTAIN }, ctx) }
   }
   if (claims.length === 0 && used.length === 0) return { ok: false, problem: "a non-abstained answer needs claims[] or data_used[]" }
+  if (ctx.dates) {
+    // Numbers come from tool results; so must every date. Models like to attach a plausible date to a minimum or a maximum.
+    const text = [a.answer_md, ...claims.map((c) => c.text)].join("\n")
+    for (const m of text.matchAll(/\d{4}-\d{2}-\d{2}/g)) {
+      if (!ctx.dates.has(m[0])) return { ok: false, problem: `the date ${m[0]} does not appear in any tool result; use only dates the tools returned (min_day and max_day give the dates of the extremes)` }
+    }
+  }
   for (const c of claims) {
     if (typeof c?.text !== "string" || !c.text.trim()) return { ok: false, problem: "a claim has no text" }
     if (!Array.isArray(c.chunk_ids) || c.chunk_ids.length === 0) return { ok: false, problem: `claim "${c.text.slice(0, 40)}" has no chunk_ids` }
@@ -203,8 +223,10 @@ export function summarize(rows, from, to) {
     n_days_with_value: vals.length,
     n_missing: rows.length - vals.length,
     min: round(Math.min(...vals.map((r) => r.value))),
+    min_day: vals.reduce((a, r) => (r.value < a.value ? r : a)).day,
     mean: round(sum / vals.length),
     max: round(Math.max(...vals.map((r) => r.value))),
+    max_day: vals.reduce((a, r) => (r.value > a.value ? r : a)).day,
     latest: { day: last.day, value: round(last.value) },
     from,
     to,
@@ -262,8 +284,25 @@ export async function handleAsk(request, env, { fetchImpl = fetch } = {}) {
   const embed = async (text) =>
     (await readJson(await fetchImpl(`${sb}/functions/v1/embed`, { method: "POST", headers: sbHeaders, body: JSON.stringify({ input: text }) }), "embed")).embeddings[0]
 
+  // Daily cap: one count per question that reaches a model, taken before any model call. When it is
+  // reached (or the count cannot be read) the page gets the 503 fallback and shows its built-in answer.
+  const cap = dailyLimit(env)
+  if (cap > 0) {
+    let hit
+    try {
+      hit = (await rpc("rag_usage_hit", { p_scope: "ask", p_limit: cap }))?.[0]
+    } catch (e) {
+      console.log(JSON.stringify({ event: "usage_error", message: String(e.message).slice(0, 160) }))
+      return json(503, { error: "assistant_unavailable", reason: "down" })
+    }
+    if (!hit?.allowed) {
+      console.log(JSON.stringify({ event: "daily_limit", used: hit?.used, limit: cap }))
+      return json(503, { error: "assistant_unavailable", reason: "quota" })
+    }
+  }
+
   const minSim = Number(env.MIN_SIMILARITY ?? DEFAULT_MIN_SIMILARITY)
-  const ctx = { chunks: new Map(), series: [] }
+  const ctx = { chunks: new Map(), series: [], dates: new Set() } // dates: every YYYY-MM-DD the tools returned
   const trace = { tools: [], chunk_ids: [], model: null }
 
   async function runTool(name, input) {
@@ -292,7 +331,13 @@ export async function handleAsk(request, env, { fetchImpl = fetch } = {}) {
         results: kept.map((r) => ({ chunk_id: r.chunk_id, citation: r.citation, section: r.section, page: r.page, text: r.content })),
       }
     }
-    if (name === "list_sites") return compactSites(await rpc("env_list_sites", { filter_country: input?.country || null }))
+    if (name === "list_sites") {
+      const rows = await rpc("env_list_sites", { filter_country: input?.country || null })
+      if (rows.length === 0 && input?.country) {
+        return { sites: [], note: `No site has country "${input.country}". The filter takes a country name only. Call list_sites again with no arguments to see all sites.` }
+      }
+      return compactSites(rows)
+    }
     if (name === "get_series") {
       const { site_id, variable, from, to, product } = input ?? {}
       if (![site_id, variable, from, to].every((x) => typeof x === "string" && x)) return { error: "site_id, variable, from and to are required" }
@@ -330,7 +375,7 @@ export async function handleAsk(request, env, { fetchImpl = fetch } = {}) {
   try {
     for (let turn = 0; turn < MAX_MODEL_TURNS && !answer; turn++) {
       const reply = await llm.chat({ messages, tools })
-      trace.model = reply.model
+      trace.model = `${reply.provider}:${reply.model}`
       const calls = reply.toolCalls
       // Keep only what the API needs back; providers add fields of their own.
       messages.push({ role: "assistant", content: reply.message.content ?? null, ...(calls.length ? { tool_calls: reply.message.tool_calls } : {}) })
@@ -349,6 +394,7 @@ export async function handleAsk(request, env, { fetchImpl = fetch } = {}) {
             answer = v.answer
             break
           }
+          console.log(JSON.stringify({ event: "answer_rejected", problem: v.problem.slice(0, 200), retry: !retried }))
           if (retried) break
           retried = true
           results.push({ role: "tool", tool_call_id: u.id, content: `Rejected: ${v.problem}. Fix it and call final_answer again, or abstain.` })
@@ -365,7 +411,9 @@ export async function handleAsk(request, env, { fetchImpl = fetch } = {}) {
           console.log(JSON.stringify({ event: "tool_error", tool: u.name, message: String(e.message).slice(0, 200) }))
           out = { error: "tool failed" }
         }
-        results.push({ role: "tool", tool_call_id: u.id, content: JSON.stringify(out) })
+        const outText = JSON.stringify(out)
+        for (const m of outText.matchAll(/\d{4}-\d{2}-\d{2}/g)) ctx.dates.add(m[0])
+        results.push({ role: "tool", tool_call_id: u.id, content: outText })
       }
       if (answer) break
       if (results.length === 0) break

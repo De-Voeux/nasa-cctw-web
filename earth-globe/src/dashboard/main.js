@@ -8,17 +8,20 @@ import ocean from "../assets/earth/ocean.png"
 // import clouds from "../assets/earth/clouds.jpg"
 import lights from "../assets/earth/lights.png"
 import { LOCATIONS, PLACE_LABELS } from "../data/reportedLocations.js"
-import { LEVELS, LEVEL_ORDER, assess } from "../data/stress.js"
+import { LEVELS, LEVEL_ORDER, DEMO, assess } from "../data/stress.js"
+import { assessmentFor, loadEnvironment } from "../data/environment.js"
 import { GlobeOverlay } from "./overlay.js"
 import { mountDatePills } from "./datePills.js"
 import { SidePanel } from "./sidePanel.js"
 import { FilterMenu } from "./filterMenu.js"
 import { mountFlags } from "./flags.js"
 import { mountChat } from "./chat.js"
+import { mountPanelHandle } from "./panelHandle.js"
 import { mountLayersMenu } from "./layersMenu.js"
 import { mountOceanLayer } from "./oceanLayer.js"
 
 const HOME = { lat: 5, lon: 117, altitude: 1.35 }
+const ALL_SPECIES = "All species"
 const DEFAULT_SPECIES = "Kappaphycus alvarezii"
 const DEFAULT_COUNTRY = "Indonesia"
 const $ = (id) => document.getElementById(id)
@@ -44,11 +47,12 @@ globe.ready.then(() => globe.flyTo({ ...HOME, duration: 2400 }))
 const byId = new Map(LOCATIONS.map((l) => [l.id, l]))
 // The assessment of every place. None exists yet; see data/stress.js for the demo levels.
 const assessments = new Map(LOCATIONS.map((l) => [l.id, assess(l)]))
+let environmentPayload = null
 
 // Every taxon named in the leads, the MVP candidate first.
-const SPECIES = [...new Set(LOCATIONS.flatMap((l) => l.taxa))].sort((a, b) =>
+const SPECIES = [ALL_SPECIES, ...[...new Set(LOCATIONS.flatMap((l) => l.taxa))].sort((a, b) =>
   a === DEFAULT_SPECIES ? -1 : b === DEFAULT_SPECIES ? 1 : a.localeCompare(b),
-)
+)]
 
 const state = {
   species: DEFAULT_SPECIES,
@@ -59,7 +63,7 @@ const state = {
   text: "",
 }
 
-const hasSpecies = (l) => l.taxa.includes(state.species)
+const hasSpecies = (l) => state.species === ALL_SPECIES || l.taxa.includes(state.species)
 // Places the Regions menu can offer: the chosen species in the chosen country.
 const inScope = (l) => hasSpecies(l) && (!state.country || l.country === state.country)
 const matchesText = (l) => !state.text || `${l.name} ${l.country} ${l.note || ""} ${l.taxa.join(" ")}`.toLowerCase().includes(state.text)
@@ -113,10 +117,22 @@ function setPressed(id) {
   }
 }
 
+function updatePinLevel(id) {
+  const pin = pins.get(id)
+  const loc = byId.get(id)
+  const assessment = assessments.get(id)
+  if (!pin || !loc || !assessment) return
+  const level = LEVELS[assessment.level]
+  pin.el.dataset.level = assessment.level
+  pin.el.querySelector(".marker-dot img").src = level.icon
+  pin.el.setAttribute("aria-label", `${loc.name}, ${loc.country}: ${level.label}`)
+}
+
 // Pins of other species are hidden; pins that fail another filter stay but fade.
 function paintPins() {
   for (const [id, p] of pins) {
     const loc = byId.get(id)
+    updatePinLevel(id)
     overlay.setHidden(p.item, !hasSpecies(loc))
     p.el.classList.toggle("is-dim", !passes(loc))
   }
@@ -133,6 +149,8 @@ const panel = new SidePanel($("panel-body"), {
 function select(id) {
   const loc = byId.get(id)
   if (!loc) return
+  setPanel(false, false) // a place was picked: bring the panel back
+  setBody(false, false) // a place was picked: show its details, but keep the remembered choice
   setSheet(true)
   setPressed(id)
   panel.showLocation(loc, assessments.get(id))
@@ -204,6 +222,9 @@ function offerRegions() {
 
 speciesSelect.addEventListener("change", () => {
   state.species = speciesSelect.value
+  if (environmentPayload) {
+    for (const loc of LOCATIONS) assessments.set(loc.id, assessmentFor(loc, environmentPayload, state.species))
+  }
   offerRegions()
   refresh()
 })
@@ -234,6 +255,71 @@ $("search").addEventListener("input", (e) => {
 offerRegions()
 paintPins()
 panel.showList(rows())
+
+if (!DEMO) {
+  loadEnvironment()
+    .then((payload) => {
+      environmentPayload = payload
+      for (const loc of LOCATIONS) assessments.set(loc.id, assessmentFor(loc, payload, state.species))
+      refresh()
+    })
+    .catch((error) => console.warn("SEAmon environmental data unavailable", error))
+}
+
+// Collapse button: hides the list / details so more of the map shows. The choice is remembered
+// in this browser only; storage may be blocked, so it is optional.
+const sidePanelEl = document.querySelector(".side-panel")
+const bodyBtn = $("body-collapse")
+function setBody(collapsed, remember = true) {
+  sidePanelEl.dataset.body = collapsed ? "collapsed" : "open"
+  bodyBtn.setAttribute("aria-expanded", String(!collapsed))
+  bodyBtn.setAttribute("aria-label", `${collapsed ? "Show" : "Hide"} ${sidePanelEl.dataset.mode === "detail" ? "details" : "list"}`)
+  if (!remember) return
+  try {
+    localStorage.setItem("seamon.panelBody", collapsed ? "collapsed" : "open")
+  } catch {}
+}
+let savedBody = null
+try {
+  savedBody = localStorage.getItem("seamon.panelBody")
+} catch {}
+setBody(savedBody === "collapsed", false)
+bodyBtn.addEventListener("click", () => setBody(sidePanelEl.dataset.body !== "collapsed"))
+// The label says "list" or "details" depending on what the panel shows.
+new MutationObserver(() => setBody(sidePanelEl.dataset.body === "collapsed", false)).observe(sidePanelEl, { attributes: true, attributeFilter: ["data-mode"] })
+
+// One handle hides the whole panel (wide screens) and brings it back. Click it, press the arrow keys,
+// or drag it (dashboard/panelHandle.js); it travels with the panel and its arrow turns around.
+const panelToggle = $("panel-toggle")
+const isPanelHidden = () => document.documentElement.dataset.panel === "hidden"
+function setPanel(hidden, remember = true) {
+  document.documentElement.dataset.panel = hidden ? "hidden" : "open"
+  panelToggle.dataset.look = hidden ? "hidden" : "open"
+  panelToggle.setAttribute("aria-expanded", String(!hidden))
+  panelToggle.setAttribute("aria-label", hidden ? "Show panel" : "Hide panel")
+  panelToggle.title = hidden ? "Show locations panel (drag or click)" : "Hide panel (drag or click)"
+  if (!remember) return
+  try {
+    localStorage.setItem("seamon.panelHidden", hidden ? "1" : "0")
+  } catch {}
+}
+/** A change made by the user: also gives the tab a short nudge once the panel has gone. */
+function userSetPanel(hidden) {
+  if (hidden === isPanelHidden()) return
+  setPanel(hidden)
+  panelToggle.classList.remove("nudge")
+  if (hidden) {
+    void panelToggle.offsetWidth // restart the animation
+    panelToggle.classList.add("nudge")
+  }
+}
+let savedHidden = null
+try {
+  savedHidden = localStorage.getItem("seamon.panelHidden")
+} catch {}
+setPanel(savedHidden === "1", false)
+mountPanelHandle({ handle: panelToggle, panel: sidePanelEl, isHidden: isPanelHidden, setHidden: userSetPanel })
+panelToggle.addEventListener("click", () => userSetPanel(!isPanelHidden()))
 
 // --------------------------------------------------------------- bottom sheet (phones)
 

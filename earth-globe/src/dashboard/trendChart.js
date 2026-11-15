@@ -17,8 +17,9 @@ const SHORT = new Intl.DateTimeFormat("en", { day: "numeric", month: "short" })
 export function trendChart(item, dates, todayIndex, selIndex) {
   const { values, baseline, digits, unit } = item
   const n = values.length
-  let lo = Math.min(...values, baseline[0])
-  let hi = Math.max(...values, baseline[1])
+  const hasBaseline = Array.isArray(baseline) && baseline.length === 2
+  let lo = Math.min(...values, ...(hasBaseline ? [baseline[0]] : []))
+  let hi = Math.max(...values, ...(hasBaseline ? [baseline[1]] : []))
   const pad = (hi - lo) * 0.12 || 1
   lo -= pad
   hi += pad
@@ -31,17 +32,18 @@ export function trendChart(item, dates, todayIndex, selIndex) {
   const sel = Math.min(n - 1, Math.max(0, selIndex))
 
   const f = (v) => v.toFixed(digits)
-  const label = `${item.name}, ${SHORT.format(dates[0])} to ${SHORT.format(dates[n - 1])}: ${f(values[0])} to ${f(values[todayIndex])} ${unit} today, forecast ${f(values[n - 1])} ${unit}. Usual range ${f(baseline[0])}–${f(baseline[1])} ${unit}.`
+  const hasForecast = todayIndex < n - 1
+  const label = `${item.name}, ${SHORT.format(dates[0])} to ${SHORT.format(dates[n - 1])}: ${f(values[0])} to ${f(values[todayIndex])} ${unit}${hasForecast ? `, forecast ${f(values[n - 1])} ${unit}` : ""}. ${hasBaseline ? `Usual range ${f(baseline[0])}–${f(baseline[1])} ${unit}.` : "Measured values only."}`
 
   return `
   <figure class="trend" role="img" aria-label="${label}">
     <div class="trend-y" aria-hidden="true"><span>${f(hi)}</span><span>${f(lo)}</span></div>
     <div class="trend-plot" aria-hidden="true">
       <svg viewBox="0 0 100 40" preserveAspectRatio="none">
-        <rect class="t-forecast-bg" x="${tx}" y="0" width="${100 - tx}" height="40"/>
-        <rect class="t-band" x="0" y="${Y(baseline[1])}" width="100" height="${Y(baseline[0]) - Y(baseline[1])}"/>
+        ${hasForecast ? `<rect class="t-forecast-bg" x="${tx}" y="0" width="${100 - tx}" height="40"/>` : ""}
+        ${hasBaseline ? `<rect class="t-band" x="0" y="${Y(baseline[1])}" width="100" height="${Y(baseline[0]) - Y(baseline[1])}"/>` : ""}
         <polyline class="t-obs" points="${pts(0, todayIndex)}"/>
-        <polyline class="t-fc" points="${pts(todayIndex, n - 1)}"/>
+        ${hasForecast ? `<polyline class="t-fc" points="${pts(todayIndex, n - 1)}"/>` : ""}
         <line class="t-today" x1="${tx}" x2="${tx}" y1="0" y2="40"/>
       </svg>
       <span class="t-x-today" style="left:${tx}%">Today</span>
@@ -52,9 +54,9 @@ export function trendChart(item, dates, todayIndex, selIndex) {
       <span>${SHORT.format(dates[n - 1])}</span>
     </div>
     <figcaption class="trend-legend">
-      <span><i class="k-band"></i>Usual range</span>
+      ${hasBaseline ? `<span><i class="k-band"></i>Usual range</span>` : ""}
       <span><i class="k-obs"></i>Measured</span>
-      <span><i class="k-fc"></i>Forecast</span>
+      ${hasForecast ? `<span><i class="k-fc"></i>Forecast</span>` : ""}
       <span class="t-sel">● ${SHORT.format(dates[sel])}</span>
     </figcaption>
   </figure>`

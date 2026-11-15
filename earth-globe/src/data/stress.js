@@ -1,14 +1,14 @@
 /**
  * Environmental stress levels shown on the region cards.
  *
- * There is NO assessment yet: the NASA, Copernicus and Open-Meteo layers are not
- * connected to this dashboard and no species rule has been reviewed (see
- * docs/METHODOLOGY.md). So every region is "Insufficient Data". A card must never
+ * There is NO biological assessment yet: environmental layers may be connected,
+ * but no species rule has been reviewed (see
+ * docs/METHODOLOGY.md). Regions without an observed series remain "Insufficient
+ * Data"; observed regions are still unassessed biologically. A card must never
  * say Favorable, Moderate Risk or Elevated Risk for a real region until an
  * assessment backs it; replace `assess()` with a lookup of real results when they exist.
  *
- * The mock (see MOCK_DEFAULT below) hands out made-up levels so the four card designs
- * can be reviewed. The panel then says the values are demo values; none is real data.
+ * The mock (see MOCK_DEFAULT below) is available only for an explicit design review.
  */
 import favorable from "../assets/ui/levels/favorable.svg"
 import moderate from "../assets/ui/levels/moderate.svg"
@@ -26,14 +26,10 @@ export const LEVELS = {
 export const LEVEL_ORDER = ["favorable", "moderate", "elevated", "insufficient"]
 
 /*
- * MOCK ON BY DEFAULT (decided with Radit, 2026-11-15, to match the design mock).
- * The levels and conditions below are made up for the design review. They are NOT
- * assessments and must not ship to a public site as if they were. The panel shows a
- * banner saying so while this is on. Before real use: set MOCK_DEFAULT to false (or
- * delete the demo branch of assess()) so every region reads "Insufficient Data"
- * until real results exist. `?demo=off` turns the mock off, `?demo=levels` forces it on.
+ * Demo levels and conditions are made up for design review. They are not assessments
+ * and must never be the default. `?demo=levels` enables them explicitly.
  */
-const MOCK_DEFAULT = true
+const MOCK_DEFAULT = false
 const demoParam = new URLSearchParams(location.search).get("demo")
 export const DEMO = demoParam === "levels" || (MOCK_DEFAULT && demoParam !== "off")
 

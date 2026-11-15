@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#050914" />
+    <link rel="icon" type="image/png" href="./assets/earth/favicon.png" />
     <title>SEAmon — Coastal environmental risk atlas</title>
     <meta name="description" content="SEAmon is a proposed coastal environmental risk atlas for seaweed aquaculture." />
     <!-- Link previews. og:image must be an absolute URL; the file is copied to /og-image.png by scripts/build-site.sh. -->
@@ -12,16 +13,16 @@
     <meta property="og:title" content="SEAmon — Coastal environmental risk atlas" />
     <meta property="og:description" content="SEAmon is a proposed coastal environmental risk atlas for seaweed aquaculture." />
     <meta property="og:url" content="https://seamon.seagis.app/" />
-    <meta property="og:image" content="https://seamon.seagis.app/og-image.png" />
+    <meta property="og:image" content="https://seamon.seagis.app/og-image.png?v=2" />
     <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="457" />
-    <meta property="og:image:alt" content="SEAmon, made for NASA: a seaweed illustration on a dark blue background." />
+    <meta property="og:image:alt" content="SEAmon, created for the 2026 NASA Space Apps Challenge: the name next to a night-side view of Earth over Southeast Asia with seaweed region markers." />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="SEAmon — Coastal environmental risk atlas" />
     <meta name="twitter:description" content="SEAmon is a proposed coastal environmental risk atlas for seaweed aquaculture." />
-    <meta name="twitter:image" content="https://seamon.seagis.app/og-image.png" />
-    <meta name="twitter:image:alt" content="SEAmon, made for NASA: a seaweed illustration on a dark blue background." />
+    <meta name="twitter:image" content="https://seamon.seagis.app/og-image.png?v=2" />
+    <meta name="twitter:image:alt" content="SEAmon, created for the 2026 NASA Space Apps Challenge: the name next to a night-side view of Earth over Southeast Asia with seaweed region markers." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,500&display=swap" />
@@ -56,7 +57,13 @@
     <section id="layer-legend" class="glass layer-legend" aria-live="polite" hidden></section>
 
     <!-- Side panel (right; a bottom sheet on narrow screens) -->
-    <aside class="glass side-panel" aria-label="Locations" data-mode="list">
+    <!-- One handle on the panel's left edge: it moves with the panel, its arrow points the way the panel will go,
+         and it shows a label while the panel is hidden. Wide screens only. -->
+    <button id="panel-toggle" class="panel-toggle" type="button" title="Hide panel (drag or click)" aria-label="Hide panel" aria-expanded="true" aria-controls="side-panel">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+      <span class="pt-label">Locations</span>
+    </button>
+    <aside id="side-panel" class="glass side-panel" aria-label="Locations" data-mode="list">
       <button id="sheet-handle" class="sheet-handle" type="button" aria-label="Show more of the list" aria-expanded="false"><span></span></button>
       <label class="search">
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
@@ -80,6 +87,12 @@
           </button>
         </div>
       </div>
+
+      <!-- Collapse the list (or the open place's details) to see more of the map. Not shown on phones, where the sheet handle does this. -->
+      <button id="body-collapse" class="body-collapse" type="button" aria-expanded="true" aria-controls="panel-body">
+        <span class="bc-label"></span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 15 6-6 6 6" /></svg>
+      </button>
 
       <div id="panel-body" class="panel-body" aria-live="polite"></div>
     </aside>
