@@ -1,0 +1,1286 @@
+{
+ "schema": "seagis.pilot/1",
+ "plan_sha256": "85f62d82722154f277094cf0b8fd330d6118eed5283d36c5018ff6a5746bdbc7",
+ "started": "2026-11-14T20:37:50+00:00",
+ "finished": "2026-11-14T20:40:27+00:00",
+ "period": [
+  "2022-06-01",
+  "2022-06-07"
+ ],
+ "rois": [
+  "PH-TAWI/bongao",
+  "ID-SOUTH-SUL/takalar"
+ ],
+ "status": "PASS",
+ "mur_bytes_downloaded": 840011,
+ "mur_estimate_bytes": {
+  "low": 151581,
+  "expected": 439022,
+  "high": 938672
+ },
+ "harmony_calls": 14,
+ "budget_bytes": 5242880,
+ "files": [
+  {
+   "source": "mur_sst",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-02",
+   "file": "20220602090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04_subsetted.nc4",
+   "bytes": 59384,
+   "sha256": "f186e4164dbbd7d314a91c5f9a2f4fcb7a9fceada0b4abe54ef42dbfd39b85e5"
+  },
+  {
+   "source": "mur_sst",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-01",
+   "file": "20220601090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04_subsetted.nc4",
+   "bytes": 59314,
+   "sha256": "07d8f642de0322ec9d1514b35b6da5cfe49c0fb688f716bb10a6b5cda5336a14"
+  },
+  {
+   "source": "mur_sst",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-03",
+   "file": "20220603090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04_subsetted.nc4",
+   "bytes": 59380,
+   "sha256": "9838abe5ce3d8397fa94107c31cfe349f063105a461801321766710274391d78"
+  },
+  {
+   "source": "mur_sst",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-04",
+   "file": "20220604090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04_subsetted.nc4",
+   "bytes": 59391,
+   "sha256": "0b1c51395d237b66dcb6583b18ce18d803799941e23f8ac1ab7eadbab9220445"
+  },
+  {
+   "source": "mur_sst",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-05",
+   "file": "20220605090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04_subsetted.nc4",
+   "bytes": 59367,
+   "sha256": "8413b583bea097ebe595713b6fbdc7becef05c302f12089ae0e7476cae64fed2"
+  },
+  {
+   "source": "mur_sst",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-06",
+   "file": "20220606090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04_subsetted.nc4",
+   "bytes": 59416,
+   "sha256": "95cd9859292caeb39ab2a4332168d12dcdfbb235139528120df5112960e0760c"
+  },
+  {
+   "source": "mur_sst",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-07",
+   "file": "20220607090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04_subsetted.nc4",
+   "bytes": 59405,
+   "sha256": "c209b285107a13efd466776947cf48976ebb9998f46acbea845e38befc27c836"
+  },
+  {
+   "source": "mur_sst",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-01",
+   "file": "20220601090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04_subsetted.nc4",
+   "bytes": 60572,
+   "sha256": "f70b5a7c22869100fb1d1e2e6ab8f5b263ff7db722e330573831b84173d1e7a1"
+  },
+  {
+   "source": "mur_sst",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-03",
+   "file": "20220603090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04_subsetted.nc4",
+   "bytes": 60622,
+   "sha256": "3cef8fdbfe2a897c388a0e90456b1efe3154c285a5d01426d10895aaa0862be3"
+  },
+  {
+   "source": "mur_sst",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-02",
+   "file": "20220602090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04_subsetted.nc4",
+   "bytes": 60664,
+   "sha256": "1d5585d9afc7858063e4b50ef050c785765ff3b4678de6b272a78b2bb4f13803"
+  },
+  {
+   "source": "mur_sst",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-04",
+   "file": "20220604090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04_subsetted.nc4",
+   "bytes": 60629,
+   "sha256": "e676e023aff750cfaafad9db490eacb72c5018d44dd4e60cfcd7840221574a28"
+  },
+  {
+   "source": "mur_sst",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-05",
+   "file": "20220605090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04_subsetted.nc4",
+   "bytes": 60603,
+   "sha256": "d0df575b1144df8c9ee1ec28c15c3c3ce3ef7f481f085d0cfc9765b3baf2926e"
+  },
+  {
+   "source": "mur_sst",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-06",
+   "file": "20220606090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04_subsetted.nc4",
+   "bytes": 60628,
+   "sha256": "f1b36e9ece44326c2881d07b8381c4fb2adef992a177a6657abd96145f57d124"
+  },
+  {
+   "source": "mur_sst",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-07",
+   "file": "20220607090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04_subsetted.nc4",
+   "bytes": 60636,
+   "sha256": "f08bda58e8536b61f39b2807d700d07616419dab46f3e9d64b86697f9710959b"
+  },
+  {
+   "source": "cmems_bgc_nut",
+   "roi": "PH-TAWI/bongao",
+   "file": "bongao.nc",
+   "bytes": 24971,
+   "sha256": "146ea254824eddaac82c86d302e39379c816e20d82d1bf6fcc41a0679c2dd719"
+  },
+  {
+   "source": "cmems_bgc_nut",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "file": "takalar.nc",
+   "bytes": 24971,
+   "sha256": "42aec077affa076e138b97d6154ab5300ed9030d61982e88c146cd62d1ef7cd3"
+  },
+  {
+   "source": "cmems_bgc_car",
+   "roi": "PH-TAWI/bongao",
+   "file": "bongao.nc",
+   "bytes": 21750,
+   "sha256": "ef427486dd8579e4851344c20e25ad22debb6fe00f64f4491df73f1a1d2ccb2e"
+  },
+  {
+   "source": "cmems_bgc_car",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "file": "takalar.nc",
+   "bytes": 21750,
+   "sha256": "70d9a44b2d1f1a50c17986f924803ee058d91707f41bbf4959e0df3d82803395"
+  },
+  {
+   "source": "cmems_phy_so",
+   "roi": "PH-TAWI/bongao",
+   "file": "bongao.nc",
+   "bytes": 21759,
+   "sha256": "77a4f3dd2daf2cbcdbcbafe8fdb6ccba9d199fe2efd7f470644db83b5b32e30d"
+  },
+  {
+   "source": "cmems_phy_so",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "file": "takalar.nc",
+   "bytes": 21759,
+   "sha256": "9dec2c146dc6e11440025af8a057cd63878e89da8f9582d54390d01a46dbbbe6"
+  }
+ ],
+ "rejected": [],
+ "checks": [
+  {
+   "check": "mur.cell_count",
+   "status": "PASS",
+   "detail": "25x22=550 cells, plan expected 550",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-02"
+  },
+  {
+   "check": "mur.lat_order",
+   "status": "PASS",
+   "detail": "ascending",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-02"
+  },
+  {
+   "check": "mur.grid_origin",
+   "status": "PASS",
+   "detail": "max offset from assumed grid 3.66e-06 deg; index range lat [9495, 9519] lon [29968, 29989] vs plan [9495, 9519] [29968, 29989]",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-02"
+  },
+  {
+   "check": "mur.grid_index_range",
+   "status": "PASS",
+   "detail": "lat [9495, 9519] vs [9495, 9519], lon [29968, 29989] vs [29968, 29989]",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-02"
+  },
+  {
+   "check": "mur.timestamp",
+   "status": "PASS",
+   "detail": "time [np.str_('2022-06-02T09:00')], expected date 2022-06-02",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-02"
+  },
+  {
+   "check": "mur.units",
+   "status": "PASS",
+   "detail": "analysed_sst units 'kelvin'",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-02"
+  },
+  {
+   "check": "mur.value_range",
+   "status": "PASS",
+   "detail": "analysed_sst 302.334..303.005 K",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-02"
+  },
+  {
+   "check": "mur.fill_fraction",
+   "status": "PASS",
+   "detail": "0.000 of box cells are fill (land)",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-02"
+  },
+  {
+   "check": "mur.cell_count",
+   "status": "PASS",
+   "detail": "25x22=550 cells, plan expected 550",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-01"
+  },
+  {
+   "check": "mur.lat_order",
+   "status": "PASS",
+   "detail": "ascending",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-01"
+  },
+  {
+   "check": "mur.grid_origin",
+   "status": "PASS",
+   "detail": "max offset from assumed grid 3.66e-06 deg; index range lat [9495, 9519] lon [29968, 29989] vs plan [9495, 9519] [29968, 29989]",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-01"
+  },
+  {
+   "check": "mur.grid_index_range",
+   "status": "PASS",
+   "detail": "lat [9495, 9519] vs [9495, 9519], lon [29968, 29989] vs [29968, 29989]",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-01"
+  },
+  {
+   "check": "mur.timestamp",
+   "status": "PASS",
+   "detail": "time [np.str_('2022-06-01T09:00')], expected date 2022-06-01",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-01"
+  },
+  {
+   "check": "mur.units",
+   "status": "PASS",
+   "detail": "analysed_sst units 'kelvin'",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-01"
+  },
+  {
+   "check": "mur.value_range",
+   "status": "PASS",
+   "detail": "analysed_sst 302.53499999999997..302.976 K",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-01"
+  },
+  {
+   "check": "mur.fill_fraction",
+   "status": "PASS",
+   "detail": "0.000 of box cells are fill (land)",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-01"
+  },
+  {
+   "check": "mur.cell_count",
+   "status": "PASS",
+   "detail": "25x22=550 cells, plan expected 550",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-03"
+  },
+  {
+   "check": "mur.lat_order",
+   "status": "PASS",
+   "detail": "ascending",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-03"
+  },
+  {
+   "check": "mur.grid_origin",
+   "status": "PASS",
+   "detail": "max offset from assumed grid 3.66e-06 deg; index range lat [9495, 9519] lon [29968, 29989] vs plan [9495, 9519] [29968, 29989]",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-03"
+  },
+  {
+   "check": "mur.grid_index_range",
+   "status": "PASS",
+   "detail": "lat [9495, 9519] vs [9495, 9519], lon [29968, 29989] vs [29968, 29989]",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-03"
+  },
+  {
+   "check": "mur.timestamp",
+   "status": "PASS",
+   "detail": "time [np.str_('2022-06-03T09:00')], expected date 2022-06-03",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-03"
+  },
+  {
+   "check": "mur.units",
+   "status": "PASS",
+   "detail": "analysed_sst units 'kelvin'",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-03"
+  },
+  {
+   "check": "mur.value_range",
+   "status": "PASS",
+   "detail": "analysed_sst 302.21..302.99699999999996 K",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-03"
+  },
+  {
+   "check": "mur.fill_fraction",
+   "status": "PASS",
+   "detail": "0.000 of box cells are fill (land)",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-03"
+  },
+  {
+   "check": "mur.cell_count",
+   "status": "PASS",
+   "detail": "25x22=550 cells, plan expected 550",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-04"
+  },
+  {
+   "check": "mur.lat_order",
+   "status": "PASS",
+   "detail": "ascending",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-04"
+  },
+  {
+   "check": "mur.grid_origin",
+   "status": "PASS",
+   "detail": "max offset from assumed grid 3.66e-06 deg; index range lat [9495, 9519] lon [29968, 29989] vs plan [9495, 9519] [29968, 29989]",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-04"
+  },
+  {
+   "check": "mur.grid_index_range",
+   "status": "PASS",
+   "detail": "lat [9495, 9519] vs [9495, 9519], lon [29968, 29989] vs [29968, 29989]",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-04"
+  },
+  {
+   "check": "mur.timestamp",
+   "status": "PASS",
+   "detail": "time [np.str_('2022-06-04T09:00')], expected date 2022-06-04",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-04"
+  },
+  {
+   "check": "mur.units",
+   "status": "PASS",
+   "detail": "analysed_sst units 'kelvin'",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-04"
+  },
+  {
+   "check": "mur.value_range",
+   "status": "PASS",
+   "detail": "analysed_sst 302.23499999999996..302.919 K",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-04"
+  },
+  {
+   "check": "mur.fill_fraction",
+   "status": "PASS",
+   "detail": "0.000 of box cells are fill (land)",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-04"
+  },
+  {
+   "check": "mur.cell_count",
+   "status": "PASS",
+   "detail": "25x22=550 cells, plan expected 550",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-05"
+  },
+  {
+   "check": "mur.lat_order",
+   "status": "PASS",
+   "detail": "ascending",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-05"
+  },
+  {
+   "check": "mur.grid_origin",
+   "status": "PASS",
+   "detail": "max offset from assumed grid 3.66e-06 deg; index range lat [9495, 9519] lon [29968, 29989] vs plan [9495, 9519] [29968, 29989]",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-05"
+  },
+  {
+   "check": "mur.grid_index_range",
+   "status": "PASS",
+   "detail": "lat [9495, 9519] vs [9495, 9519], lon [29968, 29989] vs [29968, 29989]",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-05"
+  },
+  {
+   "check": "mur.timestamp",
+   "status": "PASS",
+   "detail": "time [np.str_('2022-06-05T09:00')], expected date 2022-06-05",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-05"
+  },
+  {
+   "check": "mur.units",
+   "status": "PASS",
+   "detail": "analysed_sst units 'kelvin'",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-05"
+  },
+  {
+   "check": "mur.value_range",
+   "status": "PASS",
+   "detail": "analysed_sst 302.56..303.073 K",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-05"
+  },
+  {
+   "check": "mur.fill_fraction",
+   "status": "PASS",
+   "detail": "0.000 of box cells are fill (land)",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-05"
+  },
+  {
+   "check": "mur.cell_count",
+   "status": "PASS",
+   "detail": "25x22=550 cells, plan expected 550",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-06"
+  },
+  {
+   "check": "mur.lat_order",
+   "status": "PASS",
+   "detail": "ascending",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-06"
+  },
+  {
+   "check": "mur.grid_origin",
+   "status": "PASS",
+   "detail": "max offset from assumed grid 3.66e-06 deg; index range lat [9495, 9519] lon [29968, 29989] vs plan [9495, 9519] [29968, 29989]",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-06"
+  },
+  {
+   "check": "mur.grid_index_range",
+   "status": "PASS",
+   "detail": "lat [9495, 9519] vs [9495, 9519], lon [29968, 29989] vs [29968, 29989]",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-06"
+  },
+  {
+   "check": "mur.timestamp",
+   "status": "PASS",
+   "detail": "time [np.str_('2022-06-06T09:00')], expected date 2022-06-06",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-06"
+  },
+  {
+   "check": "mur.units",
+   "status": "PASS",
+   "detail": "analysed_sst units 'kelvin'",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-06"
+  },
+  {
+   "check": "mur.value_range",
+   "status": "PASS",
+   "detail": "analysed_sst 302.46299999999997..303.286 K",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-06"
+  },
+  {
+   "check": "mur.fill_fraction",
+   "status": "PASS",
+   "detail": "0.000 of box cells are fill (land)",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-06"
+  },
+  {
+   "check": "mur.cell_count",
+   "status": "PASS",
+   "detail": "25x22=550 cells, plan expected 550",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-07"
+  },
+  {
+   "check": "mur.lat_order",
+   "status": "PASS",
+   "detail": "ascending",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-07"
+  },
+  {
+   "check": "mur.grid_origin",
+   "status": "PASS",
+   "detail": "max offset from assumed grid 3.66e-06 deg; index range lat [9495, 9519] lon [29968, 29989] vs plan [9495, 9519] [29968, 29989]",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-07"
+  },
+  {
+   "check": "mur.grid_index_range",
+   "status": "PASS",
+   "detail": "lat [9495, 9519] vs [9495, 9519], lon [29968, 29989] vs [29968, 29989]",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-07"
+  },
+  {
+   "check": "mur.timestamp",
+   "status": "PASS",
+   "detail": "time [np.str_('2022-06-07T09:00')], expected date 2022-06-07",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-07"
+  },
+  {
+   "check": "mur.units",
+   "status": "PASS",
+   "detail": "analysed_sst units 'kelvin'",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-07"
+  },
+  {
+   "check": "mur.value_range",
+   "status": "PASS",
+   "detail": "analysed_sst 302.479..303.25 K",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-07"
+  },
+  {
+   "check": "mur.fill_fraction",
+   "status": "PASS",
+   "detail": "0.000 of box cells are fill (land)",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-07"
+  },
+  {
+   "check": "mur.days_returned",
+   "status": "PASS",
+   "detail": "7/7 expected days, 7 links",
+   "roi": "PH-TAWI/bongao"
+  },
+  {
+   "check": "mur.coastline_vs_mask",
+   "status": "WARN",
+   "detail": "54/318 zone cells are land/lake in MUR's mask",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-01"
+  },
+  {
+   "check": "mur.coastline_vs_mask",
+   "status": "WARN",
+   "detail": "54/318 zone cells are land/lake in MUR's mask",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-02"
+  },
+  {
+   "check": "mur.coastline_vs_mask",
+   "status": "WARN",
+   "detail": "54/318 zone cells are land/lake in MUR's mask",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-03"
+  },
+  {
+   "check": "mur.coastline_vs_mask",
+   "status": "WARN",
+   "detail": "54/318 zone cells are land/lake in MUR's mask",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-04"
+  },
+  {
+   "check": "mur.coastline_vs_mask",
+   "status": "WARN",
+   "detail": "54/318 zone cells are land/lake in MUR's mask",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-05"
+  },
+  {
+   "check": "mur.coastline_vs_mask",
+   "status": "WARN",
+   "detail": "54/318 zone cells are land/lake in MUR's mask",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-06"
+  },
+  {
+   "check": "mur.coastline_vs_mask",
+   "status": "WARN",
+   "detail": "54/318 zone cells are land/lake in MUR's mask",
+   "roi": "PH-TAWI/bongao",
+   "date": "2022-06-07"
+  },
+  {
+   "check": "mur.cell_count",
+   "status": "PASS",
+   "detail": "45x38=1710 cells, plan expected 1710",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-01"
+  },
+  {
+   "check": "mur.lat_order",
+   "status": "PASS",
+   "detail": "ascending",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-01"
+  },
+  {
+   "check": "mur.grid_origin",
+   "status": "PASS",
+   "detail": "max offset from assumed grid 3.66e-06 deg; index range lat [8434, 8478] lon [29913, 29950] vs plan [8434, 8478] [29913, 29950]",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-01"
+  },
+  {
+   "check": "mur.grid_index_range",
+   "status": "PASS",
+   "detail": "lat [8434, 8478] vs [8434, 8478], lon [29913, 29950] vs [29913, 29950]",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-01"
+  },
+  {
+   "check": "mur.timestamp",
+   "status": "PASS",
+   "detail": "time [np.str_('2022-06-01T09:00')], expected date 2022-06-01",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-01"
+  },
+  {
+   "check": "mur.units",
+   "status": "PASS",
+   "detail": "analysed_sst units 'kelvin'",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-01"
+  },
+  {
+   "check": "mur.value_range",
+   "status": "PASS",
+   "detail": "analysed_sst 302.98999999999995..303.486 K",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-01"
+  },
+  {
+   "check": "mur.fill_fraction",
+   "status": "PASS",
+   "detail": "0.291 of box cells are fill (land)",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-01"
+  },
+  {
+   "check": "mur.cell_count",
+   "status": "PASS",
+   "detail": "45x38=1710 cells, plan expected 1710",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-03"
+  },
+  {
+   "check": "mur.lat_order",
+   "status": "PASS",
+   "detail": "ascending",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-03"
+  },
+  {
+   "check": "mur.grid_origin",
+   "status": "PASS",
+   "detail": "max offset from assumed grid 3.66e-06 deg; index range lat [8434, 8478] lon [29913, 29950] vs plan [8434, 8478] [29913, 29950]",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-03"
+  },
+  {
+   "check": "mur.grid_index_range",
+   "status": "PASS",
+   "detail": "lat [8434, 8478] vs [8434, 8478], lon [29913, 29950] vs [29913, 29950]",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-03"
+  },
+  {
+   "check": "mur.timestamp",
+   "status": "PASS",
+   "detail": "time [np.str_('2022-06-03T09:00')], expected date 2022-06-03",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-03"
+  },
+  {
+   "check": "mur.units",
+   "status": "PASS",
+   "detail": "analysed_sst units 'kelvin'",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-03"
+  },
+  {
+   "check": "mur.value_range",
+   "status": "PASS",
+   "detail": "analysed_sst 302.63599999999997..303.544 K",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-03"
+  },
+  {
+   "check": "mur.fill_fraction",
+   "status": "PASS",
+   "detail": "0.291 of box cells are fill (land)",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-03"
+  },
+  {
+   "check": "mur.cell_count",
+   "status": "PASS",
+   "detail": "45x38=1710 cells, plan expected 1710",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-02"
+  },
+  {
+   "check": "mur.lat_order",
+   "status": "PASS",
+   "detail": "ascending",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-02"
+  },
+  {
+   "check": "mur.grid_origin",
+   "status": "PASS",
+   "detail": "max offset from assumed grid 3.66e-06 deg; index range lat [8434, 8478] lon [29913, 29950] vs plan [8434, 8478] [29913, 29950]",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-02"
+  },
+  {
+   "check": "mur.grid_index_range",
+   "status": "PASS",
+   "detail": "lat [8434, 8478] vs [8434, 8478], lon [29913, 29950] vs [29913, 29950]",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-02"
+  },
+  {
+   "check": "mur.timestamp",
+   "status": "PASS",
+   "detail": "time [np.str_('2022-06-02T09:00')], expected date 2022-06-02",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-02"
+  },
+  {
+   "check": "mur.units",
+   "status": "PASS",
+   "detail": "analysed_sst units 'kelvin'",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-02"
+  },
+  {
+   "check": "mur.value_range",
+   "status": "PASS",
+   "detail": "analysed_sst 302.969..303.61699999999996 K",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-02"
+  },
+  {
+   "check": "mur.fill_fraction",
+   "status": "PASS",
+   "detail": "0.291 of box cells are fill (land)",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-02"
+  },
+  {
+   "check": "mur.cell_count",
+   "status": "PASS",
+   "detail": "45x38=1710 cells, plan expected 1710",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-04"
+  },
+  {
+   "check": "mur.lat_order",
+   "status": "PASS",
+   "detail": "ascending",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-04"
+  },
+  {
+   "check": "mur.grid_origin",
+   "status": "PASS",
+   "detail": "max offset from assumed grid 3.66e-06 deg; index range lat [8434, 8478] lon [29913, 29950] vs plan [8434, 8478] [29913, 29950]",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-04"
+  },
+  {
+   "check": "mur.grid_index_range",
+   "status": "PASS",
+   "detail": "lat [8434, 8478] vs [8434, 8478], lon [29913, 29950] vs [29913, 29950]",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-04"
+  },
+  {
+   "check": "mur.timestamp",
+   "status": "PASS",
+   "detail": "time [np.str_('2022-06-04T09:00')], expected date 2022-06-04",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-04"
+  },
+  {
+   "check": "mur.units",
+   "status": "PASS",
+   "detail": "analysed_sst units 'kelvin'",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-04"
+  },
+  {
+   "check": "mur.value_range",
+   "status": "PASS",
+   "detail": "analysed_sst 302.405..303.29999999999995 K",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-04"
+  },
+  {
+   "check": "mur.fill_fraction",
+   "status": "PASS",
+   "detail": "0.291 of box cells are fill (land)",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-04"
+  },
+  {
+   "check": "mur.cell_count",
+   "status": "PASS",
+   "detail": "45x38=1710 cells, plan expected 1710",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-05"
+  },
+  {
+   "check": "mur.lat_order",
+   "status": "PASS",
+   "detail": "ascending",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-05"
+  },
+  {
+   "check": "mur.grid_origin",
+   "status": "PASS",
+   "detail": "max offset from assumed grid 3.66e-06 deg; index range lat [8434, 8478] lon [29913, 29950] vs plan [8434, 8478] [29913, 29950]",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-05"
+  },
+  {
+   "check": "mur.grid_index_range",
+   "status": "PASS",
+   "detail": "lat [8434, 8478] vs [8434, 8478], lon [29913, 29950] vs [29913, 29950]",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-05"
+  },
+  {
+   "check": "mur.timestamp",
+   "status": "PASS",
+   "detail": "time [np.str_('2022-06-05T09:00')], expected date 2022-06-05",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-05"
+  },
+  {
+   "check": "mur.units",
+   "status": "PASS",
+   "detail": "analysed_sst units 'kelvin'",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-05"
+  },
+  {
+   "check": "mur.value_range",
+   "status": "PASS",
+   "detail": "analysed_sst 302.275..303.00399999999996 K",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-05"
+  },
+  {
+   "check": "mur.fill_fraction",
+   "status": "PASS",
+   "detail": "0.291 of box cells are fill (land)",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-05"
+  },
+  {
+   "check": "mur.cell_count",
+   "status": "PASS",
+   "detail": "45x38=1710 cells, plan expected 1710",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-06"
+  },
+  {
+   "check": "mur.lat_order",
+   "status": "PASS",
+   "detail": "ascending",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-06"
+  },
+  {
+   "check": "mur.grid_origin",
+   "status": "PASS",
+   "detail": "max offset from assumed grid 3.66e-06 deg; index range lat [8434, 8478] lon [29913, 29950] vs plan [8434, 8478] [29913, 29950]",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-06"
+  },
+  {
+   "check": "mur.grid_index_range",
+   "status": "PASS",
+   "detail": "lat [8434, 8478] vs [8434, 8478], lon [29913, 29950] vs [29913, 29950]",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-06"
+  },
+  {
+   "check": "mur.timestamp",
+   "status": "PASS",
+   "detail": "time [np.str_('2022-06-06T09:00')], expected date 2022-06-06",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-06"
+  },
+  {
+   "check": "mur.units",
+   "status": "PASS",
+   "detail": "analysed_sst units 'kelvin'",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-06"
+  },
+  {
+   "check": "mur.value_range",
+   "status": "PASS",
+   "detail": "analysed_sst 301.87899999999996..302.777 K",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-06"
+  },
+  {
+   "check": "mur.fill_fraction",
+   "status": "PASS",
+   "detail": "0.291 of box cells are fill (land)",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-06"
+  },
+  {
+   "check": "mur.cell_count",
+   "status": "PASS",
+   "detail": "45x38=1710 cells, plan expected 1710",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-07"
+  },
+  {
+   "check": "mur.lat_order",
+   "status": "PASS",
+   "detail": "ascending",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-07"
+  },
+  {
+   "check": "mur.grid_origin",
+   "status": "PASS",
+   "detail": "max offset from assumed grid 3.66e-06 deg; index range lat [8434, 8478] lon [29913, 29950] vs plan [8434, 8478] [29913, 29950]",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-07"
+  },
+  {
+   "check": "mur.grid_index_range",
+   "status": "PASS",
+   "detail": "lat [8434, 8478] vs [8434, 8478], lon [29913, 29950] vs [29913, 29950]",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-07"
+  },
+  {
+   "check": "mur.timestamp",
+   "status": "PASS",
+   "detail": "time [np.str_('2022-06-07T09:00')], expected date 2022-06-07",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-07"
+  },
+  {
+   "check": "mur.units",
+   "status": "PASS",
+   "detail": "analysed_sst units 'kelvin'",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-07"
+  },
+  {
+   "check": "mur.value_range",
+   "status": "PASS",
+   "detail": "analysed_sst 302.15799999999996..302.882 K",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-07"
+  },
+  {
+   "check": "mur.fill_fraction",
+   "status": "PASS",
+   "detail": "0.291 of box cells are fill (land)",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-07"
+  },
+  {
+   "check": "mur.days_returned",
+   "status": "PASS",
+   "detail": "7/7 expected days, 7 links",
+   "roi": "ID-SOUTH-SUL/takalar"
+  },
+  {
+   "check": "mur.coastline_vs_mask",
+   "status": "WARN",
+   "detail": "72/669 zone cells are land/lake in MUR's mask",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-01"
+  },
+  {
+   "check": "mur.coastline_vs_mask",
+   "status": "WARN",
+   "detail": "72/669 zone cells are land/lake in MUR's mask",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-02"
+  },
+  {
+   "check": "mur.coastline_vs_mask",
+   "status": "WARN",
+   "detail": "72/669 zone cells are land/lake in MUR's mask",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-03"
+  },
+  {
+   "check": "mur.coastline_vs_mask",
+   "status": "WARN",
+   "detail": "72/669 zone cells are land/lake in MUR's mask",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-04"
+  },
+  {
+   "check": "mur.coastline_vs_mask",
+   "status": "WARN",
+   "detail": "72/669 zone cells are land/lake in MUR's mask",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-05"
+  },
+  {
+   "check": "mur.coastline_vs_mask",
+   "status": "WARN",
+   "detail": "72/669 zone cells are land/lake in MUR's mask",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-06"
+  },
+  {
+   "check": "mur.coastline_vs_mask",
+   "status": "WARN",
+   "detail": "72/669 zone cells are land/lake in MUR's mask",
+   "roi": "ID-SOUTH-SUL/takalar",
+   "date": "2022-06-07"
+  },
+  {
+   "check": "cmems_bgc_nut.cell_count",
+   "status": "PASS",
+   "detail": "2x2 vs plan 2x2",
+   "roi": "PH-TAWI/bongao"
+  },
+  {
+   "check": "cmems_bgc_nut.dates",
+   "status": "PASS",
+   "detail": "2022-06-01..2022-06-07 (7 days)",
+   "roi": "PH-TAWI/bongao"
+  },
+  {
+   "check": "cmems_bgc_nut.depth",
+   "status": "PASS",
+   "detail": "depth [0.4940253794193268] m",
+   "roi": "PH-TAWI/bongao"
+  },
+  {
+   "check": "cmems_bgc_nut.no3.sea_cells_valid",
+   "status": "PASS",
+   "detail": "3/3 sea cells finite on every day; units 'mmol m-3'",
+   "roi": "PH-TAWI/bongao"
+  },
+  {
+   "check": "cmems_bgc_nut.no3.land_cells_empty",
+   "status": "PASS",
+   "detail": "1/1 mask-land cells are empty",
+   "roi": "PH-TAWI/bongao"
+  },
+  {
+   "check": "cmems_bgc_nut.po4.sea_cells_valid",
+   "status": "PASS",
+   "detail": "3/3 sea cells finite on every day; units 'mmol m-3'",
+   "roi": "PH-TAWI/bongao"
+  },
+  {
+   "check": "cmems_bgc_nut.po4.land_cells_empty",
+   "status": "PASS",
+   "detail": "1/1 mask-land cells are empty",
+   "roi": "PH-TAWI/bongao"
+  },
+  {
+   "check": "cmems_bgc_nut.cell_count",
+   "status": "PASS",
+   "detail": "3x2 vs plan 3x2",
+   "roi": "ID-SOUTH-SUL/takalar"
+  },
+  {
+   "check": "cmems_bgc_nut.dates",
+   "status": "PASS",
+   "detail": "2022-06-01..2022-06-07 (7 days)",
+   "roi": "ID-SOUTH-SUL/takalar"
+  },
+  {
+   "check": "cmems_bgc_nut.depth",
+   "status": "PASS",
+   "detail": "depth [0.4940253794193268] m",
+   "roi": "ID-SOUTH-SUL/takalar"
+  },
+  {
+   "check": "cmems_bgc_nut.no3.sea_cells_valid",
+   "status": "PASS",
+   "detail": "3/3 sea cells finite on every day; units 'mmol m-3'",
+   "roi": "ID-SOUTH-SUL/takalar"
+  },
+  {
+   "check": "cmems_bgc_nut.no3.land_cells_empty",
+   "status": "PASS",
+   "detail": "2/2 mask-land cells are empty",
+   "roi": "ID-SOUTH-SUL/takalar"
+  },
+  {
+   "check": "cmems_bgc_nut.po4.sea_cells_valid",
+   "status": "PASS",
+   "detail": "3/3 sea cells finite on every day; units 'mmol m-3'",
+   "roi": "ID-SOUTH-SUL/takalar"
+  },
+  {
+   "check": "cmems_bgc_nut.po4.land_cells_empty",
+   "status": "PASS",
+   "detail": "2/2 mask-land cells are empty",
+   "roi": "ID-SOUTH-SUL/takalar"
+  },
+  {
+   "check": "cmems_bgc_car.cell_count",
+   "status": "PASS",
+   "detail": "2x2 vs plan 2x2",
+   "roi": "PH-TAWI/bongao"
+  },
+  {
+   "check": "cmems_bgc_car.dates",
+   "status": "PASS",
+   "detail": "2022-06-01..2022-06-07 (7 days)",
+   "roi": "PH-TAWI/bongao"
+  },
+  {
+   "check": "cmems_bgc_car.depth",
+   "status": "PASS",
+   "detail": "depth [0.4940253794193268] m",
+   "roi": "PH-TAWI/bongao"
+  },
+  {
+   "check": "cmems_bgc_car.ph.sea_cells_valid",
+   "status": "PASS",
+   "detail": "3/3 sea cells finite on every day; units '1'",
+   "roi": "PH-TAWI/bongao"
+  },
+  {
+   "check": "cmems_bgc_car.ph.land_cells_empty",
+   "status": "PASS",
+   "detail": "1/1 mask-land cells are empty",
+   "roi": "PH-TAWI/bongao"
+  },
+  {
+   "check": "cmems_bgc_car.cell_count",
+   "status": "PASS",
+   "detail": "3x2 vs plan 3x2",
+   "roi": "ID-SOUTH-SUL/takalar"
+  },
+  {
+   "check": "cmems_bgc_car.dates",
+   "status": "PASS",
+   "detail": "2022-06-01..2022-06-07 (7 days)",
+   "roi": "ID-SOUTH-SUL/takalar"
+  },
+  {
+   "check": "cmems_bgc_car.depth",
+   "status": "PASS",
+   "detail": "depth [0.4940253794193268] m",
+   "roi": "ID-SOUTH-SUL/takalar"
+  },
+  {
+   "check": "cmems_bgc_car.ph.sea_cells_valid",
+   "status": "PASS",
+   "detail": "3/3 sea cells finite on every day; units '1'",
+   "roi": "ID-SOUTH-SUL/takalar"
+  },
+  {
+   "check": "cmems_bgc_car.ph.land_cells_empty",
+   "status": "PASS",
+   "detail": "2/2 mask-land cells are empty",
+   "roi": "ID-SOUTH-SUL/takalar"
+  },
+  {
+   "check": "cmems_phy_so.cell_count",
+   "status": "PASS",
+   "detail": "3x4 vs plan 3x4",
+   "roi": "PH-TAWI/bongao"
+  },
+  {
+   "check": "cmems_phy_so.dates",
+   "status": "PASS",
+   "detail": "2022-06-01..2022-06-07 (7 days)",
+   "roi": "PH-TAWI/bongao"
+  },
+  {
+   "check": "cmems_phy_so.depth",
+   "status": "PASS",
+   "detail": "depth [0.49402499198913574] m",
+   "roi": "PH-TAWI/bongao"
+  },
+  {
+   "check": "cmems_phy_so.so.sea_cells_valid",
+   "status": "PASS",
+   "detail": "8/8 sea cells finite on every day; units '1e-3'",
+   "roi": "PH-TAWI/bongao"
+  },
+  {
+   "check": "cmems_phy_so.so.land_cells_empty",
+   "status": "PASS",
+   "detail": "3/3 mask-land cells are empty",
+   "roi": "PH-TAWI/bongao"
+  },
+  {
+   "check": "cmems_phy_so.cell_count",
+   "status": "PASS",
+   "detail": "6x5 vs plan 6x5",
+   "roi": "ID-SOUTH-SUL/takalar"
+  },
+  {
+   "check": "cmems_phy_so.dates",
+   "status": "PASS",
+   "detail": "2022-06-01..2022-06-07 (7 days)",
+   "roi": "ID-SOUTH-SUL/takalar"
+  },
+  {
+   "check": "cmems_phy_so.depth",
+   "status": "PASS",
+   "detail": "depth [0.49402499198913574] m",
+   "roi": "ID-SOUTH-SUL/takalar"
+  },
+  {
+   "check": "cmems_phy_so.so.sea_cells_valid",
+   "status": "PASS",
+   "detail": "18/18 sea cells finite on every day; units '1e-3'",
+   "roi": "ID-SOUTH-SUL/takalar"
+  },
+  {
+   "check": "cmems_phy_so.so.land_cells_empty",
+   "status": "PASS",
+   "detail": "2/2 mask-land cells are empty",
+   "roi": "ID-SOUTH-SUL/takalar"
+  },
+  {
+   "check": "mur.transfer_vs_estimate",
+   "status": "PASS",
+   "detail": "actual 840011 bytes vs plan LOW 151581 / EXPECTED 439022 / HIGH 938672"
+  }
+ ],
+ "daily_rows": 98
+}
