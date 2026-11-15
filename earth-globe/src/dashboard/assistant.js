@@ -12,13 +12,13 @@ const href = (s) => safeHref(s.url) || (s.doi ? `https://doi.org/${encodeURI(s.d
  *   "unavailable" means the assistant is not set up, out of quota or unreachable: the caller falls
  *   back to the built-in answers, and `why` ("quota" | "down" | undefined) says which (not shown to the user). "limited" is a rate limit: say so instead of falling back.
  */
-export async function askAssistant(question, { species, country } = {}, fetchImpl = fetch) {
+export async function askAssistant(question, { species, country, history } = {}, fetchImpl = fetch) {
   let res
   try {
     res = await fetchImpl("/api/ask", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ question, species, country }),
+      body: JSON.stringify({ question, species, country, history }),
     })
   } catch {
     return { ok: false, reason: "unavailable" }
