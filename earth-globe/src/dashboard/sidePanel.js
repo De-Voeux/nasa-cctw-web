@@ -6,6 +6,7 @@ import { trendChart } from "./trendChart.js"
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c])
 const WORDS = ["None", "One", "Two", "Three", "Four"]
 const countLabel = (count) => WORDS[count] || String(count)
+export const statusLabel = (assessment) => assessment?.observed ? "Observed — Risk Not Assessed" : (LEVELS[assessment?.level]?.label || "Insufficient Data")
 const chevronRight = `<svg class="rc-go" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>`
 
 /**
@@ -64,7 +65,7 @@ export class SidePanel {
             <span class="rc-name">${esc(loc.name)}</span>
             <span class="rc-sub">${esc(loc.country)}</span>
             <span class="rc-cond">${esc(a.condition)}</span>
-            <span class="rc-level lv-${a.level}">${lv.label}</span>
+            <span class="rc-level lv-${a.level}${a.observed ? " observed" : ""}">${statusLabel(a)}</span>
           </span>
           ${chevronRight}
         </button>`
@@ -162,7 +163,7 @@ export class SidePanel {
           <div class="stress-top">
             <img class="level-icon" src="${lv.icon}" alt="" width="81" height="65" decoding="async">
             <div>
-              <span class="stress-badge badge-${a.level}">${lv.label}</span>
+              <span class="stress-badge badge-${a.level}">${statusLabel(a)}</span>
               ${data ? `<p class="confidence">Evidence confidence: <b>${data.confidence}</b></p>` : ""}
             </div>
           </div>

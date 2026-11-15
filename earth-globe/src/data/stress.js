@@ -1,9 +1,10 @@
 /**
  * Environmental stress levels shown on the region cards.
  *
- * There is NO assessment yet: the NASA, Copernicus and Open-Meteo layers are not
- * connected to this dashboard and no species rule has been reviewed (see
- * docs/METHODOLOGY.md). So every region is "Insufficient Data". A card must never
+ * There is NO biological assessment yet: environmental layers may be connected,
+ * but no species rule has been reviewed (see
+ * docs/METHODOLOGY.md). Regions without an observed series remain "Insufficient
+ * Data"; observed regions are still unassessed biologically. A card must never
  * say Favorable, Moderate Risk or Elevated Risk for a real region until an
  * assessment backs it; replace `assess()` with a lookup of real results when they exist.
  *

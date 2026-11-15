@@ -208,6 +208,7 @@ html[data-panel="hidden"] .panel-toggle { right: 0; }
 .lv-moderate { color: var(--lv-moderate); }
 .lv-elevated { color: var(--lv-elevated); }
 .lv-insufficient { color: var(--text-muted); }
+.rc-level.observed { color: #8ed7c4; }
 .notice.demo { background: rgba(143, 180, 255, 0.12); border-color: rgba(143, 180, 255, 0.35); color: #cfe0ff; }
 
 /* ---------------------------------------------------------------- narrower panels (laptops) */
