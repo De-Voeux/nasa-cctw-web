@@ -31,11 +31,11 @@
 .panel-body { flex: 1; overflow-y: auto; padding: 8px 16px 20px; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.2) transparent; }
 /* Hide the whole panel to see the full globe. The panel slides out; --panel-offset goes to 0 so the
    globe re-centres and the map controls move to the edge. */
-.side-panel { transition: transform 0.3s ease, visibility 0s; }
+.side-panel { transition: transform var(--panel-dur) var(--panel-ease), visibility 0s; will-change: transform; }
 html[data-panel="hidden"] { --panel-offset: 0px; }
 html[data-panel="hidden"] .side-panel {
   transform: translateX(calc(100% + var(--gap) * 2)); visibility: hidden;
-  transition: transform 0.3s ease, visibility 0s 0.3s;
+  transition: transform var(--panel-dur) var(--panel-ease), visibility 0s var(--panel-dur);
 }
 /* The handle. It is fixed on the screen but follows the panel: its right edge is the panel's left edge
    (--panel-offset is 0 once the panel is hidden), and `right` animates with the same duration as the panel's slide,
@@ -52,10 +52,10 @@ html[data-panel="hidden"] .side-panel {
   box-shadow: -6px 6px 20px rgba(0, 0, 0, 0.35);
   font-size: 13px; font-weight: 600; letter-spacing: 0.04em;
   cursor: grab; touch-action: none; user-select: none;
-  transition: right 0.3s ease, background 0.3s, color 0.3s, padding 0.3s, border-color 0.3s;
+  transition: right var(--panel-dur) var(--panel-ease), background 0.3s, color 0.3s, padding 0.3s, border-color 0.3s;
 }
 .panel-toggle:hover { color: var(--text); }
-.panel-toggle svg { width: 22px; height: 22px; stroke-width: 2.4; transition: transform 0.3s ease; }
+.panel-toggle svg { width: 22px; height: 22px; stroke-width: 2.4; transition: transform var(--panel-dur) var(--panel-ease); }
 .pt-label { writing-mode: vertical-rl; }
 html[data-panel="hidden"] .panel-toggle { right: 0; }
 .panel-toggle[data-look="hidden"] {
@@ -68,7 +68,7 @@ html[data-panel="hidden"] .panel-toggle { right: 0; }
 .panel-dragging .side-panel, .panel-dragging .panel-toggle, .panel-dragging .panel-toggle svg { transition: none !important; }
 .panel-dragging, .panel-dragging * { cursor: grabbing !important; user-select: none !important; }
 /* Draws the eye once, right after the panel was hidden (after the slide has finished). */
-.panel-toggle.nudge { animation: panel-nudge 0.6s ease-in-out 0.35s 3; }
+.panel-toggle.nudge { animation: panel-nudge 0.6s ease-in-out 0.45s 3; }
 @keyframes panel-nudge { 50% { transform: translateX(-8px); } }
 @media (prefers-reduced-motion: reduce) { .panel-toggle.nudge { animation: none; } .panel-toggle, .panel-toggle svg { transition: none; } }
 

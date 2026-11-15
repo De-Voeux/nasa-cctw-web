@@ -1,6 +1,6 @@
 // POST /api/ask: the Ask SEAmon assistant (design: docs/Radit/RAG_DESIGN.md).
 //
-// The model (OpenRouter free models by default, with key and model fallback in llm.js) may only call four tools: search_evidence (verified literature), get_series
+// The model (OpenRouter free models by default, with key and model fallback in llm.js) may only call these tools: search_evidence (verified literature), list_zones and get_zone_metrics (regional daily record), get_series
 // and list_sites (per-site measurements) and final_answer. Everything it states must be
 // backed by what those tools returned in THIS request; validateAnswer() rejects anything
 // else, and an answer with nothing behind it becomes an explicit "not enough evidence".
@@ -50,7 +50,8 @@ Rules:
 - Use ONLY what your tools return. Never use outside knowledge for facts, numbers, thresholds or causes.
 - For questions about studies or literature, call search_evidence. Usually ONE search, without a country or species filter, is enough: search again only if the results clearly do not cover the question, and never search country by country. Write its query in English even if the user wrote in another language. For measurements, call get_series (call list_sites first if you do not know the site id). 
 - Call final_answer exactly once to finish. Put each factual statement about literature in claims[], with the chunk_ids that support it; claims[] is for literature only, so leave it empty when you answer from measurements. Put the measurements you used in data_used[].
-- Numbers and dates come from get_series results only. Quote them as returned, with their unit and date range (min_day and max_day are the dates of the minimum and the maximum). Never state a date the tools did not return, and do not calculate new numbers.
+- Regional zone data (list_zones, get_zone_metrics) is the team's daily record of the last months for 19 regions and 48 zones in Indonesia, the Philippines, Malaysia and Vietnam (sea surface temperature, salinity, pH, nutrients, rainfall and more). Prefer it for any question about recent conditions in a region or a place; call list_zones first, because not every zone has every variable. Its values are daily averages over a zone (mean_coverage says how much of the zone had valid pixels: below 0.5 say the value is based on little of the zone). get_series and list_sites hold older, longer site files. Use only one of the two for an answer unless the question needs both.
+- Numbers and dates come from get_series and get_zone_metrics results only. Quote them as returned, with their unit and date range (min_day and max_day are the dates of the minimum and the maximum). Never state a date the tools did not return, and do not calculate new numbers.
 - The measurements are HISTORICAL files, not live data. list_sites shows, for every site, the products, variables and the first and last date we have. Check it before get_series. If the question is about a period outside that range (for example "last week"), say the data ends on its last date and answer for that period only if it helps, clearly labelled. Never present old data as current.
 - Products differ in time resolution: MUR-30d is one sea-surface temperature value every 30 days, POWER-monthly is a monthly mean dated the first of the month, POWER-daily is daily. Say which one you used. Do not call a 30-day sample or a monthly mean "daily".
 - If the tools returned nothing relevant, set abstained=true, confidence="none" and say plainly that the sources we have do not answer it. Do not guess.
@@ -82,6 +83,26 @@ const TOOLS = [
     name: "list_sites",
     description: "List monitored sites with the data we hold for each: product, variables and the first and last date, plus the unit of every variable. Call it with no arguments to see every site. The optional country filter takes a COUNTRY name (Indonesia, Malaysia, Philippines, Vietnam); a place name such as Maluku is a site name, not a country.",
     input_schema: { type: "object", properties: { country: { type: "string", description: "A country name, not a place name" } } },
+  },
+  {
+    name: "list_zones",
+    description: "List the regions and zones of the regional daily record, and for every variable its unit, dataset, first and last date and how many zones have it (variables that only a few zones have name them). Call it with no arguments before get_zone_metrics.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "get_zone_metrics",
+    description: "Daily zone-average values of one variable for one region (all its zones, one summary per zone) or for one zone. Returns summaries with min, max, mean, latest and coverage.",
+    input_schema: {
+      type: "object",
+      properties: {
+        region_id: { type: "string", description: "e.g. ID-MALUKU, from list_zones" },
+        subregion_id: { type: "string", description: "Optional zone id, e.g. aru. Leave out to get every zone of the region" },
+        variable: { type: "string", description: "e.g. analysed_sst, so, ph, precipitation" },
+        from: { type: "string", description: "YYYY-MM-DD" },
+        to: { type: "string", description: "YYYY-MM-DD, at most 731 days after from" },
+      },
+      required: ["region_id", "variable", "from", "to"],
+    },
   },
   {
     name: "get_series",
@@ -250,6 +271,43 @@ export function compactSites(rows) {
   return { sites, units }
 }
 
+/**
+ * seagis_coverage returns one row per zone and variable (about 320). Folded into the regions with their zones, and one
+ * line per variable with its unit, dates and the number of zones that have it; a variable few zones have lists them.
+ */
+export function compactZones(rows) {
+  const regions = new Map()
+  const vars = new Map()
+  for (const r of rows) {
+    let g = regions.get(r.region_id)
+    if (!g) regions.set(r.region_id, (g = { id: r.region_id, name: r.region_name, country: r.country, zones: new Map() }))
+    g.zones.set(r.subregion_id, r.zone_name)
+    let v = vars.get(r.variable)
+    if (!v) vars.set(r.variable, (v = { variable: r.variable, dataset: r.dataset, unit: r.units, from: r.first_day, to: r.last_day, zones: [] }))
+    if (r.first_day < v.from) v.from = r.first_day
+    if (r.last_day > v.to) v.to = r.last_day
+    v.zones.push(`${r.region_id}/${r.subregion_id}`)
+  }
+  return {
+    regions: [...regions.values()].map((g) => ({ id: g.id, name: g.name, country: g.country, zones: [...g.zones].map(([id, name]) => ({ id, name })) })),
+    variables: [...vars.values()].map((v) => ({ variable: v.variable, dataset: v.dataset, unit: v.unit, from: v.from, to: v.to, n_zones: v.zones.length, ...(v.zones.length <= 3 ? { only_in: v.zones } : {}) })),
+  }
+}
+
+/** One summary per zone from seagis_zone_series rows (daily zone averages). */
+export function summarizeZones(rows, from, to) {
+  const by = new Map()
+  for (const r of rows) {
+    if (!by.has(r.subregion_id)) by.set(r.subregion_id, { name: r.zone_name, rows: [] })
+    by.get(r.subregion_id).rows.push({ day: r.day, value: r.mean, unit: r.units, product: r.dataset, product_version: r.product_version, cov: r.coverage_fraction })
+  }
+  return [...by].map(([subregion_id, z]) => {
+    const covs = z.rows.map((x) => x.cov).filter((c) => typeof c === "number")
+    const mean_coverage = covs.length ? Math.round((covs.reduce((a, b) => a + b, 0) / covs.length) * 100) / 100 : null
+    return { subregion_id, name: z.name, summary: summarize(z.rows, from, to), mean_coverage }
+  })
+}
+
 /** min, mean, max, latest and gaps, computed here so the model quotes numbers instead of making them. */
 export function summarize(rows, from, to) {
   const vals = rows.filter((r) => typeof r.value === "number")
@@ -394,6 +452,22 @@ export async function handleAsk(request, env, { fetchImpl = fetch } = {}) {
         return { sites: [], note: `No site has country "${input.country}". The filter takes a country name only. Call list_sites again with no arguments to see all sites.` }
       }
       return compactSites(rows)
+    }
+    if (name === "list_zones") return compactZones(await rpc("seagis_coverage", {}))
+    if (name === "get_zone_metrics") {
+      const { region_id, subregion_id, variable, from, to } = input ?? {}
+      if (![region_id, variable, from, to].every((x) => typeof x === "string" && x)) return { error: "region_id, variable, from and to are required" }
+      let rows
+      try {
+        rows = await rpc("seagis_zone_series", { p_region_id: region_id, p_variable: variable, p_from: from, p_to: to, p_subregion_id: subregion_id || null })
+      } catch (e) {
+        return { error: String(e.message).includes("window too long") ? "window too long (max 731 days)" : "could not read that series" }
+      }
+      if (rows.length === 0) return { zones: [], note: "No data for this region, zone, variable and period. Check list_zones for what exists." }
+      const zones = summarizeZones(rows, from, to)
+      ctx.series.push({ site_id: region_id, variable, from, to, products: [...new Set(rows.map((r) => r.dataset))] })
+      for (const z of zones) ctx.series.push({ site_id: `${region_id}/${z.subregion_id}`, variable, from, to, products: [...new Set(rows.map((r) => r.dataset))] })
+      return { zones, note: "Values are daily averages over each zone. mean_coverage is the share of the zone with valid pixels." }
     }
     if (name === "get_series") {
       const { site_id, variable, from, to, product } = input ?? {}

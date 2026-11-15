@@ -25,7 +25,8 @@ Normalize 18 unique regions, not 24 repeated literature entries. These are geogr
 | ID-NTB | Indonesia | West Nusa Tenggara | East Lombok, Sumbawa, Bima |
 | ID-N-KAL | Indonesia | North Kalimantan | Nunukan, Tarakan, Sebatik |
 | ID-MALUKU | Indonesia | Maluku | Seram, Kei, Aru; validate administrative coverage |
-| PH-NE-BOHOL | Philippines | Northeastern Bohol | Identify actual study coast |
+| PH-BOHOL | Philippines | Bohol | Whole-province coast (Faisan et al. 2021); was PH-NE-BOHOL until 2026-11-15 |
+| PH-NE-BOHOL | Philippines | Northeastern Bohol | Pending: identify the study coast of Largo et al. 1995 (no zone yet) |
 | PH-TAWI | Philippines | Tawi-Tawi | Bongao, Sitangkai, Sibutu |
 | PH-PANG | Philippines | Pangasinan | Bolinao, Lingayen Gulf |
 | PH-S-LUZON | Philippines | Southern Luzon | Study-specific extent required |

@@ -18,6 +18,7 @@ products:
     endpoint: discover_from_catalog
   copernicus:
     enabled: true
+    data_type: observed   # use forecast for the separate 3-day outlook run
     period: {start: '2026-08-15', end: '2026-11-14'}   # aligned with MUR
     depth: surface          # shallowest model level (0.494 m)
     batch: region_whole_period   # one subset per region x dataset; chunks span ~155 days
@@ -28,6 +29,10 @@ products:
       PH-PANG/lingayen_gulf_labrador: [cmems_bgc_nut, cmems_bgc_car]
       PH-PANG/lingayen_gulf_lingayen: [cmems_bgc_nut, cmems_bgc_car]
       PH-PANG/lingayen_gulf_binmaley: [cmems_bgc_nut, cmems_bgc_car]
+  imerg:
+    enabled: true            # GPM IMERG Late daily rainfall, same period as MUR (added 2026-11-15)
+  power:
+    enabled: true            # NASA POWER daily weather at one point per zone (added 2026-11-15)
 execution:
   batch: monthly
   concurrency: 4            # Harmony jobs in flight during fetch

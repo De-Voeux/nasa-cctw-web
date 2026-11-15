@@ -5,13 +5,6 @@ const LONG = new Intl.DateTimeFormat("en", { weekday: "long", day: "numeric", mo
 const WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"]
 const DAY = 86400000
 
-/** Chart lengths offered in the calendar, in days. */
-export const RANGES = [
-  { days: 7, label: "7 days" },
-  { days: 30, label: "30 days" },
-  { days: 90, label: "90 days" },
-]
-
 const midnight = (d) => {
   const x = new Date(d)
   x.setHours(0, 0, 0, 0)
@@ -23,7 +16,6 @@ const addDays = (d, n) => {
   return x
 }
 const sameDay = (a, b) => a.getTime() === b.getTime()
-const dayDiff = (a, b) => Math.round((a - b) / DAY)
 
 const calendarIcon = `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>`
 const chevron = (dir) =>
@@ -31,19 +23,18 @@ const chevron = (dir) =>
 
 /**
  * Date bar: five day buttons around the chosen day, and a calendar button that
- * opens a month calendar for the last three months (plus the forecast days),
- * with the length of the trend charts (7, 30 or 90 days).
+ * opens a month calendar for the last three months (plus the forecast days).
+ * The chosen day sets the map's colour layer, the five buttons and the values in
+ * the panel. How many days the charts show is set in the panel (sidePanel.js).
  *
  * @param {HTMLElement} bar  the date bar (nav)
  * @param {{
  *   forecastDays?: number,
  *   monthsBack?: number,
- *   range?: number,
  *   onChange?: (d:{date:Date, kind:"history"|"now"|"forecast"}) => void,
- *   onRange?: (days:number) => void,
  * }} opts
  */
-export function mountDatePills(bar, { forecastDays = 3, monthsBack = 3, range = 30, onChange, onRange } = {}) {
+export function mountDatePills(bar, { forecastDays = 3, monthsBack = 3, onChange } = {}) {
   const today = midnight(new Date())
   const minDate = (() => {
     const d = new Date(today)
@@ -153,12 +144,6 @@ export function mountDatePills(bar, { forecastDays = 3, monthsBack = 3, range = 
         ${blanks}${cells}
       </div>
       <p class="cal-note">Data from ${SHORT.format(minDate)} to ${SHORT.format(maxDate)}. <span class="cal-key"></span>Days after today are forecasts.</p>
-      <div class="cal-range">
-        <span class="cal-range-label" id="cal-range-label">Charts show</span>
-        <div class="seg" role="group" aria-labelledby="cal-range-label">
-          ${RANGES.map((r) => `<button type="button" data-range="${r.days}" aria-pressed="${r.days === range}">${r.label}</button>`).join("")}
-        </div>
-      </div>
       <button type="button" class="cal-today-btn" ${sameDay(selected, today) ? "disabled" : ""}>Back to today</button>`
   }
 
@@ -213,11 +198,6 @@ export function mountDatePills(bar, { forecastDays = 3, monthsBack = 3, range = 
       pop.querySelector(`.cal-nav[data-step="${nav.dataset.step}"]`)?.focus()
       return
     }
-    const r = e.target.closest("[data-range]")
-    if (r) {
-      setRange(Number(r.dataset.range))
-      return
-    }
     if (e.target.closest(".cal-today-btn")) {
       select(today)
       setOpen(false)
@@ -254,23 +234,11 @@ export function mountDatePills(bar, { forecastDays = 3, monthsBack = 3, range = 
 
   // ---------------------------------------------------------------- state
 
-  function setRange(days) {
-    if (days === range) return
-    range = days
-    if (!pop.hidden) {
-      for (const b of pop.querySelectorAll("[data-range]")) b.setAttribute("aria-pressed", String(Number(b.dataset.range) === range))
-    }
-    onRange && onRange(range)
-  }
-
   function select(d) {
     d = midnight(d)
     if (!inRange(d)) return
     selected = d
     renderPills()
-    // A day older than the charts reach: lengthen the charts so the day is on them.
-    const back = dayDiff(today, d) + 1
-    if (back > range) setRange((RANGES.find((r) => r.days >= back) || RANGES.at(-1)).days)
     onChange && onChange(current())
   }
 
@@ -281,9 +249,6 @@ export function mountDatePills(bar, { forecastDays = 3, monthsBack = 3, range = 
   return {
     get current() {
       return current()
-    },
-    get range() {
-      return range
     },
   }
 }

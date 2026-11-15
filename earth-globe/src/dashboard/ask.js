@@ -36,7 +36,7 @@ export function answer(question, locations) {
       return {
         focus: hit,
         actions: inCountry.slice(0, 4).map((l) => ({ label: `Show ${l.name}`, loc: l })),
-        html: `<p>${esc(hit.country)} has <b>${inCountry.length}</b> places in the research leads.</p>`,
+        html: `<p>${esc(hit.country)} has <b>${inCountry.length}</b> places with reported ice-ice.</p>`,
       }
     }
     return { focus: hit, autoShow: true, html: `<p>Here is <b>${esc(hit.name)}</b>, ${esc([hit.area, hit.country].filter(Boolean).join(", "))}.</p>` }

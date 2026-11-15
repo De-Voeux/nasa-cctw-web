@@ -48,6 +48,10 @@
   /* Space the panel takes from the map. Equal to --panel-w, but 0 while the panel is hidden
      (html[data-panel="hidden"]), so the globe re-centres and the map controls move to the edge. */
   --panel-offset: var(--panel-w);
+  /* Panel show/hide: one duration and curve for everything that moves with it
+     (panel, Locations tab, globe, map controls, chat). Fast start, gentle stop. */
+  --panel-dur: 0.45s;
+  --panel-ease: cubic-bezier(0.32, 0.72, 0, 1);
 
   /* device safe areas (notches, home bar) */
   --safe-t: env(safe-area-inset-top, 0px);
