@@ -35,7 +35,7 @@ METRIC_KEY = ["region_id", "subregion_id", "geometry_version", "dataset", "varia
 # Display labels written to the DB (decided 2026-11-15). Labels only: every pair is the same unit,
 # so no value changes. Parquet in data/processed keeps the source's own unit strings.
 DISPLAY_UNITS = {
-    "degree_C": "°C", "C": "°C",
+    "degree_C": "°C", "degrees_C": "°C", "C": "°C",
     "kelvin": "°C",             # MUR analysis_error is a temperature difference: 1 K = 1 °C
     "mmol m-3": "mmol/m³",
     "1e-3": "PSU",              # Copernicus salinity (practical salinity, ~ PSU)

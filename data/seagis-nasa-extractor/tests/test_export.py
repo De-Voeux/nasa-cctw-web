@@ -75,6 +75,7 @@ def test_round_trip_upsert_is_idempotent():
 def test_display_units_are_labels_only():
     from seagis_extractor import export
     assert export.display_unit("analysed_sst", "degree_C") == "°C"
+    assert export.display_unit("thetao", "degrees_C") == "°C"
     assert export.display_unit("T2M", "C") == "°C"
     assert export.display_unit("so", "1e-3") == "PSU"
     assert export.display_unit("no3", "mmol m-3") == "mmol/m³"
