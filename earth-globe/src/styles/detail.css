@@ -38,23 +38,41 @@
 .driver.is-driver .driver-head { color: var(--warn-text); }
 .driver-src { margin: 10px 0 0; font-size: 12px; line-height: 1.45; color: var(--source-text); }
 
-.trend { margin: 26px 0 0; display: grid; grid-template-columns: auto 1fr; column-gap: 8px; }
-.trend-y { display: flex; flex-direction: column; justify-content: space-between; font-size: 11px; color: var(--source-text); text-align: right; font-variant-numeric: tabular-nums; }
-.trend-plot { position: relative; height: 84px; }
+.trend {
+  margin: 30px 0 0; display: grid; grid-template-columns: auto 1fr; column-gap: 8px;
+  grid-template-areas: "unit ." "y plot" ". x" "legend legend";
+}
+.trend-unit { grid-area: unit; justify-self: end; margin-bottom: 12px; font-size: 11px; color: var(--source-text); }
+/* y axis: tick labels at their value, a line on the plot's left edge */
+.trend-y { grid-area: y; position: relative; min-width: 30px; font-size: 11px; color: var(--source-text); text-align: right; font-variant-numeric: tabular-nums; }
+.trend-y span { position: absolute; right: 0; translate: 0 -50%; white-space: nowrap; }
+.trend-plot {
+  grid-area: plot; position: relative; height: 120px;
+  border-left: 1px solid rgba(255, 255, 255, 0.28); border-bottom: 1px solid rgba(255, 255, 255, 0.28);
+}
 .trend-plot svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
 .trend-plot svg * { vector-effect: non-scaling-stroke; }
+.t-grid { stroke: rgba(255, 255, 255, 0.07); stroke-width: 1; }
 .t-forecast-bg { fill: rgba(255, 255, 255, 0.04); stroke: none; }
-.t-band { fill: rgba(150, 175, 230, 0.16); stroke: none; }
+.t-band { fill: rgba(110, 210, 160, 0.13); stroke: none; }
+.t-band-edge { stroke: rgba(110, 210, 160, 0.55); stroke-width: 1; stroke-dasharray: 3 3; }
 .t-obs { fill: none; stroke: var(--warn-text); stroke-width: 2; }
 .t-fc { fill: none; stroke: var(--warn-text); stroke-width: 2; stroke-dasharray: 4 4; opacity: 0.9; }
 .t-today { stroke: rgba(255, 255, 255, 0.55); stroke-width: 1; }
 .t-dot { position: absolute; width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.2); }
 .t-x-today { position: absolute; top: -17px; translate: -50% 0; font-size: 11px; font-weight: 600; color: var(--text); }
-.trend-x { grid-column: 2; display: flex; justify-content: space-between; margin-top: 4px; font-size: 11px; color: var(--source-text); }
-.trend-legend { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; font-size: 11.5px; color: var(--source-text); }
+/* x axis: a small tick and a date under each labelled day */
+.trend-x { grid-area: x; position: relative; height: 22px; font-size: 11px; color: var(--source-text); }
+.trend-x span { position: absolute; top: 0; padding-top: 6px; translate: -50% 0; white-space: nowrap; }
+.trend-x span::before { content: ""; position: absolute; top: 0; left: 50%; width: 1px; height: 4px; background: rgba(255, 255, 255, 0.35); }
+.trend-x span.first { translate: 0 0; }
+.trend-x span.first::before { left: 0; }
+.trend-x span.last { translate: -100% 0; }
+.trend-x span.last::before { left: auto; right: 0; }
+.trend-legend { grid-area: legend; display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; font-size: 11.5px; color: var(--source-text); }
 .trend-legend span { display: inline-flex; align-items: center; gap: 6px; }
 .trend-legend i { display: inline-block; width: 16px; }
-.k-band { height: 8px; background: rgba(150, 175, 230, 0.3); border-radius: 2px; }
+.k-band { height: 8px; background: rgba(110, 210, 160, 0.3); border: 1px dashed rgba(110, 210, 160, 0.7); border-radius: 2px; }
 .k-obs { height: 2px; background: var(--warn-text); }
 .k-fc { height: 0; border-top: 2px dashed var(--warn-text); }
 .t-sel { margin-left: auto; color: var(--text); }
@@ -88,7 +106,13 @@
 .sp-credit a { color: inherit; text-decoration: underline; text-decoration-color: rgba(255, 255, 255, 0.3); text-underline-offset: 2px; }
 .sp-credit a:hover { color: var(--text-muted); }
 
-/* "How the water links to ice-ice" (collapsible) */
+/* Under each chart: what the value means for the seaweed */
+.insight { margin: 14px 0 0; }
+.ins-label { margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-faint); }
+.ins-text { margin: 0; font-size: 13px; line-height: 1.5; }
+.ins-trend { margin: 6px 0 0; font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+/* "What ice-ice does to the seaweed" (collapsible) */
 .explain { padding: 0; }
 .explain summary {
   list-style: none; cursor: pointer; padding: 14px 40px 14px 14px; position: relative;
@@ -105,17 +129,12 @@
 .ex-title { font-size: 14px; font-weight: 600; }
 .ex-sub { font-size: 12px; color: var(--text-muted); }
 .explain > :not(summary) { margin-left: 14px; margin-right: 14px; }
-.ex-lead { margin-top: 0; font-size: 13px; line-height: 1.5; color: var(--text-muted); }
-.explain ul.ex-list { list-style: none; padding: 0; margin-bottom: 4px; display: grid; gap: 10px; }
-.ex-list li { padding: 10px 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.06); }
-.ex-list li.is-driver { border-color: rgba(255, 170, 120, 0.45); background: rgba(255, 140, 80, 0.07); }
-.ex-list b { font-size: 13.5px; font-weight: 600; }
-.ex-here { margin-left: 8px; font-size: 11px; font-weight: 600; color: #ffb38a; }
-.ex-list p { margin: 4px 0 0; font-size: 12.5px; line-height: 1.5; color: var(--text-muted); }
-.ex-h { margin: 16px 14px 6px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-faint); }
 .explain ul.ex-impact { padding-left: 32px; margin-top: 0; font-size: 12.5px; line-height: 1.5; color: var(--text-muted); }
 .ex-impact li { margin: 5px 0; }
 .ex-caveat { margin-bottom: 14px; padding: 10px 12px; border-radius: 12px; font-size: 12px; line-height: 1.5; color: var(--text-muted); border: 1px dashed rgba(255, 255, 255, 0.16); }
 .ex-cite { font-size: 11px; color: var(--text-faint); white-space: normal; }
 .ex-cite a { color: inherit; text-decoration: underline; text-decoration-color: rgba(255, 255, 255, 0.3); text-underline-offset: 2px; }
 .ex-cite a:hover { color: var(--text-muted); }
+
+/* Under the 7D/30D/90D switch when there is less data than the chosen range */
+.range-note { margin: -4px 0 10px; font-size: 11.5px; color: var(--text-faint); }

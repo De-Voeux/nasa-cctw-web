@@ -2,7 +2,8 @@ import { chevronLeft } from "./icons.js"
 import { LEVELS } from "../data/stress.js"
 import { SOURCE } from "../data/reportedLocations.js"
 import { SPECIES_PHOTOS } from "../data/speciesPhotos.js"
-import { PAPERS, LINKS, IMPACTS, CAVEAT } from "../data/iceIceLinks.js"
+import { PAPERS, INSIGHTS, IMPACTS, CAVEAT } from "../data/iceIceLinks.js"
+import { ENVIRONMENT_RULES } from "../data/environmentRules.js"
 import { driversFor, NOT_ASSESSED, DUMMY_NOTE } from "../data/sampleDrivers.js"
 import { trendChart } from "./trendChart.js"
 
@@ -34,29 +35,48 @@ const citeHtml = (cite) =>
     .map(([lead, id]) => `${lead ? `${esc(lead)} ` : ""}<a href="${PAPERS[id].url}" target="_blank" rel="noopener">${esc(PAPERS[id].short)}</a>`)
     .join("; ")})</span>`
 
+const SHORT_DATE = new Intl.DateTimeFormat("en", { day: "numeric", month: "short" })
+
 /**
- * "How the water links to ice-ice": what each condition has to do with ice-ice and what
- * ice-ice does to the seaweed. Conditions outside the safe range at this place are marked.
- * Closed by default so the panel stays short; the summary says what is inside.
- * @param {Set<string>} driverKeys
+ * Under a chart: what this value means for the seaweed (from the studies in
+ * data/iceIceLinks.js) and how it moved over the days on the chart.
+ * @param {{key:string, unit:string, digits:number}} d
+ * @param {number} value  the value on the chosen day
+ * @param {{dates:Date[], values:number[]}|null} w  the part of the series on the chart
  */
-const explainHtml = (driverKeys) => `
+const insightHtml = (d, value, w) => {
+  const ins = INSIGHTS[d.key]
+  let trend = ""
+  if (w && w.values.length > 1) {
+    const change = value - w.values[0]
+    const step = 10 ** -d.digits
+    const since = SHORT_DATE.format(w.dates[0])
+    trend = Math.abs(change) < step
+      ? `Steady since ${since}.`
+      : `${change > 0 ? "Up" : "Down"} ${Math.abs(change).toFixed(d.digits)} ${esc(d.unit)} since ${since}.`
+  }
+  if (!ins && !trend) return ""
+  return `
+        <div class="insight">
+          <p class="ins-label">What this means for the seaweed</p>
+          ${ins ? `<p class="ins-text">${esc(ins.text(value))} ${citeHtml(ins.cite)}</p>` : ""}
+          ${trend ? `<p class="ins-trend">${trend}</p>` : ""}
+        </div>`
+}
+
+/** "What ice-ice does to the seaweed", closed by default so the panel stays short. */
+const impactHtml = () => `
   <details class="card explain">
     <summary>
-      <span class="ex-title">How the water links to ice-ice</span>
-      <span class="ex-sub">What each condition does, and what ice-ice does to the seaweed</span>
+      <span class="ex-title">What ice-ice does to the seaweed</span>
+      <span class="ex-sub">How it damages the plant and the harvest</span>
     </summary>
-    <p class="ex-lead">Ice-ice usually starts when the water stresses the seaweed. Bacteria then attack the weakened parts. ${citeHtml([["", "tahiluddin2021"], ["", "alimin2026"]])}</p>
-    <ul class="ex-list">${LINKS.map((l) => `
-      <li class="${driverKeys.has(l.key) ? "is-driver" : ""}">
-        <b>${esc(l.name)}</b>${driverKeys.has(l.key) ? `<span class="ex-here">Outside the safe range here</span>` : ""}
-        <p>${esc(l.text)} ${citeHtml(l.cite)}</p>
-      </li>`).join("")}
-    </ul>
-    <h3 class="ex-h">What ice-ice does to the seaweed</h3>
     <ul class="ex-impact">${IMPACTS.map((x) => `<li>${esc(x.text)} ${citeHtml(x.cite)}</li>`).join("")}</ul>
     <p class="ex-caveat">${esc(CAVEAT.text)} ${citeHtml(CAVEAT.cite)}</p>
   </details>`
+
+/** "NASA MUR SST L4 · daily … · product …" → the part before the first " · ", without "Source:". */
+const shortSource = (src) => String(src || "").replace(/^Source:\s*/, "").split(" · ")[0]
 
 const chevronRight = `<svg class="rc-go" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>`
 
@@ -78,6 +98,7 @@ export class SidePanel {
     this.onBack = onBack
     this.day = null
     this.range = 30 // days of history in the trend charts (the 7D/30D/90D switch)
+    this.species = null // the species picked in the panel; its safe ranges are drawn on the charts
     this.selectedId = null
     this.mode = "list"
     this.lastRows = []
@@ -107,6 +128,17 @@ export class SidePanel {
     if (this.mode === "list" || !this._detail) return
     this._redrawDetail()
     this.body.querySelector(`[data-range="${days}"]`)?.focus()
+  }
+
+  /** "Only 14 days measured so far" when the data is shorter than the chosen chart length. */
+  _rangeNote(data) {
+    const all = data.items.flatMap((d) => d.dates || []).concat(data.items.some((d) => d.dates) ? [] : data.dates.slice(0, data.todayIndex + 1))
+    if (!all.length) return ""
+    const first = Math.min(...all.map((d) => d.getTime()))
+    const last = Math.max(...all.map((d) => d.getTime()))
+    const days = Math.round((last - first) / DAY_MS) + 1
+    if (days >= this.range) return ""
+    return `<p class="range-note">Only ${days} days measured so far, from ${SHORT_DATE.format(new Date(first))}.</p>`
   }
 
   /** The 7D/30D/90D switch shown beside the first chart section's title. */
@@ -256,7 +288,13 @@ export class SidePanel {
       // Cut the series to the chosen chart length; the dot stays on the chosen day.
       const w = this._window(d.dates || data.dates, d.values, chartToday)
       const cut = d.values.length - w.values.length
-      const chart = () => trendChart({ ...d, values: w.values }, w.dates, w.todayIndex, Math.max(0, index - cut))
+      // Shade the species' safe range (environmentRules.js) when there is one, else the usual range of sample data.
+      const rule = ENVIRONMENT_RULES[this.species]?.[d.key]
+      const band = rule ? [rule.min, rule.max] : d.baseline
+      const chart = () =>
+        trendChart({ ...d, values: w.values, baseline: band, bandLabel: rule ? "Safe range" : "Usual range" }, w.dates, w.todayIndex, Math.max(0, index - cut))
+      const charted = a.observed || d.driver
+      const fullSource = `${d.source || ""}${d.product_version ? ` · product ${d.product_version}` : ""}`
       return `
       <article class="driver${d.driver ? " is-driver" : ""}">
         <header>
@@ -264,8 +302,9 @@ export class SidePanel {
           <p class="driver-value">${d.values[index].toFixed(d.digits)}<span> ${esc(d.unit)}</span></p>
         </header>
         <p class="driver-head">${esc(d.headline || "Measured value")}</p>
-        ${a.observed || d.driver ? chart() : ""}
-        <p class="driver-src">${esc(d.source)}${d.product_version ? ` · product ${esc(d.product_version)}` : ""}<br>Safe range for this seaweed: still being checked</p>
+        ${charted ? chart() : ""}
+        ${insightHtml(d, d.values[index], charted ? w : null)}
+        <p class="driver-src" title="${esc(fullSource)}">Data: ${esc(shortSource(d.source))}${rule ? `<br>Safe range for ${esc(this.species)}: ${esc(rule.source)} (provisional)` : ` · No safe range set for this yet`}</p>
       </article>`
     }
 
@@ -285,6 +324,7 @@ export class SidePanel {
           <h2 class="section-title">What’s causing this</h2>
           ${a.observed || drivers.length ? this._rangeHtml() : ""}
         </div>
+        ${this._rangeNote(data)}
         ${drivers.length ? drivers.map(card).join("") : `<p class="muted small">${a.observed && !a.scored ? "We haven’t rated these yet. The cards below show measurements only." : "Nothing is outside the safe range."}</p>`}
         <h2 class="section-title">${a.observed && !a.scored ? "Measurements" : "Normal right now"}</h2>
         ${others.map(card).join("")}` : ""}
@@ -294,7 +334,7 @@ export class SidePanel {
             .map((x) => `<li><b>${esc(x.name)}</b> · ${esc(x.why)}</li>`).join("")}</ul>
         </section>
         ${a.demo ? `<p class="fineprint">${esc(DUMMY_NOTE)} The stress level is a sample too, and the safe ranges for each seaweed are still being checked.</p>` : ""}
-        ${explainHtml(new Set(drivers.map((d) => d.key)))}
+        ${impactHtml()}
         <h2 class="section-title">About this place</h2>`
   }
 }
