@@ -37,12 +37,28 @@ async function call(path, body) {
   return text ? JSON.parse(text) : null
 }
 
+// The embed function runs on a small Edge Function worker: a batch of long chunks can exceed its compute
+// limit (HTTP 546 WORKER_RESOURCE_LIMIT, seen on a 37-chunk paper with tables). So chunks go one or two at
+// a time (EMBED_BATCH, default 2), and a 5xx answer is retried with a pause before giving up.
+const BATCH = Math.max(1, Number(process.env.EMBED_BATCH) || 2)
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+
+async function embedBatch(texts) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return (await call("/functions/v1/embed", { input: texts })).embeddings
+    } catch (e) {
+      const transient = /-> (5\d\d):/.test(e.message)
+      if (!transient || attempt >= 4) throw e
+      console.error(`  embed failed (${e.message.slice(0, 90)}), retry ${attempt}/3 in ${attempt * 3}s`)
+      await sleep(attempt * 3000)
+    }
+  }
+}
+
 async function embed(texts) {
   const out = []
-  for (let i = 0; i < texts.length; i += 8) {
-    const { embeddings } = await call("/functions/v1/embed", { input: texts.slice(i, i + 8) })
-    out.push(...embeddings)
-  }
+  for (let i = 0; i < texts.length; i += BATCH) out.push(...(await embedBatch(texts.slice(i, i + BATCH))))
   return out
 }
 
