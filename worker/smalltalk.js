@@ -10,7 +10,9 @@ const ID_WORDS = /\b(hai|halo|selamat|terima|makasih|terimakasih|assalamualaikum
 
 const GREETING = /^(h+a+i+|h+a+l+o+|h+e+l+l+o+|h+i+|h+e+y+|h+e+i+|yo|selamat (pagi|siang|sore|malam)|good (morning|afternoon|evening)|assalamu ?alaikum( wr wb)?|permisi|apa kabar|how are you)( (there|all|semua|kak|min|admin|bot|seamon))?$/
 const THANKS = /^(terima ?kasih( banyak)?|makasih( banyak)?|thanks?( a lot| so much)?|thank you( so much)?|thx|tq)( (ya|yaa|kak|min))?$/
-const HELP = /^(help|bantuan|tolong|apa yang (bisa|dapat) (kamu|anda) (lakukan|bantu)|apa (yang )?bisa (kamu|anda) (lakukan|bantu)|what can you do|what do you do|who are you|kamu siapa|siapa (kamu|anda)|cara (pakai|menggunakan)( ini)?|how (do i|to) use( this)?)$/
+const HELP = /^(help( me)?|bantuan|tolong|what (can|could) (you|i) (do|ask|help)( with)?( you| me)?|what (do|can) you (do|help with)|what are you( for)?|how (can|do) you help( me)?|can you help( me)?|apa (yang )?(bisa|dapat) (kamu|anda) (lakukan|bantu)|(kamu|anda) bisa apa|bisa apa( saja)?|apa saja yang bisa ditanyakan|boleh tanya apa|who are you|kamu siapa|siapa (kamu|anda)|cara (pakai|menggunakan)( ini)?|how (do i|to) use( this)?)$/
+// A greeting in front of one of the phrases above ("hi, what can you do?") is just a greeting; it is cut off first.
+const LEAD = /^((h+a+i+|h+a+l+o+|h+e+l+l+o+|h+i+|h+e+y+|h+e+i+|selamat (pagi|siang|sore|malam)|good (morning|afternoon|evening)|permisi|assalamu ?alaikum( wr wb)?)( (there|all|semua|kak|min|admin|bot|seamon))? )+/
 
 const REPLIES = {
   id: {
@@ -39,8 +41,10 @@ const normalize = (q) =>
 /** @returns {string | null} the Markdown reply, or null when the message is a real question */
 export function smalltalkReply(question) {
   const q = normalize(question)
-  if (!q || q.length > 60) return null
-  const kind = GREETING.test(q) ? "greeting" : THANKS.test(q) ? "thanks" : HELP.test(q) ? "help" : null
+  if (!q || q.length > 80) return null
+  // "hi, what can you do?": decide on what follows the greeting (nothing left = just a greeting)
+  const rest = q.replace(LEAD, "")
+  const kind = GREETING.test(q) ? "greeting" : THANKS.test(rest) ? "thanks" : HELP.test(rest) ? "help" : rest === "" ? "greeting" : GREETING.test(rest) ? "greeting" : null
   if (!kind) return null
   return REPLIES[ID_WORDS.test(q) ? "id" : "en"][kind]
 }

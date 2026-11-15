@@ -588,3 +588,25 @@ test("greetings are not counted, and ASK_DAILY_LIMIT=off skips the count", async
   assert.equal(res2.status, 200)
   assert.equal(m.calls.usage.length, 0)
 })
+
+test("a greeting followed by a help or thanks phrase is still a fixed reply", () => {
+  assert.match(smalltalkReply("hi, what can you do?"), /^I'm the SEAmon assistant\./)
+  assert.match(smalltalkReply("Hello! What can I ask you?"), /SEAmon assistant/)
+  assert.match(smalltalkReply("halo, kamu bisa apa?"), /^Saya asisten SEAmon\./)
+  assert.match(smalltalkReply("hai bisa apa saja"), /^Saya asisten SEAmon\./)
+  assert.match(smalltalkReply("hi thanks"), /welcome/)
+  assert.match(smalltalkReply("selamat pagi, terima kasih"), /Sama-sama/)
+  assert.match(smalltalkReply("hai apa kabar"), /^Hai!/)
+  assert.match(smalltalkReply("how can you help me"), /SEAmon assistant/)
+})
+
+test("a real question is never mistaken for small talk, with or without a greeting", () => {
+  for (const q of [
+    "hi, which area has the most ice-ice case?",
+    "what can you do about ice-ice in Maluku",
+    "can you help me find the temperature at Maluku",
+    "halo, suhu laut di Maluku berapa?",
+    "hello what is ice-ice",
+    "thanks for nothing what is the temperature at Maluku",
+  ]) assert.equal(smalltalkReply(q), null, q)
+})
