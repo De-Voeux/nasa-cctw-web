@@ -1,4 +1,7 @@
-"""Long-term MONTHLY zone values, 2003-01 .. 2024-12 (decided 2026-11-15, docs/Calzy/LONG_TERM_DATA.md).
+"""Long-term MONTHLY zone values, 2015-01 .. 2024-12 (decided 2026-11-15, docs/Calzy/LONG_TERM_DATA.md).
+
+The window was first 2003-01..2024-12; it was cut to the last 10 full years so the fetch finishes in time.
+Files already fetched for the longer window are kept on disk and trimmed to the window at export.
 
 A lean standalone script next to the daily pipeline. Same 48 zones, same membership/area weighting.
 
@@ -41,7 +44,7 @@ from seagis_extractor.fetch import (ByteBudget, FetchError, FetchGuardError, Har
                                     json_transport, stream_transport)
 from seagis_extractor.http import MetadataClient  # noqa: E402
 
-START, END = dt.date(2003, 1, 1), dt.date(2024, 12, 31)
+START, END = dt.date(2015, 1, 1), dt.date(2024, 12, 31)
 MONTHS = [dt.date(y, m, 1) for y in range(START.year, END.year + 1) for m in range(1, 13)]
 OUT = ROOT / "outputs/monthly"
 PROCESSED = ROOT / "data/processed_monthly"
@@ -124,7 +127,7 @@ def erddap_url(req: dict) -> str:
     (i0, i1), (j0, j1) = req["grid_index_range"]["lat"], req["grid_index_range"]["lon"]
     lat = lambda i: f"{MUR_GRID.lat(i):.2f}"  # noqa: E731
     lon = lambda j: f"{MUR_GRID.lon(j):.2f}"  # noqa: E731
-    t = "[(2003-01-01T00:00:00Z):1:(2024-12-31T00:00:00Z)]"
+    t = f"[({START}T00:00:00Z):1:({END}T00:00:00Z)]"
     sp = f"[({lat(i0)}):1:({lat(i1)})][({lon(j0)}):1:({lon(j1)})]"
     return f"{ERDDAP}?sst{t}{sp},mask{t}{sp}"
 
@@ -228,7 +231,7 @@ def cmd_list(_args) -> int:
 
     body = {"period": {"start": START.isoformat(), "end": END.isoformat(), "months": len(MONTHS)},
             "mur": mur, "imerg": im, "copernicus": cm, "power": pw,
-            "decisions": ["window 2003-01..2024-12 for every source",
+            "decisions": ["window 2015-01..2024-12 for every source (cut from 2003-01 on 2026-11-15)",
                           "missing months kept as empty rows flagged missing_at_source",
                           "currents: monthly mean vector only (uo, vo, current_direction, current_vector_speed)",
                           "storage: public.seagis_monthly_metrics"]}
@@ -287,16 +290,35 @@ def _download(url: str, dest: Path, budget: ByteBudget, host: str, retries: int 
     raise AssertionError
 
 
-def fetch_mur(doc: dict, zone_filter, budget) -> None:
+def run_zones(name: str, fn, zones: list[dict], workers: int) -> None:
+    """Run `fn(zone)` for each zone, `workers` at a time. A failed zone is logged and left without a
+    Parquet file, so the next run retries it; guard and credential errors stop everything."""
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    failed = []
+    with ThreadPoolExecutor(max(1, workers)) as pool:
+        futs = {pool.submit(fn, z): zkey(z) for z in zones}
+        for f in as_completed(futs):
+            try:
+                f.result()
+            except (FetchGuardError, auth.AuthError):
+                pool.shutdown(wait=False, cancel_futures=True)
+                raise
+            except Exception as e:  # noqa: BLE001 - logged; retried on the next run
+                failed.append(futs[f])
+                print(f"{name} {futs[f]}: FAILED {type(e).__name__}: {str(e)[:300]}", flush=True)
+    if failed:
+        raise FetchError(f"{name}: {len(failed)} zone(s) failed, run the same command again to retry: {', '.join(sorted(failed))}")
+
+
+def fetch_mur(doc: dict, zone_filter, budget, workers: int = 1) -> None:
     import xarray as xr
     src = doc["mur"]
     missing = set(src["missing_months"])
-    for z in src["zones"]:
-        if zone_filter and zkey(z) != zone_filter:
-            continue
+
+    def one(z):
         out = PROCESSED / "mur_sst_monthly" / z["region_id"] / f"{z['subregion_id']}.parquet"
         if _done(out):
-            continue
+            return
         mpath = ROOT / "outputs/membership" / z["membership"]
         if estimate.file_sha256(mpath) != z["membership_sha256"]:
             raise FetchGuardError(f"{mpath.name} changed since the request list was approved")
@@ -325,7 +347,9 @@ def fetch_mur(doc: dict, zone_filter, budget) -> None:
                     if t:
                         d = ds.isel(time=t[0])
                         day.append(d.assign(analysed_sst=d["sst"] + 273.15))   # aggregate_mur subtracts 273.15
-                if ym in missing or len(day) != len(tiles):
+                if ym not in missing and len(day) != len(tiles):
+                    raise FetchError(f"ERDDAP returned {len(day)}/{len(tiles)} tiles for {ym}, which its time axis lists")
+                if ym in missing:
                     rows.append(month_row(month, zone, "mur_sst_monthly", "analysed_sst", "degree_C", EMPTY, len(mem),
                                           "jplMURSST41mday", "MUR v4.1 monthly (NOAA ERD)", "missing_at_source"))
                     continue
@@ -337,7 +361,9 @@ def fetch_mur(doc: dict, zone_filter, budget) -> None:
                     r.update({"dataset": "mur_sst_monthly", "product_version": "MUR v4.1 monthly (NOAA ERD)"})
                     r["month"] = r.pop("date")
                     rows.append(r)
-        print(f"mur {zkey(z)}: {write_rows(rows, out)} rows")
+        print(f"mur {zkey(z)}: {write_rows(rows, out)} rows", flush=True)
+
+    run_zones("mur", one, [z for z in src["zones"] if not zone_filter or zkey(z) == zone_filter], workers)
 
 
 def _granule_month(name: str) -> dt.date | None:
@@ -358,18 +384,18 @@ def _open_imerg(p: Path):
     raise FetchError(f"{p.name}: no precipitation variable")
 
 
-def fetch_imerg(doc: dict, zone_filter, budget) -> None:
+def fetch_imerg(doc: dict, zone_filter, budget, workers: int = 1) -> None:
     import xarray as xr
     src = doc["imerg"]
     grid = imerg.ImergGrid()
     allowed = {tuple(q["bbox_w_s_e_n"]) for z in src["zones"] for q in z["requests"]}
     hc = HarmonyClient(auth.earthdata_token(), allowed, budget, max_polls=720)
-    for z in src["zones"]:
-        if zone_filter and zkey(z) != zone_filter:
-            continue
+    listed_missing = set(src["missing_months"])
+
+    def one(z):
         out = PROCESSED / "gpm_imerg_monthly" / z["region_id"] / f"{z['subregion_id']}.parquet"
         if _done(out):
-            continue
+            return
         mpath = ROOT / "outputs/membership" / z["membership"]
         if estimate.file_sha256(mpath) != z["membership_sha256"]:
             raise FetchGuardError(f"{mpath.name} changed since the request list was approved")
@@ -404,6 +430,8 @@ def fetch_imerg(doc: dict, zone_filter, budget) -> None:
         rows = []
         for month in MONTHS:
             got = per_month.get(month, [])
+            if len(got) != len(z["requests"]) and month.strftime("%Y-%m") not in listed_missing:
+                raise FetchError(f"Harmony returned {len(got)}/{len(z['requests'])} files for {month:%Y-%m}, which CMR lists")
             if len(got) != len(z["requests"]):
                 rows.append(month_row(month, zone, "gpm_imerg_monthly", "precipitation", "mm/day", EMPTY, len(mem),
                                       "GPM_3IMERGM", "GPM_3IMERGM V07", "missing_at_source"))
@@ -414,7 +442,9 @@ def fetch_imerg(doc: dict, zone_filter, budget) -> None:
                 r.update({"dataset": "gpm_imerg_monthly", "qc_flags": f"{r['qc_flags']};{note}" if note else r["qc_flags"]})
                 r["month"] = r.pop("date")
                 rows.append(r)
-        print(f"imerg {zkey(z)}: {write_rows(rows, out)} rows")
+        print(f"imerg {zkey(z)}: {write_rows(rows, out)} rows", flush=True)
+
+    run_zones("imerg", one, [z for z in src["zones"] if not zone_filter or zkey(z) == zone_filter], workers)
 
 
 def fetch_copernicus(doc: dict, zone_filter, _budget) -> None:
@@ -589,9 +619,13 @@ def cmd_fetch(args) -> int:
     auth.apply_env(ROOT / ".env")
     budget = ByteBudget(int(2e9))
     fns = {"power": fetch_power, "copernicus": fetch_copernicus, "mur": fetch_mur, "imerg": fetch_imerg}
+    workers = {"mur": args.workers or 3, "imerg": args.workers or 4}
     for name in ([args.source] if args.source else ["power", "copernicus", "mur", "imerg"]):
         t0 = time.monotonic()
-        fns[name](doc, args.zone, budget)
+        if name in workers:
+            fns[name](doc, args.zone, budget, workers[name])
+        else:
+            fns[name](doc, args.zone, budget)
         print(f"== {name} done in {time.monotonic() - t0:.0f} s; downloaded so far {budget.used / 1e6:.1f} MB")
     return 0
 
@@ -606,6 +640,10 @@ def cmd_export(args) -> int:
     if not files:
         raise SystemExit("nothing in data/processed_monthly")
     df = pd.concat([pd.read_parquet(f) for f in files], ignore_index=True)
+    before = len(df)
+    df["month"] = df["month"].astype(str).str[:10]
+    df = df[(df["month"] >= START.isoformat()) & (df["month"] <= END.isoformat())].copy()   # files fetched for 2003-2024 too
+    print(f"window {START}..{END}: kept {len(df)} of {before} rows")
     df["units"] = [export.display_unit(v, u) if u else "" for v, u in zip(df["variable"], df["units"])]
     # monthly table has no data_type column: every monthly row is observation/reanalysis, never forecast
     cols = [c if c != "date" else "month" for c in export.METRIC_COLUMNS if c != "data_type"]
@@ -659,6 +697,7 @@ def main(argv=None) -> int:
     f.add_argument("--approve", required=True)
     f.add_argument("--source", choices=["mur", "imerg", "copernicus", "power"])
     f.add_argument("--zone", help="REGION/subregion, e.g. PH-TAWI/bongao")
+    f.add_argument("--workers", type=int, help="zones in parallel for mur (default 3) and imerg (default 4)")
     e = sub.add_parser("export")
     e.add_argument("--confirm-host", required=True)
     e.add_argument("--dry-run", action="store_true")

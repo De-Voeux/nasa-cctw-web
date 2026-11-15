@@ -1,6 +1,6 @@
 # Long-term data window (proposal, 2026-11-15)
 
-**Status:** built as [`scripts/monthly.py`](../../data/seagis-nasa-extractor/scripts/monthly.py), with table `seagis_monthly_metrics` ([migration](../../supabase/migrations/20261115020000_seagis_monthly_metrics.sql)). Smoke test on PH-TAWI/bongao passed for POWER, MUR and Copernicus; the IMERG and direct-Zarr Copernicus fixes are not tested yet. The full fetch has not run.
+**Status (window now 2015–2024, see 2a):** built as [`scripts/monthly.py`](../../data/seagis-nasa-extractor/scripts/monthly.py), with table `seagis_monthly_metrics` ([migration](../../supabase/migrations/20261115020000_seagis_monthly_metrics.sql)). Smoke test on PH-TAWI/bongao passed for POWER, MUR and Copernicus; the IMERG and direct-Zarr Copernicus fixes are not tested yet. The full fetch has not run.
 
 ## 1. How the extractor and `research/data-access/` line up
 
@@ -74,7 +74,18 @@ Then: `plan` → review and approve the hash → `fetch` → `export --confirm-h
 
 Rough total: 3–4 h code and tests, 1–2 h fetch, 1 h export and trends.
 
-### Decided (user, 2026-11-15)
+### Window cut to 2015–2024 (user, 2026-11-15, afternoon)
+
+At ~3.8 min per MUR zone and IMERG still to come, the 2003–2024 fetch would likely miss the deadline. The window is now **2015-01 .. 2024-12 (120 months) for every source**.
+
+- Ten years gives each calendar month 10 values, which is enough for seasonality and anomalies.
+- It is weak for trends: the window opens with the strong 2015/16 El Niño and ends with the 2023/24 one. Long-term trend claims keep using `research/data-access` (2003–2024, point sites).
+- Data already fetched for 2003–2024 stays on disk: POWER and Copernicus for all zones, MUR for 23 zones. Export trims it to the window, so the database holds the same 120 months for every source.
+- MUR and IMERG now run zones in parallel (`--workers`). A failed zone is logged and retried on the next run.
+- A month that the source lists but the response lacks now fails the zone. It is no longer stored as `missing_at_source`.
+
+### Decided earlier (user, 2026-11-15)
+
 
 - **Window: 2003-01 .. 2024-12** for every source. A 1996–2026 window was considered and rejected: MUR starts 2002-06, and IMERG Final starts 1998-01 and ends 2025-09. Reaching 1996 would mean replacing both NASA satellite products with model data. The window ends at 2024 so every year is complete for the annual-mean trends.
 
