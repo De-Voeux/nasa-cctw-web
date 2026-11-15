@@ -93,6 +93,16 @@ At ~3.8 min per MUR zone and IMERG still to come, the 2003–2024 fetch would li
 - **Currents:** monthly P1M `uo`, `vo`, so the long-term table holds only the mean flow vector. Store `uo`, `vo`, `current_direction` (of the mean vector) and `current_vector_speed` (|mean vector|). The monthly table has **no** `current_speed` or `current_steadiness`, because a monthly mean vector underestimates mean speed. The name `current_vector_speed` keeps it from being read as the daily `current_speed`. Transfer stays small (~10 min).
 - **Storage:** new table `seagis_monthly_metrics` with its own allowlisted migration. Daily and monthly rows never share a table.
 
+### Extending back to 2003
+
+Requested by the user on 2026-11-15, to run after the 2015–2024 IMERG fetch.
+
+- `list --start/--end --out` writes a separate request list. `fetch --requests` reads it, and the default `requests.json` (2015–2024) is untouched.
+- A zone is skipped when its files already hold every month of the window. New months go to `<zone>__<YYYY-MM>_<YYYY-MM>.parquet`.
+- POWER, Copernicus and 23 MUR zones already hold 2003–2024, so only MUR (25 zones) and IMERG (48 zones) are fetched.
+- `export --start --end` trims to the window. It refuses to write while any zone misses months or a dataset misses zones (`--allow-gaps` overrides).
+- Request list `outputs/monthly/requests_2003-2014.json`, sha256 `bdeef48226180cb8565975b17a273021250b725dfa956600a8c24f1caae37e36`.
+
 ## 2b. How to run
 
 ```bash

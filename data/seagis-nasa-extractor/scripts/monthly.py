@@ -44,8 +44,21 @@ from seagis_extractor.fetch import (ByteBudget, FetchError, FetchGuardError, Har
                                     json_transport, stream_transport)
 from seagis_extractor.http import MetadataClient  # noqa: E402
 
-START, END = dt.date(2015, 1, 1), dt.date(2024, 12, 31)
-MONTHS = [dt.date(y, m, 1) for y in range(START.year, END.year + 1) for m in range(1, 13)]
+START, END = dt.date(2015, 1, 1), dt.date(2024, 12, 31)    # default window; list/fetch/export can set another
+MONTHS: list[dt.date] = []
+
+
+def set_window(start: dt.date, end: dt.date) -> None:
+    """Month-start dates START..END. Fetch takes the window from the approved request list."""
+    global START, END, MONTHS
+    if start.day != 1 or end < start:
+        raise SystemExit(f"bad window {start}..{end}")
+    START, END = start, end
+    MONTHS = [dt.date(y, m, 1) for y in range(start.year, end.year + 1) for m in range(1, 13)
+              if start <= dt.date(y, m, 1) <= end]
+
+
+set_window(START, END)
 OUT = ROOT / "outputs/monthly"
 PROCESSED = ROOT / "data/processed_monthly"
 REQUESTS = OUT / "requests.json"
@@ -182,7 +195,9 @@ def cmems_section(client: MetadataClient, spec: dict, plan: dict, geoms: dict) -
             "zones_without_sea": [zkey(z) for z in zones if z["sea_cells"] == 0]}
 
 
-def cmd_list(_args) -> int:
+def cmd_list(args) -> int:
+    set_window(dt.date.fromisoformat(args.start), dt.date.fromisoformat(args.end))
+    requests_path = Path(args.out) if args.out else REQUESTS
     client = MetadataClient()
     plan, geoms = daily_plan(), zone_geoms()
     OUT.mkdir(parents=True, exist_ok=True)
@@ -231,15 +246,15 @@ def cmd_list(_args) -> int:
 
     body = {"period": {"start": START.isoformat(), "end": END.isoformat(), "months": len(MONTHS)},
             "mur": mur, "imerg": im, "copernicus": cm, "power": pw,
-            "decisions": ["window 2015-01..2024-12 for every source (cut from 2003-01 on 2026-11-15)",
+            "decisions": [f"window {START:%Y-%m}..{END:%Y-%m} for every source in this list",
                           "missing months kept as empty rows flagged missing_at_source",
                           "currents: monthly mean vector only (uo, vo, current_direction, current_vector_speed)",
                           "storage: public.seagis_monthly_metrics"]}
     doc = {"sha256": canonical_sha(body), "generated_at": dt.datetime.now(dt.timezone.utc).isoformat(), **body}
-    REQUESTS.write_text(json.dumps(doc, indent=1))
+    requests_path.write_text(json.dumps(doc, indent=1))
     n_req = sum(len(z["requests"]) for z in mur["zones"]) + sum(len(z["requests"]) for z in im["zones"]) \
         + len(pw["zones"]) + sum(len(c["regions"]) for c in cm)
-    print(f"wrote {REQUESTS.relative_to(ROOT)}")
+    print(f"wrote {requests_path.resolve().relative_to(ROOT)}")
     print(f"period {START}..{END}, {len(MONTHS)} months, {len(plan['rois'])} zones, {n_req} requests")
     print(f"  MUR (ERDDAP)    {sum(len(z['requests']) for z in mur['zones'])} requests, ~{mur['transfer_bytes_est'] / 1e6:.0f} MB, "
           f"missing months {mur['missing_months']}")
@@ -255,16 +270,28 @@ def cmd_list(_args) -> int:
 
 # ---------------------------------------------------------------- fetch
 
-def load_approved(sha: str) -> dict:
-    doc = json.loads(REQUESTS.read_text())
+def load_approved(sha: str, path: Path) -> dict:
+    doc = json.loads(path.read_text())
     body = {k: v for k, v in doc.items() if k not in ("sha256", "generated_at")}
     if canonical_sha(body) != doc["sha256"] or doc["sha256"] != sha:
-        raise SystemExit(f"requests.json hash {canonical_sha(body)} is not the approved {sha}; nothing fetched")
+        raise SystemExit(f"{path.name} hash {canonical_sha(body)} is not the approved {sha}; nothing fetched")
+    set_window(dt.date.fromisoformat(doc["period"]["start"]), dt.date.fromisoformat(doc["period"]["end"]))
     return doc
 
 
-def _done(path: Path) -> bool:
-    return path.exists() and path.stat().st_size > 0
+def zone_out(dataset: str, region: str, sub: str) -> Path | None:
+    """Where this zone's rows for the current window go, or None when files on disk already hold
+    every month of the window. Files: `<sub>.parquet` (first runs) and `<sub>__<YYYY-MM>_<YYYY-MM>.parquet`."""
+    import pandas as pd
+    d = PROCESSED / dataset / region
+    want = {m.isoformat() for m in MONTHS}
+    have: set[str] = set()
+    for f in [d / f"{sub}.parquet", *sorted(d.glob(f"{sub}__*.parquet"))]:
+        if f.exists() and f.stat().st_size > 0:
+            have |= set(pd.read_parquet(f, columns=["month"])["month"].astype(str).str[:10])
+    if want <= have:
+        return None
+    return d / f"{sub}__{START:%Y-%m}_{END:%Y-%m}.parquet"
 
 
 def _download(url: str, dest: Path, budget: ByteBudget, host: str, retries: int = 5) -> int:
@@ -316,8 +343,8 @@ def fetch_mur(doc: dict, zone_filter, budget, workers: int = 1) -> None:
     missing = set(src["missing_months"])
 
     def one(z):
-        out = PROCESSED / "mur_sst_monthly" / z["region_id"] / f"{z['subregion_id']}.parquet"
-        if _done(out):
+        out = zone_out("mur_sst_monthly", z["region_id"], z["subregion_id"])
+        if out is None:
             return
         mpath = ROOT / "outputs/membership" / z["membership"]
         if estimate.file_sha256(mpath) != z["membership_sha256"]:
@@ -393,8 +420,8 @@ def fetch_imerg(doc: dict, zone_filter, budget, workers: int = 1) -> None:
     listed_missing = set(src["missing_months"])
 
     def one(z):
-        out = PROCESSED / "gpm_imerg_monthly" / z["region_id"] / f"{z['subregion_id']}.parquet"
-        if _done(out):
+        out = zone_out("gpm_imerg_monthly", z["region_id"], z["subregion_id"])
+        if out is None:
             return
         mpath = ROOT / "outputs/membership" / z["membership"]
         if estimate.file_sha256(mpath) != z["membership_sha256"]:
@@ -451,7 +478,7 @@ def fetch_copernicus(doc: dict, zone_filter, _budget) -> None:
     from concurrent.futures import ThreadPoolExecutor, as_completed
     from seagis_extractor.fetch import crop_to_cells
 
-    def one_region(c, reg, rbox, todo):
+    def one_region(c, reg, rbox, todo, outs):
             t0 = time.monotonic()
             step_lat, step_lon = c["grid"]["lat_step"], c["grid"]["lon_step"]
             ds, n_missing = read_region(c, rbox)
@@ -480,7 +507,7 @@ def fetch_copernicus(doc: dict, zone_filter, _budget) -> None:
                         for v in c["variables"]:
                             rows.append(month_row(month, zone, c["key"], v, "", EMPTY, len(mem), c["key"],
                                                   c["dataset_id"], "missing_at_source"))
-                print(f"{c['key']} {zkey(z)}: {write_rows(rows, PROCESSED / c['key'] / reg / (z['subregion_id'] + '.parquet'))} rows",
+                print(f"{c['key']} {zkey(z)}: {write_rows(rows, outs[zkey(z)])} rows",
                       flush=True)
             return f"{c['key']} {reg} done in {time.monotonic() - t0:.0f} s"
 
@@ -488,9 +515,10 @@ def fetch_copernicus(doc: dict, zone_filter, _budget) -> None:
     for c in doc["copernicus"]:
         for reg, rbox in c["regions"].items():
             zones = [z for z in c["zones"] if z["region_id"] == reg and (not zone_filter or zkey(z) == zone_filter)]
-            todo = [z for z in zones if not _done(PROCESSED / c["key"] / reg / f"{z['subregion_id']}.parquet")]
+            outs = {zkey(z): zone_out(c["key"], reg, z["subregion_id"]) for z in zones}
+            todo = [z for z in zones if outs[zkey(z)] is not None]
             if todo:
-                jobs.append((c, reg, rbox, todo))
+                jobs.append((c, reg, rbox, todo, outs))
     print(f"copernicus: {len(jobs)} dataset x region jobs, {COPERNICUS_WORKERS} at a time", flush=True)
     with ThreadPoolExecutor(COPERNICUS_WORKERS) as pool:
         for f in as_completed([pool.submit(one_region, *j) for j in jobs]):
@@ -583,8 +611,8 @@ def fetch_power(doc: dict, zone_filter, budget) -> None:
     for z in doc["power"]["zones"]:
         if zone_filter and zkey(z) != zone_filter:
             continue
-        out = PROCESSED / "nasa_power_monthly" / z["region_id"] / f"{z['subregion_id']}.parquet"
-        if _done(out):
+        out = zone_out("nasa_power_monthly", z["region_id"], z["subregion_id"])
+        if out is None:
             continue
         resp = pc.get(z["url"])
         coords = ((resp.get("geometry") or {}).get("coordinates") or [])[:2]
@@ -615,7 +643,8 @@ def fetch_power(doc: dict, zone_filter, budget) -> None:
 
 
 def cmd_fetch(args) -> int:
-    doc = load_approved(args.approve)
+    doc = load_approved(args.approve, Path(args.requests))
+    print(f"window {START}..{END} ({len(MONTHS)} months) from {Path(args.requests).name}", flush=True)
     auth.apply_env(ROOT / ".env")
     budget = ByteBudget(int(2e9))
     fns = {"power": fetch_power, "copernicus": fetch_copernicus, "mur": fetch_mur, "imerg": fetch_imerg}
@@ -635,7 +664,10 @@ def cmd_fetch(args) -> int:
 def cmd_export(args) -> int:
     import pandas as pd
     import psycopg
-    doc = json.loads(REQUESTS.read_text())
+    set_window(dt.date.fromisoformat(args.start), dt.date.fromisoformat(args.end))
+    docs = [json.loads(Path(p).read_text()) for p in args.requests]
+    shas = sorted(d["sha256"] for d in docs)
+    run_sha = shas[0] if len(shas) == 1 else canonical_sha(shas)   # several approved lists -> hash of their hashes
     files = sorted(PROCESSED.rglob("*.parquet"))
     if not files:
         raise SystemExit("nothing in data/processed_monthly")
@@ -644,6 +676,25 @@ def cmd_export(args) -> int:
     df["month"] = df["month"].astype(str).str[:10]
     df = df[(df["month"] >= START.isoformat()) & (df["month"] <= END.isoformat())].copy()   # files fetched for 2003-2024 too
     print(f"window {START}..{END}: kept {len(df)} of {before} rows")
+    key0 = ["region_id", "subregion_id", "geometry_version", "dataset", "variable", "month"]
+    nd = int(df.duplicated(key0).sum())
+    if nd:      # the same month in two files (e.g. a 2003-2024 file and a later 2003-2014 one): keep the first
+        df = df.drop_duplicates(key0, keep="first")
+        print(f"dropped {nd} rows present in two files")
+    per = df.groupby(["dataset", "variable", "region_id", "subregion_id"])["month"].nunique()
+    short = per[per < len(MONTHS)].groupby(["dataset", "variable"]).size()
+    if len(short):
+        print(f"WARNING: zones with fewer than {len(MONTHS)} months (dataset, variable: zones):\n{short.to_string()}")
+        if not args.allow_gaps and not args.dry_run:
+            raise SystemExit("not exporting a window some zones do not fully cover; fetch the rest, or pass --allow-gaps")
+    zones = df.groupby("dataset")[["region_id", "subregion_id"]].apply(lambda g: len(g.drop_duplicates()))
+    print("zones per dataset: " + ", ".join(f"{k} {v}" for k, v in zones.items()))
+    n_zones = len(daily_plan()["rois"])
+    few = {k: v for k, v in zones.items() if v < n_zones}
+    if few:
+        print(f"WARNING: datasets with fewer than {n_zones} zones: {few}")
+        if not args.allow_gaps and not args.dry_run:
+            raise SystemExit("not exporting while zones are missing; fetch the rest, or pass --allow-gaps")
     df["units"] = [export.display_unit(v, u) if u else "" for v, u in zip(df["variable"], df["units"])]
     # monthly table has no data_type column: every monthly row is observation/reanalysis, never forecast
     cols = [c if c != "date" else "month" for c in export.METRIC_COLUMNS if c != "data_type"]
@@ -670,14 +721,15 @@ def cmd_export(args) -> int:
             print(f"applied migration {MIGRATION}")
         cur.execute("insert into public.seagis_load_runs (plan_sha256, period_start, period_end, files, tool_version, notes) "
                     "values (%s, %s, %s, %s, %s, %s) returning run_id",
-                    (doc["sha256"], START, END, len(files), "scripts/monthly.py", "monthly long-term load"))
+                    (run_sha, START, END, len(files), "scripts/monthly.py",
+                     "monthly long-term load; approved request lists: " + ", ".join(shas)))
         run_id = cur.fetchone()[0]
         cur.execute("create temp table _m (like public.seagis_monthly_metrics including defaults) on commit drop")
         allc = cols + ["plan_sha256", "load_run_id"]
         with cur.copy(f"copy _m ({', '.join(allc)}) from stdin") as cp:
             for rec in df.itertuples(index=False):
                 cp.write_row([None if (x is None or (isinstance(x, float) and np.isnan(x))) else
-                              (x.item() if hasattr(x, "item") else x) for x in rec] + [doc["sha256"], run_id])
+                              (x.item() if hasattr(x, "item") else x) for x in rec] + [run_sha, run_id])
         upd = [c for c in allc if c not in key]
         cur.execute(f"insert into public.seagis_monthly_metrics ({', '.join(allc)}) select {', '.join(allc)} from _m "
                     f"on conflict ({', '.join(key)}) do update set " + ", ".join(f"{c} = excluded.{c}" for c in upd)
@@ -692,15 +744,23 @@ def cmd_export(args) -> int:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
-    sub.add_parser("list")
+    li = sub.add_parser("list")
+    li.add_argument("--start", default=START.isoformat(), help="first month, YYYY-MM-01 (default %(default)s)")
+    li.add_argument("--end", default=END.isoformat(), help="last day, YYYY-MM-DD (default %(default)s)")
+    li.add_argument("--out", help=f"request list path (default {REQUESTS.relative_to(ROOT)})")
     f = sub.add_parser("fetch")
     f.add_argument("--approve", required=True)
+    f.add_argument("--requests", default=str(REQUESTS), help="approved request list (default %(default)s)")
     f.add_argument("--source", choices=["mur", "imerg", "copernicus", "power"])
     f.add_argument("--zone", help="REGION/subregion, e.g. PH-TAWI/bongao")
     f.add_argument("--workers", type=int, help="zones in parallel for mur (default 3) and imerg (default 4)")
     e = sub.add_parser("export")
     e.add_argument("--confirm-host", required=True)
     e.add_argument("--dry-run", action="store_true")
+    e.add_argument("--allow-gaps", action="store_true", help="export even if some zones miss months of the window")
+    e.add_argument("--start", default=START.isoformat(), help="window start written to the DB (default %(default)s)")
+    e.add_argument("--end", default=END.isoformat(), help="window end (default %(default)s)")
+    e.add_argument("--requests", nargs="+", default=[str(REQUESTS)], help="approved request list(s) behind the files")
     a = ap.parse_args(argv)
     return {"list": cmd_list, "fetch": cmd_fetch, "export": cmd_export}[a.cmd](a)
 
