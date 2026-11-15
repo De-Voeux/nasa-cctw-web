@@ -714,6 +714,8 @@ def cmd_export(args) -> int:
         return 0
     mig = ROOT.parents[1] / "supabase/migrations" / MIGRATION
     with psycopg.connect(dsn) as conn, conn.transaction(), conn.cursor() as cur:
+        # Supabase's role default timeout stops a ~100k-row COPY over the pooler; this transaction only
+        cur.execute("set local statement_timeout = '30min'")
         cur.execute(f"select 1 from public.{export.MIGRATIONS_TABLE} where name = %s", (MIGRATION,))
         if not cur.fetchone():
             cur.execute(mig.read_text())
