@@ -127,6 +127,15 @@ Implementation notes:
 - **Statistics already exist:** [`research/data-access/scripts/mk.py`](../../research/data-access/scripts/mk.py) and [`trend.py`](../../research/data-access/scripts/trend.py). No new method is needed. If the zone series are fetched, run the same scripts on them instead of writing new ones.
 - **No forecast data exists.** The dashboard's three forecast pills have no data behind them. [CHALLENGE_2026.md](../CHALLENGE_2026.md) says a forecast is not required. If one is wanted later, Copernicus ANFC offers a 10-day ocean forecast. It must stay labelled as a forecast, apart from observations ([METHODOLOGY.md](../METHODOLOGY.md)).
 
+## 4. Dashboard: long-term change section
+
+- [`scripts/build_trends.py`](../../data/seagis-nasa-extractor/scripts/build_trends.py) reads the same monthly zone files that are exported to `seagis_monthly_metrics` and writes [`earth-globe/src/data/longTermTrends.json`](../../earth-globe/src/data/longTermTrends.json). Nothing is downloaded.
+  - Region value per month: zone means weighted by valid pixel count, as in `worker/environment.js`. A month counts only when every zone with data for that variable has a value.
+  - Annual means use complete years only (12 months). SST 2023 is empty because MUR monthly lacks 2023-06.
+  - Mann-Kendall + Sen's slope on the annual means (`research/data-access/scripts/mk.py`), with a 95% CI for the slope (Gilbert 1987 rank method), plus the monthly climatology.
+- [`longTermTrend.js`](../../earth-globe/src/dashboard/longTermTrend.js) draws one collapsible card per variable in the region panel: yearly averages, the Sen's slope line, a verdict (Rising, Falling, No clear trend at p < 0.05), slope per decade with CI, the usual high and low months, and the source.
+- Re-run `build_trends.py` after every monthly export so the JSON matches the database.
+
 ## Decisions needed
 
 1. Southern Luzon: Tayabas Bay or Calatagan for the research site.
