@@ -21,6 +21,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import gzip
+import io
 import csv
 import json
 import re
@@ -61,6 +62,7 @@ CMEMS = [
      "static": "cmems_mod_glo_bgc_my_0.25deg_static_202406--ext--mask", "daily_key": "cmems_bgc_nut"},
 ]
 MUR_GRID = estimate.MurGrid()
+COPERNICUS_WORKERS = 6       # dataset x region jobs in parallel (one region took ~8 min alone)
 
 
 # ---------------------------------------------------------------- shared
@@ -109,7 +111,8 @@ def read_membership(path: Path) -> list[dict]:
 
 def write_membership(table: list[dict], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    with gzip.open(path, "wt", newline="") as f:
+    with open(path, "wb") as raw, gzip.GzipFile(fileobj=raw, mode="wb", mtime=0) as gz, \
+            io.TextIOWrapper(gz, newline="") as f:    # mtime=0: same table -> same bytes -> same hash
         w = csv.DictWriter(f, fieldnames=list(table[0]) if table else ["lat_index"])
         w.writeheader()
         w.writerows(table)
@@ -151,10 +154,24 @@ def cmems_section(client: MetadataClient, spec: dict, plan: dict, geoms: dict) -
                       "bbox_w_s_e_n": z["request"]["bbox_w_s_e_n"], "roi_cells": m["roi_cells"],
                       "sea_cells": sea["sea_cells"], "membership": path.name,
                       "membership_sha256": estimate.file_sha256(path)})
+    tsel = ds["_tsel"]
     for reg, box in boxes.items():
         rc = copernicus.roi_chunks(ds, box)
-        regions[reg] = {"bbox_w_s_e_n": box, "chunks": len(rc["keys"]), "cells": rc["cells"]}
+        (i0, i1), (j0, j1) = rc["lat_index"], rc["lon_index"]
+        regions[reg] = {"bbox_w_s_e_n": box, "chunks": len(rc["keys"]), "cells": rc["cells"],
+                        "chunk_keys": sorted(rc["keys"]), "lat_index": [i0, i1], "lon_index": [j0, j1],
+                        "lat": [round(float(x), 6) for x in ds["_lat"][i0:i1 + 1]],
+                        "lon": [round(float(x), 6) for x in ds["_lon"][j0:j1 + 1]]}
+    zmeta = copernicus.zarr_metadata(client, ds["store"])
+    var_meta = {}
+    for v in spec["variables"]:
+        za, at = zmeta[f"{v}/.zarray"], zmeta.get(f"{v}/.zattrs", {})
+        var_meta[v] = {"shape": za["shape"], "chunks": za["chunks"], "dtype": za["dtype"], "compressor": za.get("compressor"),
+                       "fill_value": za.get("fill_value"), "units": at.get("units"),
+                       **{k: at[k] for k in ("scale_factor", "add_offset", "_FillValue", "missing_value") if k in at}}
     return {"key": spec["key"], "product_id": spec["product_id"], "dataset_id": spec["dataset_id"],
+            "store": ds["store"], "depth_index": ds["depth"]["index"], "var_meta": var_meta,
+            "time_index": [min(tsel), max(tsel)], "times": [ds["_tdates"][t].isoformat() for t in tsel],
             "variables": spec["variables"], "depth_m": abs(ds["depth"]["elevation_m"]),
             "grid": ds["grid"], "time_extent": ds["time_extent"],
             "months_available": len(months), "missing_months": sorted({m.strftime("%Y-%m") for m in MONTHS} - set(months)),
@@ -184,7 +201,8 @@ def cmd_list(_args) -> int:
                                            concept_id=IMERGM["concept_id"])
     gdates = sorted({m.group(1) for g in granules
                      if (m := re.search(r"\.(\d{8})-S", g.get("granule_ur") or g.get("file_name") or ""))})
-    im = {"dataset": "gpm_imerg_monthly", "collection": IMERGM, "variables": ["precipitation"],
+    im = {"dataset": "gpm_imerg_monthly", "collection": IMERGM, "variables": ["precipitation"], "harmony_variables": ["Grid/precipitation"],
+          "units_expected": "mm/hr (CMR UMM-Var), stored as mm/day = x24",
           "granules": len(gdates), "missing_months": [m for m in want if m.replace("-", "") + "01" not in gdates],
           "zones": []}
     irows = {(r["region_id"], r["subregion_id"]): r for r in plan["imerg"]["rois"]}
@@ -288,7 +306,7 @@ def fetch_mur(doc: dict, zone_filter, budget) -> None:
             for i, q in enumerate(z["requests"]):
                 p = Path(td) / f"t{i}.nc"
                 _download(q["url"], p, budget, ERDDAP_HOST)
-                ds = xr.open_dataset(p).load()
+                ds = xr.open_dataset(p, engine="scipy").load()
                 ds = ds.rename({"latitude": "lat", "longitude": "lon"})
                 validate.mur_guard(ds, q)
                 if ds["sst"].attrs.get("units") != "degree_C":
@@ -327,6 +345,19 @@ def _granule_month(name: str) -> dt.date | None:
     return dt.date(int(m.group(1)), int(m.group(2)), 1) if m else None
 
 
+def _open_imerg(p: Path):
+    """HOSS keeps the HDF5 group layout: variables under /Grid (or at the root for flattened output)."""
+    import xarray as xr
+    for group in ("Grid", None):
+        try:
+            ds = xr.open_dataset(p, engine="h5netcdf", group=group, decode_times=False).load()
+        except (OSError, KeyError, ValueError):
+            continue
+        if "precipitation" in ds:
+            return ds
+    raise FetchError(f"{p.name}: no precipitation variable")
+
+
 def fetch_imerg(doc: dict, zone_filter, budget) -> None:
     import xarray as xr
     src = doc["imerg"]
@@ -346,7 +377,7 @@ def fetch_imerg(doc: dict, zone_filter, budget) -> None:
         per_month: dict = {}
         with tempfile.TemporaryDirectory() as td:
             for i, q in enumerate(z["requests"]):
-                job = hc.wait(hc.submit(IMERGM["concept_id"], ["precipitation"], q["bbox_w_s_e_n"], START, END))
+                job = hc.wait(hc.submit(IMERGM["concept_id"], src["harmony_variables"], q["bbox_w_s_e_n"], START, END))
                 for link in hc.data_links(job):
                     name = Path(urllib.parse.urlsplit(link["href"]).path).name
                     month = _granule_month(name)
@@ -354,7 +385,7 @@ def fetch_imerg(doc: dict, zone_filter, budget) -> None:
                         raise FetchGuardError(f"unexpected granule {name}")
                     p = Path(td) / f"t{i}_{name}"
                     hc.download(link["href"], p)
-                    ds = xr.open_dataset(p, decode_times=False).load()
+                    ds = _open_imerg(p)
                     p.unlink()
                     validate.mur_guard(ds, q, step=grid.step, lat0=grid.lat0, lon0=grid.lon0)
                     units = ds["precipitation"].attrs.get("units") or ds["precipitation"].encoding.get("units")
@@ -387,31 +418,15 @@ def fetch_imerg(doc: dict, zone_filter, budget) -> None:
 
 
 def fetch_copernicus(doc: dict, zone_filter, _budget) -> None:
-    import copernicusmarine
-    if not auth.copernicus_configured():
-        raise auth.AuthError("Copernicus Marine credentials not found")
-    for c in doc["copernicus"]:
-        step_lat, step_lon = c["grid"]["lat_step"], c["grid"]["lon_step"]
-        base, _, ver = c["dataset_id"].rpartition("_")
-        for reg, rbox in c["regions"].items():
-            zones = [z for z in c["zones"] if z["region_id"] == reg and (not zone_filter or zkey(z) == zone_filter)]
-            todo = [z for z in zones if not _done(PROCESSED / c["key"] / reg / f"{z['subregion_id']}.parquet")]
-            if not todo:
-                continue
-            from seagis_extractor.fetch import crop_to_cells
-            w, s, e, n = rbox["bbox_w_s_e_n"]
-            ds = copernicusmarine.open_dataset(
-                dataset_id=base, dataset_version=ver, variables=c["variables"],
-                minimum_longitude=w, maximum_longitude=e, minimum_latitude=s, maximum_latitude=n,
-                minimum_depth=c["depth_m"] - 0.01, maximum_depth=c["depth_m"] + 0.01,
-                start_datetime=f"{START}T00:00:00", end_datetime=f"{END}T23:59:59",
-                coordinates_selection_method="outside", service="arco-geo-series")
-            validate.copernicus_guard(ds, rbox["bbox_w_s_e_n"], step_lat, step_lon)
-            ds = crop_to_cells(ds, rbox["bbox_w_s_e_n"], step_lat, step_lon).load()
-            if "depth" in ds.dims:
-                if ds.sizes["depth"] != 1:
-                    raise FetchError(f"{c['key']} {reg}: {ds.sizes['depth']} depth levels returned")
-                ds = ds.isel(depth=0)
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    from seagis_extractor.fetch import crop_to_cells
+
+    def one_region(c, reg, rbox, todo):
+            t0 = time.monotonic()
+            step_lat, step_lon = c["grid"]["lat_step"], c["grid"]["lon_step"]
+            ds, n_missing = read_region(c, rbox)
+            print(f"{c['key']} {reg}: {len(rbox['chunk_keys'])} chunks read ({n_missing} absent = all fill) "
+                  f"in {time.monotonic() - t0:.0f} s", flush=True)
             months = sorted(set(np.asarray(ds["time"].values).astype("datetime64[M]").astype(str)))
             if not set(months) <= {m.strftime("%Y-%m") for m in MONTHS}:
                 raise FetchGuardError(f"{c['key']} {reg}: months outside the window returned")
@@ -435,7 +450,70 @@ def fetch_copernicus(doc: dict, zone_filter, _budget) -> None:
                         for v in c["variables"]:
                             rows.append(month_row(month, zone, c["key"], v, "", EMPTY, len(mem), c["key"],
                                                   c["dataset_id"], "missing_at_source"))
-                print(f"{c['key']} {zkey(z)}: {write_rows(rows, PROCESSED / c['key'] / reg / (z['subregion_id'] + '.parquet'))} rows")
+                print(f"{c['key']} {zkey(z)}: {write_rows(rows, PROCESSED / c['key'] / reg / (z['subregion_id'] + '.parquet'))} rows",
+                      flush=True)
+            return f"{c['key']} {reg} done in {time.monotonic() - t0:.0f} s"
+
+    jobs = []
+    for c in doc["copernicus"]:
+        for reg, rbox in c["regions"].items():
+            zones = [z for z in c["zones"] if z["region_id"] == reg and (not zone_filter or zkey(z) == zone_filter)]
+            todo = [z for z in zones if not _done(PROCESSED / c["key"] / reg / f"{z['subregion_id']}.parquet")]
+            if todo:
+                jobs.append((c, reg, rbox, todo))
+    print(f"copernicus: {len(jobs)} dataset x region jobs, {COPERNICUS_WORKERS} at a time", flush=True)
+    with ThreadPoolExecutor(COPERNICUS_WORKERS) as pool:
+        for f in as_completed([pool.submit(one_region, *j) for j in jobs]):
+            print(f.result(), flush=True)
+
+
+_cm_client = MetadataClient(timeout=120.0, retries=6)
+
+
+def read_region(c: dict, rbox: dict):
+    """Copernicus ARCO geoChunked Zarr, read directly: only the chunk keys listed in requests.json.
+    Absent keys (HTTP 403/404 on the public bucket) are chunks Zarr never wrote because they are all fill."""
+    import numcodecs
+    import xarray as xr
+    host = urllib.parse.urlsplit(c["store"]).hostname
+    (i0, i1), (j0, j1) = rbox["lat_index"], rbox["lon_index"]
+    t0, t1 = c["time_index"]
+    z = c["depth_index"]
+    nt, ny, nx = t1 - t0 + 1, i1 - i0 + 1, j1 - j0 + 1
+    out, missing = {}, 0
+    for v, vm in c["var_meta"].items():
+        ct, cz, cy, cx = vm["chunks"]
+        codec = numcodecs.get_codec(vm["compressor"]) if vm["compressor"] else None
+        raw_arr = np.full((nt, ny, nx), np.nan)
+        for key in (k for k in rbox["chunk_keys"] if k.startswith(v + "/")):
+            if urllib.parse.urlsplit(f"{c['store']}/{key}").hostname != host:
+                raise FetchGuardError(key)
+            ti, zi, yi, xi = (int(x) for x in key.split("/")[1].split("."))
+            if zi != z // cz:
+                raise FetchGuardError(f"{key}: not the surface depth chunk")
+            r = _cm_client.request("GET", f"{c['store']}/{key}")
+            if r.status in (403, 404):
+                missing += 1
+                continue
+            if r.status != 200:
+                raise FetchError(f"{key}: HTTP {r.status}")
+            body = codec.decode(r.body) if codec else r.body
+            a = np.frombuffer(body, dtype=np.dtype(vm["dtype"])).reshape(vm["chunks"])[:, z % cz].astype(float)
+            fills = [x for x in (vm.get("fill_value"), vm.get("_FillValue"), vm.get("missing_value")) if x is not None]
+            for fv in fills:
+                a[np.isclose(a, float(fv), rtol=0, atol=abs(float(fv)) * 1e-6 + 1e-12)] = np.nan
+            a = a * float(vm.get("scale_factor", 1.0)) + float(vm.get("add_offset", 0.0))
+            # global index ranges of this chunk, intersected with the wanted window
+            gt, gy, gx = ti * ct, yi * cy, xi * cx
+            ts, te = max(gt, t0), min(gt + ct, t1 + 1)
+            ys, ye = max(gy, i0), min(gy + cy, i1 + 1)
+            xs, xe = max(gx, j0), min(gx + cx, j1 + 1)
+            if ts < te and ys < ye and xs < xe:
+                raw_arr[ts - t0:te - t0, ys - i0:ye - i0, xs - j0:xe - j0] = a[ts - gt:te - gt, ys - gy:ye - gy, xs - gx:xe - gx]
+        out[v] = (("time", "latitude", "longitude"), raw_arr, {"units": vm["units"]})
+    times = np.array([np.datetime64(t[:10]) for t in c["times"]])
+    ds = xr.Dataset(out, coords={"time": times, "latitude": np.array(rbox["lat"]), "longitude": np.array(rbox["lon"])})
+    return ds, missing
 
 
 def vector_speed(sub, mem, zone, c) -> list[dict]:

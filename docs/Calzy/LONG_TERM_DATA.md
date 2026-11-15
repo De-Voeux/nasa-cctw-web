@@ -1,6 +1,6 @@
 # Long-term data window (proposal, 2026-11-15)
 
-**Status:** fetch plan written and three decisions made (2a). Nothing has been built or downloaded. A fetch still needs the code, a new plan and an approved hash.
+**Status:** built as [`scripts/monthly.py`](../../data/seagis-nasa-extractor/scripts/monthly.py), with table `seagis_monthly_metrics` ([migration](../../supabase/migrations/20261115020000_seagis_monthly_metrics.sql)). Smoke test on PH-TAWI/bongao passed for POWER, MUR and Copernicus; the IMERG and direct-Zarr Copernicus fixes are not tested yet. The full fetch has not run.
 
 ## 1. How the extractor and `research/data-access/` line up
 
@@ -81,6 +81,25 @@ Rough total: 3–4 h code and tests, 1–2 h fetch, 1 h export and trends.
 - **MUR 2023-06 and 2025-12:** keep the rows with an empty value and a `missing_at_source` flag. Do not compute them from daily MUR. (2025-12 is outside the window anyway.)
 - **Currents:** monthly P1M `uo`, `vo`, so the long-term table holds only the mean flow vector. Store `uo`, `vo`, `current_direction` (of the mean vector) and `current_vector_speed` (|mean vector|). The monthly table has **no** `current_speed` or `current_steadiness`, because a monthly mean vector underestimates mean speed. The name `current_vector_speed` keeps it from being read as the daily `current_speed`. Transfer stays small (~10 min).
 - **Storage:** new table `seagis_monthly_metrics` with its own allowlisted migration. Daily and monthly rows never share a table.
+
+## 2b. How to run
+
+```bash
+cd data/seagis-nasa-extractor
+.venv/bin/python scripts/monthly.py list                     # metadata only; writes outputs/monthly/requests.json and its hash
+.venv/bin/python scripts/monthly.py fetch --approve <sha256>  # only listed requests; finished zones are skipped
+.venv/bin/python scripts/monthly.py export --confirm-host <db host> --dry-run
+```
+
+Implementation notes:
+
+- Copernicus is read straight from the public ARCO geoChunked Zarr, using only the chunk keys in `requests.json`. Through the toolbox, one region took ~10 min.
+- IMERG monthly is `Grid/precipitation` in mm/hr, stored × 24 as mm/day (`qc_flags` says so).
+- ERDDAP returns NetCDF-3, which needs `scipy`.
+- Smoke-test values for PH-TAWI/bongao:
+  - SST 27.4–30.5 °C (annual mean 28.6 → 29.3 °C, 2003 → 2024)
+  - salinity 31.8–34.3
+  - no3 0.002–0.05, pH 8.01–8.08
 
 ## 3. Statistics and forecast
 
