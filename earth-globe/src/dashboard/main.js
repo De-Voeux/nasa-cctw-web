@@ -20,6 +20,7 @@ import { mountPanelHandle } from "./panelHandle.js"
 import { mountLayersMenu } from "./layersMenu.js"
 
 const HOME = { lat: 5, lon: 117, altitude: 1.35 }
+const ALL_SPECIES = "All species"
 const DEFAULT_SPECIES = "Kappaphycus alvarezii"
 const DEFAULT_COUNTRY = "Indonesia"
 const $ = (id) => document.getElementById(id)
@@ -47,9 +48,9 @@ const byId = new Map(LOCATIONS.map((l) => [l.id, l]))
 const assessments = new Map(LOCATIONS.map((l) => [l.id, assess(l)]))
 
 // Every taxon named in the leads, the MVP candidate first.
-const SPECIES = [...new Set(LOCATIONS.flatMap((l) => l.taxa))].sort((a, b) =>
+const SPECIES = [ALL_SPECIES, ...[...new Set(LOCATIONS.flatMap((l) => l.taxa))].sort((a, b) =>
   a === DEFAULT_SPECIES ? -1 : b === DEFAULT_SPECIES ? 1 : a.localeCompare(b),
-)
+)]
 
 const state = {
   species: DEFAULT_SPECIES,
@@ -60,7 +61,7 @@ const state = {
   text: "",
 }
 
-const hasSpecies = (l) => l.taxa.includes(state.species)
+const hasSpecies = (l) => state.species === ALL_SPECIES || l.taxa.includes(state.species)
 // Places the Regions menu can offer: the chosen species in the chosen country.
 const inScope = (l) => hasSpecies(l) && (!state.country || l.country === state.country)
 const matchesText = (l) => !state.text || `${l.name} ${l.country} ${l.note || ""} ${l.taxa.join(" ")}`.toLowerCase().includes(state.text)
