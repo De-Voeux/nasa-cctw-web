@@ -46,6 +46,7 @@ globe.ready.then(() => globe.flyTo({ ...HOME, duration: 2400 }))
 const byId = new Map(LOCATIONS.map((l) => [l.id, l]))
 // The assessment of every place. None exists yet; see data/stress.js for the demo levels.
 const assessments = new Map(LOCATIONS.map((l) => [l.id, assess(l)]))
+let environmentPayload = null
 
 // Every taxon named in the leads, the MVP candidate first.
 const SPECIES = [ALL_SPECIES, ...[...new Set(LOCATIONS.flatMap((l) => l.taxa))].sort((a, b) =>
@@ -196,6 +197,9 @@ function offerRegions() {
 
 speciesSelect.addEventListener("change", () => {
   state.species = speciesSelect.value
+  if (environmentPayload) {
+    for (const loc of LOCATIONS) assessments.set(loc.id, assessmentFor(loc, environmentPayload, state.species))
+  }
   offerRegions()
   refresh()
 })
@@ -230,7 +234,8 @@ panel.showList(rows())
 if (!DEMO) {
   loadEnvironment()
     .then((payload) => {
-      for (const loc of LOCATIONS) assessments.set(loc.id, assessmentFor(loc, payload))
+      environmentPayload = payload
+      for (const loc of LOCATIONS) assessments.set(loc.id, assessmentFor(loc, payload, state.species))
       refresh()
     })
     .catch((error) => console.warn("SEAmon environmental data unavailable", error))

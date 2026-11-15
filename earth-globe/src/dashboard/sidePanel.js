@@ -6,7 +6,9 @@ import { trendChart } from "./trendChart.js"
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c])
 const WORDS = ["None", "One", "Two", "Three", "Four"]
 const countLabel = (count) => WORDS[count] || String(count)
-export const statusLabel = (assessment) => assessment?.observed ? "Observed — Risk Not Assessed" : (LEVELS[assessment?.level]?.label || "Insufficient Data")
+export const statusLabel = (assessment) => assessment?.scored
+  ? (LEVELS[assessment.level]?.label || "Insufficient Data")
+  : assessment?.observed ? "Observed — Risk Not Assessed" : (LEVELS[assessment?.level]?.label || "Insufficient Data")
 const chevronRight = `<svg class="rc-go" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>`
 
 /**
@@ -138,7 +140,7 @@ export class SidePanel {
     // written for. Keep detail rendering total for any item count.
     const total = data ? countLabel(data.items.length).toLowerCase() : ""
     const summary = a.observed
-      ? `${esc(a.condition)}. These are environmental observations; no biological stress level has been assigned.`
+      ? `${esc(a.condition)}. ${a.scored ? "This is a provisional environmental screening signal, not a disease diagnosis." : "These are environmental observations; no biological stress level has been assigned."}`
       : !data
       ? `${esc(a.condition)}. There isn't enough data to assess this region, which is not the same as low stress.`
       : `${drivers.length ? `${countLabel(drivers.length)} of ${total}` : `None of the ${total}`} evaluated stressors ${drivers.length === 1 ? "is" : "are"} outside the species reference range. This is an environmental warning, not a disease diagnosis.`
@@ -171,7 +173,7 @@ export class SidePanel {
         </section>
         ${data ? `
         <h2 class="section-title">What drives this</h2>
-        ${drivers.length ? drivers.map(card).join("") : `<p class="muted small">No stressor classification is active. The cards below show observed values only.</p>`}
+        ${drivers.length ? drivers.map(card).join("") : `<p class="muted small">${a.scored ? "All active indicators are within provisional reference ranges." : "No stressor classification is active. The cards below show observed values only."}</p>`}
         <h2 class="section-title">Also checked</h2>
         ${others.map(card).join("")}` : ""}
         <section class="not-assessed">

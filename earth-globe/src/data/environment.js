@@ -1,5 +1,7 @@
+import { ALL_SPECIES, scoreEnvironment } from "./environmentRules.js"
+
 const NOT_ASSESSED = [
-  { name: "Biological stress level", why: "Species-specific thresholds have not been reviewed and activated." },
+  { name: "Disease-linked biological risk", why: "Environmental screening is not a validated disease or pathogen assessment." },
   { name: "Disease presence", why: "Environmental observations cannot diagnose ice-ice or identify a pathogen." },
   { name: "Forecast", why: "The current extractor response contains observations/analysis, not a validated 10-day forecast." },
 ]
@@ -14,7 +16,7 @@ export async function loadEnvironment(fetchImpl = fetch) {
   return body
 }
 
-export function assessmentFor(loc, payload) {
+export function assessmentFor(loc, payload, species = ALL_SPECIES) {
   const region = loc.dataRegionId ? payload?.regions?.[loc.dataRegionId] : null
   const series = region?.series ? Object.values(region.series) : []
   if (!series.length) {
@@ -28,21 +30,26 @@ export function assessmentFor(loc, payload) {
     driver: false,
     baseline: null,
   }))
+  const score = scoreEnvironment(items, species)
+  for (const item of items) item.driver = score.evaluated?.some((x) => x.key === item.key && x.outside) || false
   const dates = items.reduce((out, item) => {
     for (const date of item.dates) if (!out.some((x) => x.getTime() === date.getTime())) out.push(date)
     return out.sort((a, b) => a - b)
   }, [])
   return {
-    level: "insufficient",
-    condition: `Observed data available through ${region.latest_date}`,
+    level: score.scored ? score.level : "insufficient",
+    condition: score.scored ? score.condition : `Observed data available through ${region.latest_date}`,
     demo: false,
     observed: true,
+    scored: score.scored,
     data: {
       dates,
       todayIndex: Math.max(0, dates.length - 1),
       items,
-      confidence: "Observed",
-      notAssessed: NOT_ASSESSED,
+      confidence: score.scored ? "Provisional rule-based" : "Observed",
+      notAssessed: score.scored
+        ? [...NOT_ASSESSED, { name: "Rule provenance", why: `${score.evaluated.map((x) => x.rule.source).join("; ")}. Rules are provisional.` }]
+        : NOT_ASSESSED,
       latestDate: region.latest_date,
     },
   }
