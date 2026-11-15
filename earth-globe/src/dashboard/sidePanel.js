@@ -4,9 +4,9 @@ import { SOURCE } from "../data/reportedLocations.js"
 import { SPECIES_PHOTOS } from "../data/speciesPhotos.js"
 import { PAPERS, INSIGHTS, IMPACTS, CAVEAT } from "../data/iceIceLinks.js"
 import { ENVIRONMENT_RULES } from "../data/environmentRules.js"
-import { driversFor, NOT_ASSESSED, DUMMY_NOTE } from "../data/sampleDrivers.js"
+import { driversFor, DUMMY_NOTE } from "../data/sampleDrivers.js"
 import { trendChart } from "./trendChart.js"
-import { longTermSection } from "./longTermTrend.js"
+import { longTermSection, insightsHtml } from "./longTermTrend.js"
 import LONG_TERM from "../data/longTermTrends.json"
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c])
@@ -284,6 +284,8 @@ export class SidePanel {
       ? `Not enough data to check this area yet. This doesn’t mean conditions are good.`
       : `${drivers.length ? `${countLabel(drivers.length)} of ${total}` : `None of the ${total}`} water conditions ${drivers.length === 1 ? "is" : "are"} outside the safe range for this seaweed. This is a warning about the water, not a sign the seaweed is sick.`
 
+    // The species whose safe ranges apply here: the picked one, else the one the rating used.
+    const sectionSpecies = ENVIRONMENT_RULES[this.species] ? this.species : a.ruleSpecies || null
     const card = (d) => {
       const index = Math.min(d.values.length - 1, d.dates ? this._selectedIndex({ dates: d.dates, todayIndex: d.todayIndex ?? d.values.length - 1 }) : sel)
       const chartToday = Math.min(d.values.length - 1, d.todayIndex ?? (d.dates ? d.values.length - 1 : data.todayIndex))
@@ -344,11 +346,12 @@ export class SidePanel {
         <h2 class="section-title">${a.observed && !a.scored ? "Measurements" : "Normal right now"}</h2>
         ${others.map(card).join("")}` : ""}
         ${longTermSection(LONG_TERM, loc.dataRegionId)}
-        <section class="not-assessed">
-          <h2 class="section-title">Not checked yet</h2>
-          <ul>${(data?.notAssessed || (data ? NOT_ASSESSED : [{ name: "Ocean conditions", why: "Satellite data isn’t connected yet." }]))
-            .map((x) => `<li><b>${esc(x.name)}</b> · ${esc(x.why)}</li>`).join("")}</ul>
-        </section>
+        ${insightsHtml(LONG_TERM, loc.dataRegionId, {
+          place: loc.name,
+          species: sectionSpecies,
+          rules: ENVIRONMENT_RULES[sectionSpecies] || null,
+          ruleSources: sectionSpecies ? [...new Set(Object.values(ENVIRONMENT_RULES[sectionSpecies]).map((r) => r?.source).filter(Boolean))] : [],
+        })}
         ${a.demo ? `<p class="fineprint">${esc(DUMMY_NOTE)} The stress level is a sample too. Safe ranges exist only for some seaweeds and are provisional.</p>` : ""}
         ${impactHtml()}
         <h2 class="section-title">About this place</h2>`
