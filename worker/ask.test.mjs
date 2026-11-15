@@ -308,7 +308,7 @@ test("an empty search tells the model to stop searching and answer, and the log 
 })
 
 // ------------------------------------------------------------------ site coverage and product resolution
-import { compactSites, SYSTEM_PROMPT } from "./ask.js"
+import { compactSites, compactZones, summarizeZones, SYSTEM_PROMPT } from "./ask.js"
 
 const COVERAGE = [
   { variable: "analysed_sst", product: "MUR-30d", unit: "degree_C", from: "2003-01-01", to: "2024-12-08", n: 268 },
@@ -777,4 +777,57 @@ test("when the model answers in plain text after retrieving sources, only final_
   // with nothing retrieved the model keeps every tool (it may still need to search)
   const c = await run("question here", [[], FINAL_ABSTAIN], {})
   assert.ok(c.calls.model[1].tools.length > 1)
+})
+
+// ---- regional zone tools (seagis_* tables) --------------------------------------------------------------
+const COV = [
+  { region_id: "R-A", region_name: "Region A", country: "XX", subregion_id: "z1", zone_name: "Zone 1", dataset: "mur_sst", variable: "analysed_sst", units: "°C", first_day: "2026-08-15", last_day: "2026-11-13", n_days: 91 },
+  { region_id: "R-A", region_name: "Region A", country: "XX", subregion_id: "z2", zone_name: "Zone 2", dataset: "mur_sst", variable: "analysed_sst", units: "°C", first_day: "2026-08-15", last_day: "2026-11-12", n_days: 90 },
+  { region_id: "R-A", region_name: "Region A", country: "XX", subregion_id: "z1", zone_name: "Zone 1", dataset: "nasa_power", variable: "T2M", units: "°C", first_day: "2026-08-15", last_day: "2026-11-14", n_days: 92 },
+]
+const ZROWS = [
+  { subregion_id: "z1", zone_name: "Zone 1", day: "2026-11-01", mean: 29, min: 28, max: 30, coverage_fraction: 0.9, units: "°C", dataset: "mur_sst", product_version: "v4.1" },
+  { subregion_id: "z1", zone_name: "Zone 1", day: "2026-11-02", mean: 31, min: 30, max: 32, coverage_fraction: 0.5, units: "°C", dataset: "mur_sst", product_version: "v4.1" },
+  { subregion_id: "z2", zone_name: "Zone 2", day: "2026-11-01", mean: 27, min: 26, max: 28, coverage_fraction: 0.2, units: "°C", dataset: "mur_sst", product_version: "v4.1" },
+]
+
+test("compactZones folds coverage rows into regions with zones and one line per variable", () => {
+  const out = compactZones(COV)
+  assert.deepEqual(out.regions, [{ id: "R-A", name: "Region A", country: "XX", zones: [{ id: "z1", name: "Zone 1" }, { id: "z2", name: "Zone 2" }] }])
+  const sst = out.variables.find((v) => v.variable === "analysed_sst")
+  assert.deepEqual([sst.n_zones, sst.from, sst.to, sst.unit], [2, "2026-08-15", "2026-11-13", "°C"])
+  assert.deepEqual(out.variables.find((v) => v.variable === "T2M").only_in, ["R-A/z1"]) // a variable few zones have names them
+})
+
+test("summarizeZones gives one summary per zone, with the mean coverage", () => {
+  const out = summarizeZones(ZROWS, "2026-11-01", "2026-11-02")
+  assert.equal(out.length, 2)
+  const z1 = out.find((z) => z.subregion_id === "z1")
+  assert.deepEqual([z1.summary.min, z1.summary.min_day, z1.summary.max, z1.summary.max_day, z1.mean_coverage], [29, "2026-11-01", 31, "2026-11-02", 0.7])
+  assert.equal(out.find((z) => z.subregion_id === "z2").mean_coverage, 0.2)
+})
+
+test("get_zone_metrics: the answer is accepted with its dates and the region as site_id", async () => {
+  const get = use("get_zone_metrics", { region_id: "R-A", variable: "analysed_sst", from: "2026-11-01", to: "2026-11-02" })
+  const final = use("final_answer", { answer_md: "Zone 1 peaked at 31 on 2026-11-02.", claims: [], data_used: [{ site_id: "R-A", variable: "analysed_sst" }], confidence: "moderate", abstained: false })
+  const { body, calls } = await run("how warm is region A?", [[get], [final]], { seagis_zone_series: () => ZROWS })
+  assert.equal(body.abstained, false)
+  assert.deepEqual(calls.rpc[0][1], { p_region_id: "R-A", p_variable: "analysed_sst", p_from: "2026-11-01", p_to: "2026-11-02", p_subregion_id: null })
+  assert.equal(body.data_used[0].site_id, "R-A")
+})
+
+test("get_zone_metrics: a date the tool did not return is rejected, and empty results say so", async () => {
+  const get = use("get_zone_metrics", { region_id: "R-A", variable: "analysed_sst", from: "2026-11-01", to: "2026-11-02" })
+  const bad = use("final_answer", { answer_md: "It peaked on 2026-11-09.", claims: [], data_used: [{ site_id: "R-A", variable: "analysed_sst" }], confidence: "low", abstained: false })
+  const ok = use("final_answer", { answer_md: "It peaked on 2026-11-02.", claims: [], data_used: [{ site_id: "R-A", variable: "analysed_sst" }], confidence: "low", abstained: false })
+  const r = await run("q here", [[get], [bad], [ok]], { seagis_zone_series: () => ZROWS })
+  assert.match(JSON.stringify(r.calls.model[2].messages.at(-1)), /date 2026-11-09 does not appear/)
+  const empty = await run("q here", [[get], FINAL_ABSTAIN], { seagis_zone_series: () => [] })
+  assert.match(JSON.stringify(empty.calls.model[1].messages), /No data for this region/)
+})
+
+test("list_zones reaches the model folded, and the prompt names the new tools", async () => {
+  const { calls } = await run("what data do you have?", [[use("list_zones", {})], FINAL_ABSTAIN], { seagis_coverage: () => COV })
+  assert.match(JSON.stringify(calls.model[1].messages), /n_zones/)
+  assert.match(SYSTEM_PROMPT, /list_zones/)
 })
