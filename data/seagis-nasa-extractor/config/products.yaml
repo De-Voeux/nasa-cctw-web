@@ -31,3 +31,30 @@ copernicus:
     variables: [so]
     depth: surface
     static_mask: {dataset_id: cmems_mod_glo_phy_anfc_0.083deg_static_202211--ext--bathy}
+  # Ocean currents, added 2026-11-15. current_speed / current_direction / current_steadiness are
+  # derived per zone and day from uo + vo (see process.current_stats). Same grid and mask as salinity.
+  - key: cmems_phy_cur
+    product_id: GLOBAL_ANALYSISFORECAST_PHY_001_024
+    dataset_id: cmems_mod_glo_phy-cur_anfc_0.083deg_P1D-m_202406
+    variables: [uo, vo]
+    depth: surface
+    static_mask: {dataset_id: cmems_mod_glo_phy_anfc_0.083deg_static_202211--ext--bathy}
+
+# Rainfall, added 2026-11-15. GPM IMERG Late Run daily V07 (GES DISC), via Harmony like MUR.
+# Late, not Final: Final (GPM_3IMERGDF) lags ~3.5 months and does not reach this period.
+imerg:
+  short_name: GPM_3IMERGDL
+  version: '07'
+  concept_id: C2723754859-GES_DISC
+  granule_pattern: "3B-DAY-L.MS.MRG.3IMERG.*.V07*"
+  # randomError dropped 2026-11-15: the daily values are ~50-75x precipitation (2.76 on dry days), so they are
+  # not an mm/day error on the same scale (likely variance-like); not used, rather than mis-read.
+  variables: [precipitation]
+  harmony_service: sds/HOSS-geographic
+
+# Weather at each zone, added 2026-11-15. NASA LaRC POWER daily point API (no account).
+# One point per zone: the zone polygon's representative point (always inside the zone, at sea).
+power:
+  endpoint: https://power.larc.nasa.gov/api/temporal/daily/point
+  community: AG
+  parameters: [T2M, RH2M, WS10M, WD10M, ALLSKY_SFC_SW_DWN, ALLSKY_SFC_PAR_TOT, CLOUD_AMT]

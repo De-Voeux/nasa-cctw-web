@@ -7,6 +7,8 @@ Work units (each resumable, recorded in outputs/fetch/fetch_manifest.jsonl):
   every file is guarded (cells must be the approved box's cells) and checked, the day's tiles
   are aggregated over the ROI's sea cells (MUR mask), the month is written to Parquet, and the
   raw NetCDF files are deleted (raw_retention: discard_after_validation).
+- IMERG rainfall: one unit per ROI x month, like MUR (Harmony, 0.1 deg grid, guarded, aggregated).
+- POWER weather: one unit per ROI, whole period, one plan-listed point request (no account).
 - Copernicus: one unit per dataset x region, whole period, surface level, region box only.
   Each ROI is cropped to its own plan cells, aggregated over static-mask sea cells, written to
   Parquet. Pairs listed in unavailable_by_decision write no rows.
@@ -76,6 +78,20 @@ def build_units(plan: dict, cfg: dict, regions: list[str] | None = None, sources
             for d in (plan.get("copernicus") or {}).get("datasets", []):
                 if reg in d["regions"]:
                     units.append({"kind": "copernicus", "key": f"{d['key']}/{reg}", "dataset": d["key"], "region": reg})
+        im = plan.get("imerg")
+        if im and sources in ("all", "imerg"):
+            gone = set(im["missing_dates"])
+            for row in (r for r in im["rois"] if r["region_id"] == reg):
+                for month, first, last in _months(start, end):
+                    exp = [first + dt.timedelta(n) for n in range((last - first).days + 1)]
+                    exp = [d for d in exp if d.isoformat() not in gone]
+                    if exp:
+                        units.append({"kind": "imerg", "key": f"imerg/{reg}/{row['subregion_id']}/{month}",
+                                      "row": row, "month": month, "first": first, "last": last, "expected": exp})
+        pw = plan.get("power")
+        if pw and sources in ("all", "power"):
+            for row in (r for r in pw["rois"] if r["region_id"] == reg):
+                units.append({"kind": "power", "key": f"power/{reg}/{row['subregion_id']}", "row": row})
     return units
 
 
@@ -104,7 +120,7 @@ def _open_nc(path: Path):
 class Backfill:
     def __init__(self, root: Path, cfg: dict, plan: dict, *, out_dir: Path, raw_dir: Path, processed_dir: Path,
                  membership_dir: Path, harmony: HarmonyClient | None = None, cm_opener=None, log=print,
-                 sleep=time.sleep, concurrency: int | None = None):
+                 sleep=time.sleep, concurrency: int | None = None, power_client=None):
         self.root, self.cfg, self.plan = root, cfg, plan
         self.out_dir, self.raw_dir, self.processed_dir, self.membership_dir = out_dir, raw_dir, processed_dir, membership_dir
         self.log, self.sleep = log, sleep
@@ -119,10 +135,16 @@ class Backfill:
         self.variables = list(plan["dataset"]["variables"])
         already = sum(int(r.get("bytes", 0)) for r in self.manifest.items.values() if r.get("status") == "ok")
         budget = ByteBudget(int(float(ex.get("max_download_gb", 20)) * 1e9), used=already)
+        self.imerg_plan = plan.get("imerg")
+        self.power_plan = plan.get("power")
         if harmony is None:
             allowed = {tuple(q["bbox_w_s_e_n"]) for r in plan["rois"] for q in r["mur_requests"]}
+            allowed |= {tuple(q["bbox_w_s_e_n"]) for r in (self.imerg_plan or {}).get("rois", []) for q in r["requests"]}
             harmony = HarmonyClient(auth.earthdata_token(), allowed, budget)
         self.harmony = harmony
+        from .power import PowerClient
+        self.power = power_client or PowerClient({r["url"] for r in (self.power_plan or {}).get("rois", [])},
+                                                 sleep=sleep)
         self.cm_opener = cm_opener
         self.cm_specs = {s["key"]: s for s in cfg["_products"].get("copernicus", [])}
         self.cm_plan = {d["key"]: d for d in (plan.get("copernicus") or {}).get("datasets", [])}
@@ -177,6 +199,75 @@ class Backfill:
         days = len({r["date"] for r in rows})
         return out | {"bytes": downloaded, "days": days, "expected_days": len(u["expected"]), "issues": issues}
 
+    # ------------------------------------------------ IMERG
+    def imerg_unit(self, u: dict) -> dict:
+        from . import imerg
+        im, row = self.imerg_plan, u["row"]
+        key = (row["region_id"], row["subregion_id"])
+        grid = imerg.ImergGrid()
+        cid, variables = im["collection"]["concept_id"], list(im["variables"])
+        per_day, downloaded, issues, raw = defaultdict(list), 0, [], []
+        for q in row["requests"]:
+            tile = "t{}_{}".format(*q.get("tile", [0, 0]))
+            job = self.harmony.wait(self.harmony.submit(cid, variables, q["bbox_w_s_e_n"], u["first"], u["last"]))
+            got = set()
+            for link in self.harmony.data_links(job):
+                name = Path(urllib.parse.urlsplit(link["href"]).path).name
+                d = granule_date(name)
+                if d not in u["expected"]:
+                    issues.append(f"unexpected granule {name}")
+                    continue
+                dest = self.raw_dir / "imerg" / key[0] / key[1] / tile / name
+                info = self.harmony.download(link["href"], dest)
+                downloaded += info["bytes"]
+                raw.append(dest)
+                ds = _open_nc(dest)
+                try:
+                    validate.mur_guard(ds, q, step=grid.step, lat0=grid.lat0, lon0=grid.lon0)
+                except FetchGuardError:
+                    dest.unlink(missing_ok=True)
+                    raise
+                bad = [c for c in imerg.checks(ds, q, grid, d, variables) if c["status"] == "FAIL"]
+                if bad:
+                    raise FetchError(f"{name}: " + "; ".join(f"{c['check']}: {c['detail']}" for c in bad))
+                per_day[d].append((ds, name))
+                got.add(d)
+            if got != set(u["expected"]):
+                issues.append(f"{tile}: {len(got)}/{len(u['expected'])} days returned")
+        roi = next(r for r in self.plan["rois"] if (r["region_id"], r["subregion_id"]) == key)
+        mem = process.read_membership(imerg.membership_path(self.membership_dir, roi))
+        version = f"{im['collection']['short_name']} V{im['collection']['version']}"
+        rows, n_tiles = [], len(row["requests"])
+        for d in sorted(per_day):
+            if len(per_day[d]) != n_tiles:
+                issues.append(f"{d}: {len(per_day[d])}/{n_tiles} tiles")
+                continue
+            rows += imerg.aggregate([x for x, _ in per_day[d]], mem, grid, roi, d,
+                                    ";".join(n for _, n in per_day[d]), variables, version)
+        out = _write_parquet(rows, self.processed_dir / imerg.KEY / key[0] / key[1] / f"{u['month']}.parquet")
+        if self.discard_raw:
+            for p in raw:
+                p.unlink(missing_ok=True)
+        days = len({r["date"] for r in rows})
+        return out | {"bytes": downloaded, "days": days, "expected_days": len(u["expected"]), "issues": issues}
+
+    # ------------------------------------------------ POWER
+    def power_unit(self, u: dict) -> dict:
+        from . import power
+        pw, row = self.power_plan, u["row"]
+        key = (row["region_id"], row["subregion_id"])
+        start, end = (dt.date.fromisoformat(pw["period"][k]) for k in ("start", "end"))
+        dates = [start + dt.timedelta(n) for n in range((end - start).days + 1)]
+        before = self.power.bytes
+        resp = self.power.get(row["url"])
+        power.guard(resp, row, pw["parameters"], dates)
+        roi = next(r for r in self.plan["rois"] if (r["region_id"], r["subregion_id"]) == key)
+        rows = power.rows_from(resp, roi, row, pw["parameters"])
+        fill = sum(1 for r in rows if r["mean"] is None)
+        out = _write_parquet(rows, self.processed_dir / power.DATASET / key[0] / f"{key[1]}.parquet")
+        issues = [f"{fill}/{len(rows)} values are fill (not yet published)"] if fill else []
+        return out | {"bytes": self.power.bytes - before, "issues": issues}
+
     # ------------------------------------------------ Copernicus
     def copernicus_unit(self, u: dict) -> dict:
         spec, d_plan = self.cm_specs[u["dataset"]], self.cm_plan[u["dataset"]]
@@ -218,7 +309,8 @@ class Backfill:
         for attempt in range(1, self.retries + 1):
             try:
                 t0 = time.monotonic()
-                res = self.mur_unit(u) if u["kind"] == "mur" else self.copernicus_unit(u)
+                res = {"mur": self.mur_unit, "imerg": self.imerg_unit, "power": self.power_unit,
+                       "copernicus": self.copernicus_unit}[u["kind"]](u)
                 res["seconds"] = round(time.monotonic() - t0, 1)
                 return self.manifest.record(u["key"], status="ok", attempt=attempt, **res)
             except (FetchGuardError, auth.AuthError):
@@ -252,8 +344,8 @@ class Backfill:
                      f"MB={int(rec.get('bytes', 0)) / 1e6:.2f} total={self.harmony.budget.used / 1e6:.1f}MB "
                      f"elapsed={el / 60:.1f}m eta={eta / 60:.1f}m" + (f" ERROR {rec.get('error')}" if rec['status'] != 'ok' else ""))
 
-        mur = [u for u in todo if u["kind"] == "mur"]
-        cm = [u for u in todo if u["kind"] == "copernicus"]
+        mur = [u for u in todo if u["kind"] in ("mur", "imerg")]        # Harmony jobs, run in parallel
+        cm = [u for u in todo if u["kind"] in ("copernicus", "power")]  # one at a time (provider limits)
         n = len(todo)
         with ThreadPoolExecutor(max_workers=self.concurrency) as pool:
             futs = {pool.submit(self._run_one, u): u for u in mur}
@@ -274,6 +366,7 @@ class Backfill:
                    "ok": sum(r["status"] == "ok" for r in results), "failed": [r["key"] for r in results if r["status"] != "ok"],
                    "with_issues": {r["key"]: r["issues"] for r in results if r.get("issues")},
                    "mur_bytes_this_run": sum(int(r.get("bytes", 0)) for r in results if r["key"].startswith("mur/")),
+                   "imerg_bytes_this_run": sum(int(r.get("bytes", 0)) for r in results if r["key"].startswith("imerg/")),
                    "rows_this_run": sum(int(r.get("rows", 0)) for r in results),
                    "minutes": round((time.monotonic() - t0) / 60, 1), "plan_sha256": self.plan["plan_sha256"]}
         self.out_dir.mkdir(parents=True, exist_ok=True)

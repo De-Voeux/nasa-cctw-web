@@ -100,6 +100,21 @@ def cmd_plan(args) -> int:
                                            static_dir=root / "data/raw/static/copernicus",
                                            no_sea_accepted=cm_cfg.get("no_sea_accepted"))
     (out_dir / "membership").mkdir(parents=True, exist_ok=True)
+    extra = {}
+    period_all = {"start": str(cfg["period"]["start"]), "end": str(cfg["period"]["end"])}
+    max_cells_all = int(cfg["execution"].get("max_request_cells", 10_000))
+    if (cfg.get("products", {}).get("imerg") or {}).get("enabled") and cfg["_products"].get("imerg"):
+        from . import imerg
+        from .http import MetadataClient
+
+        extra["imerg"] = lambda rois, geoms: imerg.plan_section(
+            MetadataClient(), cfg["_products"]["imerg"], period_all, rois, geoms, out_dir / "membership", max_cells_all)
+    if (cfg.get("products", {}).get("power") or {}).get("enabled") and cfg["_products"].get("power"):
+        from . import power
+        from .http import MetadataClient
+
+        extra["power"] = lambda rois, geoms: power.plan_section(MetadataClient(), cfg["_products"]["power"],
+                                                                period_all, rois, geoms)
     pilot_report = None
     rep_path = out_dir / "pilot" / "pilot_report.json"
     if rep_path.exists() and not args.no_calibration:
@@ -108,7 +123,7 @@ def cmd_plan(args) -> int:
         print(f"Calibrating MUR transfer from {rep_path.relative_to(root)} (pilot {pilot_report.get('status')})")
     plan = estimate.build_plan(json.loads(cat_path.read_text()), json.loads(roi_path.read_text()), cfg, inputs,
                                out_dir / "membership", pilot=roi_cfg.get("pilot_subregions"), copernicus_fn=cm_fn,
-                               pilot_report=pilot_report)
+                               pilot_report=pilot_report, extra_fns=extra)
     plan_path = out_dir / "plan.json"
     tmp = plan_path.with_suffix(".json.part")
     tmp.write_text(json.dumps(plan, indent=1, default=str))
@@ -216,6 +231,19 @@ def cmd_export(args) -> int:
     return 0
 
 
+def _running_fetch_args(lock: Path) -> str:
+    """`fetch --batch N` / `--region X` of the process holding the lock (no hash, no secrets)."""
+    import re
+    import subprocess
+    try:
+        pid = int(lock.read_text().strip())
+        cmd = subprocess.run(["ps", "-o", "args=", "-p", str(pid)], capture_output=True, text=True, timeout=5).stdout
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return ""
+    parts = re.findall(r"--(?:batch|region|source|concurrency)[ =]\S+", cmd)
+    return "fetch " + " ".join(parts) if parts else ""
+
+
 def cmd_status(args) -> int:
     import json
 
@@ -232,11 +260,17 @@ def cmd_status(args) -> int:
             return 2
         regions = batches[args.batch]
     units = backfill.build_units(plan, cfg, regions=regions)
-    log = root / f"outputs/fetch/batch{args.batch}.log" if args.batch is not None else None
+    log = root / (f"outputs/fetch/batch{args.batch}.log" if args.batch is not None else "outputs/fetch/all.log")
     s = backfill.status(units, root / "outputs/fetch/fetch_manifest.jsonl", root / "outputs/fetch/fetch.lock",
                         root / "data/raw/fetch", log)
     scope = f"batch {args.batch}" if args.batch is not None else "all batches"
-    print(f"{scope}: {'RUNNING' if s['running'] else 'not running'}")
+    running_cmd = _running_fetch_args(root / "outputs/fetch/fetch.lock") if s["running"] else ""
+    if s["running"] and args.batch is not None and f"--batch {args.batch}" not in running_cmd:
+        # the lock belongs to another fetch (other batch or --region): this batch is not being worked on
+        print(f"{scope}: not running (another fetch holds the lock: {running_cmd or 'unknown'})")
+        s = {**s, "running": False}
+    else:
+        print(f"{scope}: {'RUNNING' if s['running'] else 'not running'}" + (f" ({running_cmd})" if running_cmd else ""))
     print(f"  done {s['done']}/{s['units_total']} units, remaining {s['remaining']}")
     if s["running"]:
         print(f"  elapsed {s['elapsed_min']} min" + (f", finished this run {s['done_this_run']}" if s["done_this_run"] is not None else ""))
@@ -272,12 +306,19 @@ def cmd_fetch(args) -> int:
         regions += batches[args.batch]
     units = backfill.build_units(plan, cfg, regions=regions or None, sources=args.source)
     if args.dry_run:
+        from . import manifest as _m
+        done = _m.Manifest(root / "outputs/fetch/fetch_manifest.jsonl").items
+        todo = [u for u in units if not backfill.unit_files_ok(done.get(u["key"]))]
         mur = [u for u in units if u["kind"] == "mur"]
         jobs = sum(len(u["roi"]["mur_requests"]) for u in mur)
         files = sum(len(u["roi"]["mur_requests"]) * len(u["expected"]) for u in mur)
-        print(f"FETCH DRY RUN (nothing is requested): {len(units)} units = {len(mur)} MUR ROI-months "
-              f"({jobs} Harmony jobs, {files} daily files) + {len(units) - len(mur)} Copernicus dataset-regions")
-        for u in units[:5] + ([{"key": "..."}] if len(units) > 5 else []):
+        kinds = {k: sum(u["kind"] == k for u in units) for k in ("mur", "copernicus", "imerg", "power")}
+        left = {k: sum(u["kind"] == k for u in todo) for k in kinds}
+        print(f"FETCH DRY RUN (nothing is requested): {len(units)} units = {kinds['mur']} MUR ROI-months "
+              f"({jobs} Harmony jobs, {files} daily files) + {kinds['copernicus']} Copernicus dataset-regions "
+              f"+ {kinds['imerg']} IMERG ROI-months + {kinds['power']} POWER zones")
+        print("  still to do: " + ", ".join(f"{k} {v}" for k, v in left.items()) + f"  (total {len(todo)})")
+        for u in todo[:5] + ([{"key": "..."}] if len(todo) > 5 else []):
             print("  " + u["key"])
         cal = (plan.get("transfer_ratios") or {}).get("calibration")
         print(f"Calibrated: {'yes' if cal else 'NO (fetch will refuse)'}; budget {plan['execution'].get('max_download_gb')} GB; "
@@ -344,7 +385,8 @@ def main(argv=None) -> int:
     fe.add_argument("--approve-plan", default=None, help="the PLAN SHA256 you reviewed (required)")
     fe.add_argument("--region", action="append", help="limit to region id (repeatable)")
     fe.add_argument("--batch", type=int, default=None, help="run one batch from execution.batches")
-    fe.add_argument("--source", choices=["all", "mur", "copernicus"], default="all")
+    fe.add_argument("--source", choices=["all", "mur", "copernicus", "imerg", "power"], default="all",
+                    help="copernicus includes ocean currents (cmems_phy_cur)")
     fe.add_argument("--concurrency", type=_concurrency, default=None,
                     help=f"units run at once (1-{MAX_CONCURRENCY}); overrides execution.concurrency, does not change the plan")
     fe.add_argument("--max-units", type=int, default=None, help="stop after N units (e.g. to measure speed)")

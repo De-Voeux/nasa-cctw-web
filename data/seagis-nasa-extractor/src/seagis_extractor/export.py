@@ -26,6 +26,30 @@ METRIC_COLUMNS = ["region_id", "subregion_id", "geometry_version", "dataset", "v
                   "area_weighted", "source_granule", "product_version", "qc_flags"]
 METRIC_KEY = ["region_id", "subregion_id", "geometry_version", "dataset", "variable", "date"]
 
+# Display labels written to the DB (decided 2026-11-15). Labels only: every pair is the same unit,
+# so no value changes. Parquet in data/processed keeps the source's own unit strings.
+DISPLAY_UNITS = {
+    "degree_C": "°C", "C": "°C",
+    "kelvin": "°C",             # MUR analysis_error is a temperature difference: 1 K = 1 °C
+    "mmol m-3": "mmol/m³",
+    "1e-3": "PSU",              # Copernicus salinity (practical salinity, ~ PSU)
+    "m s-1": "m/s", "m/s": "m/s",
+    "degree": "°", "Degrees": "°",
+    "mm/day": "mm/day",
+    "MJ/m^2/day": "MJ/m²/day",
+    "%": "%",
+}
+# unitless variables, labelled by what they are
+DISPLAY_UNITS_BY_VARIABLE = {"ph": "pH", "current_steadiness": "0–1"}
+
+
+def display_unit(variable: str, unit: str) -> str:
+    if variable in DISPLAY_UNITS_BY_VARIABLE:
+        return DISPLAY_UNITS_BY_VARIABLE[variable]
+    if unit not in DISPLAY_UNITS:
+        raise ExportError(f"no display label for unit {unit!r} ({variable}); add it to export.DISPLAY_UNITS")
+    return DISPLAY_UNITS[unit]
+
 
 class ExportError(RuntimeError):
     pass
@@ -97,7 +121,11 @@ def load_inputs(root: Path, plan: dict, processed_dir: Path, roi_path: Path) -> 
         skipped["outside_period"] += int((keep & ~inp).sum())
         frames.append(d[keep & inp])
     metrics = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame(columns=METRIC_COLUMNS)
-    metrics = metrics[METRIC_COLUMNS]
+    metrics = metrics[METRIC_COLUMNS].copy()
+    if len(metrics):
+        pairs = metrics[["variable", "units"]].drop_duplicates()
+        label = {(v, u): display_unit(v, u) for v, u in pairs.itertuples(index=False)}
+        metrics["units"] = [label[(v, u)] for v, u in zip(metrics["variable"], metrics["units"])]
     dup = int(metrics.duplicated(METRIC_KEY).sum())
     if dup:
         raise ExportError(f"{dup} duplicate (zone, dataset, variable, date) rows in data/processed; fix before export")
@@ -111,9 +139,11 @@ def summary_lines(inp: dict) -> list[str]:
            f"zones {len(inp['zones'])}, parquet files {inp['files']}, metric rows {len(m)}"]
     if len(m):
         g = m.groupby(["dataset", "variable"]).agg(rows=("date", "size"), zones=("subregion_id", "nunique"),
-                                                   first=("date", "min"), last=("date", "max"))
+                                                   first=("date", "min"), last=("date", "max"),
+                                                   units=("units", "first"))
         for (ds, var), r in g.iterrows():
-            out.append(f"  {ds:14} {var:15} rows {r['rows']:6}  zones {r['zones']:3}  {r['first']}..{r['last']}")
+            out.append(f"  {ds:14} {var:19} {r['units']:10} rows {r['rows']:6}  zones {r['zones']:3}  "
+                       f"{r['first']}..{r['last']}")
     sk = {k: v for k, v in inp["skipped"].items() if v}
     if sk:
         out.append("  skipped rows: " + ", ".join(f"{k} {v}" for k, v in sk.items()))
