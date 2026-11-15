@@ -9,12 +9,14 @@ const NOT_ASSESSED = [
 const dateValue = (s) => new Date(`${s}T00:00:00Z`)
 
 export async function loadEnvironment(fetchImpl = fetch) {
-  const response = await fetchImpl("/api/environment", { headers: { accept: "application/json" } })
+  const response = await fetchImpl("/api/environment", { cache: "no-store", headers: { accept: "application/json" } })
   if (!response.ok) throw new Error(`environment request failed (${response.status})`)
   const body = await response.json()
   if (!body || typeof body !== "object" || typeof body.regions !== "object") throw new Error("invalid environment response")
   return body
 }
+
+const todayDate = (payload) => dateValue(payload?.as_of_date || new Date().toISOString().slice(0, 10))
 
 export function assessmentFor(loc, payload, species = ALL_SPECIES) {
   const region = loc.dataRegionId ? payload?.regions?.[loc.dataRegionId] : null
@@ -35,6 +37,7 @@ export function assessmentFor(loc, payload, species = ALL_SPECIES) {
       coverage: [...(item.coverage || []), ...(item.forecast_coverage || [])],
       todayIndex: Math.max(0, observedDates.length - 1),
       observedCount: observedDates.length,
+      todayDate: todayDate(payload),
       headline: `Observed through ${region.latest_date}`,
       forecastHeadline: forecastDates.length ? `Forecast through ${forecastDates[forecastDates.length - 1].toISOString().slice(0, 10)}` : null,
       forecastSource: item.forecast_source || null,
@@ -66,6 +69,7 @@ export function assessmentFor(loc, payload, species = ALL_SPECIES) {
         ? [...NOT_ASSESSED, { name: "Rule provenance", why: `${score.evaluated.map((x) => x.rule.source).join("; ")}. Rules are provisional.` }]
         : NOT_ASSESSED,
       latestDate: region.latest_date,
+      todayDate: todayDate(payload),
     },
   }
 }

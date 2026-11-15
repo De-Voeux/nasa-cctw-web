@@ -37,10 +37,15 @@ test("endpoint pages measurements and never exposes the service key", async () =
       { region_id: "PH-TAWI", dataset: "cmems_phy_so", variable: "so", date: "2026-11-14", units: "PSU", mean: 34, valid_pixel_count: 2, coverage_fraction: 1, product_version: "2026" },
     ]), { status: 200 })
   }
-  const res = await handleEnvironment(new Request("https://site/api/environment"), ENV, { fetchImpl })
+  const res = await handleEnvironment(new Request("https://site/api/environment"), ENV, {
+    fetchImpl,
+    now: new Date("2026-11-15T12:00:00Z"),
+  })
   const body = await res.json()
   assert.equal(res.status, 200)
   assert.equal(body.regions["PH-TAWI"].series.salinity.values[0], 34)
+  assert.equal(body.as_of_date, "2026-11-15")
+  assert.ok(calls.some((c) => c.url.includes("date=lte.2026-11-18")))
   assert.ok(calls.some((c) => c.url.includes("variable=in.(analysed_sst,thetao,so,no3,po4,ph)")))
   assert.ok(calls.every((c) => c.init.headers.authorization === "Bearer secret"))
   assert.ok(!JSON.stringify(body).includes("secret"))

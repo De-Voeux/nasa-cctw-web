@@ -256,7 +256,7 @@ export class SidePanel {
       // Cut the series to the chosen chart length; the dot stays on the chosen day.
       const w = this._window(d.dates || data.dates, d.values, chartToday)
       const cut = d.values.length - w.values.length
-      const chart = () => trendChart({ ...d, values: w.values }, w.dates, w.todayIndex, Math.max(0, index - cut))
+      const chart = () => trendChart({ ...d, values: w.values }, w.dates, w.todayIndex, Math.max(0, index - cut), d.todayDate || data.todayDate)
       return `
       <article class="driver${d.driver ? " is-driver" : ""}">
         <header>

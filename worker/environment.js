@@ -133,7 +133,7 @@ export function aggregate(rows, latestDate) {
   return regions
 }
 
-export async function handleEnvironment(request, env, { fetchImpl = fetch } = {}) {
+export async function handleEnvironment(request, env, { fetchImpl = fetch, now = new Date() } = {}) {
   if (request.method !== "GET") return json(405, { error: "method_not_allowed" })
   if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) return json(503, { error: "environment_unavailable" })
 
@@ -156,13 +156,15 @@ export async function handleEnvironment(request, env, { fetchImpl = fetch } = {}
     const latestDate = latest[0]?.date ?? null
     if (!latestDate) return json(200, { latest_date: null, days: DAYS, regions: {} }, "public, max-age=300")
 
+    const asOfDate = new Date(now).toISOString().slice(0, 10)
+    const forecastAnchor = latestDate > asOfDate ? latestDate : asOfDate
     const from = dayBefore(latestDate, DAYS - 1)
-    const through = dayAfter(latestDate, FORECAST_DAYS)
+    const through = dayAfter(forecastAnchor, FORECAST_DAYS)
     const select = "region_id,subregion_id,dataset,variable,date,data_type,units,mean,valid_pixel_count,coverage_fraction,product_version"
     const variables = "analysed_sst,thetao,so,no3,po4,ph"
     const path = `seagis_daily_metrics?select=${select}&date=gte.${from}&date=lte.${through}&data_type=in.(observed,forecast)&variable=in.(${variables})&order=region_id.asc,variable.asc,data_type.asc,date.asc`
     const rows = await getRows(base, headers, path, fetchImpl)
-    return json(200, { latest_date: latestDate, days: DAYS, forecast_days: FORECAST_DAYS, regions: aggregate(rows, latestDate) }, "public, max-age=900")
+    return json(200, { latest_date: latestDate, as_of_date: asOfDate, days: DAYS, forecast_days: FORECAST_DAYS, regions: aggregate(rows, latestDate) })
   } catch (error) {
     console.error(JSON.stringify({ event: "environment", error: String(error.message).slice(0, 160) }))
     return json(502, { error: "environment_unavailable" })

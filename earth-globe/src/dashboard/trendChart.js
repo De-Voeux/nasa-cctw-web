@@ -13,8 +13,9 @@ const SHORT = new Intl.DateTimeFormat("en", { day: "numeric", month: "short" })
  * @param {Date[]} dates
  * @param {number} todayIndex
  * @param {number} selIndex  the day picked in the date bar
+ * @param {Date} todayDate  the actual calendar date used for the Today marker
  */
-export function trendChart(item, dates, todayIndex, selIndex) {
+export function trendChart(item, dates, todayIndex, selIndex, todayDate) {
   const { values, baseline, digits, unit } = item
   const n = values.length
   const hasBaseline = Array.isArray(baseline) && baseline.length === 2
@@ -25,10 +26,14 @@ export function trendChart(item, dates, todayIndex, selIndex) {
   hi += pad
   if (lo < 0 && Math.min(...values) >= 0) lo = 0
 
-  const X = (i) => (i / (n - 1)) * 100
+  const firstTime = dates[0]?.getTime() ?? 0
+  const lastTime = dates[n - 1]?.getTime() ?? firstTime
+  const span = Math.max(1, lastTime - firstTime)
+  const X = (i) => ((dates[i]?.getTime() - firstTime) / span) * 100
+  const todayTime = (todayDate instanceof Date ? todayDate : dates[todayIndex])?.getTime() ?? firstTime
+  const tx = Math.max(0, Math.min(100, ((todayTime - firstTime) / span) * 100))
   const Y = (v) => 40 - ((v - lo) / (hi - lo)) * 40
   const pts = (a, b) => values.slice(a, b + 1).map((v, k) => `${X(a + k).toFixed(2)},${Y(v).toFixed(2)}`).join(" ")
-  const tx = X(todayIndex)
   const sel = Math.min(n - 1, Math.max(0, selIndex))
 
   const f = (v) => v.toFixed(digits)

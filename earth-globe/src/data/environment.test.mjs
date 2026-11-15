@@ -5,6 +5,7 @@ import { scoreEnvironment } from "./environmentRules.js"
 
 const payload = {
   latest_date: "2026-11-14",
+  as_of_date: "2026-11-15",
   regions: {
     "PH-TAWI": {
       latest_date: "2026-11-14",
@@ -50,6 +51,7 @@ test("assessmentFor appends a three-day outlook without scoring it as current", 
   const result = assessmentFor({ dataRegionId: "PH-TAWI" }, forecastPayload, "Kappaphycus alvarezii")
   const item = result.data.items[0]
   assert.equal(result.data.todayIndex, 1)
+  assert.equal(result.data.todayDate.toISOString().slice(0, 10), "2026-11-15")
   assert.deepEqual(item.values, [29, 30, 30.1, 30.2, 30.3])
   assert.equal(item.todayIndex, 1)
   assert.equal(result.data.confidence, "Observed + 3-day outlook")
