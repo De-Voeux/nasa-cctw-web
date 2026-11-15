@@ -7,13 +7,14 @@
     <link rel="icon" type="image/png" href="./assets/earth/favicon.png" />
     <title>SEAmon — Coastal environmental risk atlas</title>
     <meta name="description" content="SEAmon is a proposed coastal environmental risk atlas for seaweed aquaculture." />
-    <!-- Link previews. og:image must be an absolute URL; the file is copied to /og-image.png by scripts/build-site.sh. -->
+    <!-- Link previews. og:image must be an absolute URL; the file is copied to /og-image.png by scripts/build-site.sh.
+         There is no og:url on purpose: some apps key their preview cache by it, which made every variant of the address
+         (for example ?v=3) show the same stale card. Without it each address is cached on its own. Raise ?v= on the image when it changes. -->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="SEAmon" />
     <meta property="og:title" content="SEAmon — Coastal environmental risk atlas" />
     <meta property="og:description" content="SEAmon is a proposed coastal environmental risk atlas for seaweed aquaculture." />
-    <meta property="og:url" content="https://seamon.seagis.app/" />
-    <meta property="og:image" content="https://seamon.seagis.app/og-image.png?v=2" />
+    <meta property="og:image" content="https://seamon.seagis.app/og-image.png?v=3" />
     <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="457" />
@@ -21,7 +22,7 @@
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="SEAmon — Coastal environmental risk atlas" />
     <meta name="twitter:description" content="SEAmon is a proposed coastal environmental risk atlas for seaweed aquaculture." />
-    <meta name="twitter:image" content="https://seamon.seagis.app/og-image.png?v=2" />
+    <meta name="twitter:image" content="https://seamon.seagis.app/og-image.png?v=3" />
     <meta name="twitter:image:alt" content="SEAmon, created for the 2026 NASA Space Apps Challenge: the name next to a night-side view of Earth over Southeast Asia with seaweed region markers." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
