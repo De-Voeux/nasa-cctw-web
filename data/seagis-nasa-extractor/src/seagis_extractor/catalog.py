@@ -132,9 +132,9 @@ def _https_url(umm: dict) -> str | None:
 
 
 def list_granules(client: MetadataClient, short_name: str, pattern: str,
-                  start: dt.date, end: dt.date) -> list[dict]:
+                  start: dt.date, end: dt.date, concept_id: str | None = None) -> list[dict]:
     params = [
-        ("short_name", short_name),
+        ("collection_concept_id", concept_id) if concept_id else ("short_name", short_name),
         ("temporal", f"{start.isoformat()}T00:00:00Z,{end.isoformat()}T23:59:59Z"),
         ("readable_granule_name", pattern),
         ("options[readable_granule_name][pattern]", "true"),

@@ -29,7 +29,7 @@ def check(name: str, ok: bool | None, detail: str, warn: bool = False) -> dict:
 
 # ---------------------------------------------------------------- MUR
 
-def mur_guard(ds, req: dict, step: float = 0.01) -> None:
+def mur_guard(ds, req: dict, step: float = 0.01, lat0: float = -89.99, lon0: float = -179.99) -> None:
     """Fail closed if any returned cell is not one of the approved request's grid cells.
 
     Compared as grid indices: MUR coordinates are float32 (~1e-5 deg precision near 120 deg), so a
@@ -40,13 +40,13 @@ def mur_guard(ds, req: dict, step: float = 0.01) -> None:
         raise FetchGuardError("response has no lat/lon cells")
     h = step / 2
     w, s, e, n = req["expected_extent_w_s_e_n"]
-    i0, i1 = round((s + h - (-89.99)) / step), round((n - h - (-89.99)) / step)
-    j0, j1 = round((w + h - (-179.99)) / step), round((e - h - (-179.99)) / step)
-    li = np.rint((lat - (-89.99)) / step).astype(int)
-    lj = np.rint((lon - (-179.99)) / step).astype(int)
-    off = max(float(np.abs(lat - (-89.99 + step * li)).max()), float(np.abs(lon - (-179.99 + step * lj)).max()))
+    i0, i1 = round((s + h - lat0) / step), round((n - h - lat0) / step)
+    j0, j1 = round((w + h - lon0) / step), round((e - h - lon0) / step)
+    li = np.rint((lat - lat0) / step).astype(int)
+    lj = np.rint((lon - lon0) / step).astype(int)
+    off = max(float(np.abs(lat - (lat0 + step * li)).max()), float(np.abs(lon - (lon0 + step * lj)).max()))
     if off > step / 4:
-        raise FetchGuardError(f"response cells are not on the MUR 0.01 deg grid (offset {off:.4f} deg)")
+        raise FetchGuardError(f"response cells are not on the {step} deg grid (offset {off:.4f} deg)")
     if li.min() < i0 or li.max() > i1 or lj.min() < j0 or lj.max() > j1:
         raise FetchGuardError(
             f"response extent lon {lon.min() - h:.4f}..{lon.max() + h:.4f}, lat {lat.min() - h:.4f}..{lat.max() + h:.4f} "

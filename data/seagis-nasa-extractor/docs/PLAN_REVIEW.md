@@ -6,6 +6,19 @@
 
 The hash covers the plan contents and the SHA-256 of every input (catalog, ROI GeoJSON, configs). Timestamps are excluded, so re-running `plan` on unchanged inputs gives the same hash. Any change to the ROIs, the period, or the limits gives a new hash.
 
+> **Updated 2026-11-15 (IMERG randomError dropped, current plan):** plan hash **`d5e5783e301c7ffde6628df6ead1a6103a534bfb4a95ac1b07ff582c9307511a`**. IMERG now requests `precipitation` only. Calatagan's daily `randomError` was 2.76 on dry days and 50-75× precipitation on wet days, so it is not an mm/day error on the same scale.
+
+> **Updated 2026-11-15 (Bohol rename):** `PH-NE-BOHOL/bohol` was the whole-province coast, so it is now `PH-BOHOL/bohol`. `PH-NE-BOHOL` is kept as a region with no zone. Plan hash `8ad6a1e7…`. The zone, cells and requests are unchanged; only the IDs change, and local outputs were renamed in place.
+
+> **Updated 2026-11-15 (more sources):** three sources added. Plan hash **`4ebfe10c9439485c786ac53eecbda8fb4fad3119437dd22d3c64bd2a2444aa37`** (48 zones; supersedes `af7f572b…`, which added PH-S-LUZON / Calatagan).
+> - **Ocean currents.** `cmems_phy_cur`: uo and vo, PHY_001_024, 1/12°, surface, with the same static mask as salinity. Transfer 147 MiB per region. Derived per zone and day:
+>   - `current_speed`: weighted mean of per-cell speed.
+>   - `current_direction`: direction of the mean vector, in degrees clockwise from north, pointing where the water flows **to**.
+>   - `current_steadiness`: \|mean vector\| / mean speed.
+> - **Rainfall.** `gpm_imerg`: GPM_3IMERGDL V07 Late daily, 0.1°, via Harmony like MUR. Variables `precipitation` (mm/day). It has 48 boxes, the largest is 440 cells/day, and the transfer is ≤ 128 MiB. 2026-11-14 is not published yet.
+> - **Weather.** `nasa_power`: POWER daily point at each zone's representative point (inside the zone). Parameters: T2M, RH2M, WS10M, WD10M (wind **from**), ALLSKY_SFC_SW_DWN, ALLSKY_SFC_PAR_TOT, CLOUD_AMT. 48 requests, no account.
+> - **Earlier fetches are unaffected.** MUR and the first three Copernicus datasets keep their unit keys and files, so `fetch` skips them; 258 new units remain.
+
 > **Updated 2026-11-15 (request edges):** every MUR request edge now sits at least a quarter cell inside its expected extent. Tile edges lay exactly on cell boundaries and Harmony returned one extra row there (lat -0.665, batch 2), which the guard rejected. 58 of 73 boxes moved inward; the cells requested are unchanged, so earlier outputs stay valid. New plan hash below.
 
 > **Updated 2026-11-15 (three months):** the period is now **2026-08-15 .. 2026-11-14** for every source (supersedes the one-year note below). Transfer about **527 MiB** (MUR 357 / 396 / 495 MiB LOW / EXPECTED / HIGH, Copernicus 131 MiB per region). Approved plan hash: `3e55cf0ae7ddaaf9bc2cd619380ad1a8703ba769ff031f114e93f4ac6750b336`.
@@ -176,7 +189,7 @@ Pilot values for 1–7 June 2022:
 - `--concurrency N` (1-16) runs N units at once instead of `execution.concurrency` (4). Speed only: the plan hash and the downloaded boxes do not change. The bottleneck is Harmony subsetting, about 5 s per daily file (a month takes ~150 s), not bandwidth. If Harmony returns 429 (too many requests), lower N; failed units retry and can be rerun.
 - `seagis-extract status --batch N` is read-only: units done and remaining for the batch, whether a fetch holds the lock, elapsed time, and an ETA from the units finished in this run (start count read from `outputs/fetch/batchN.log`). Without `--batch` it counts every unit in the plan.
 - `--region` (repeatable) limits the run to given regions.
-- `--source mur|copernicus` limits the run to one source.
+- `--source mur|copernicus|imerg|power` limits the run to one source (`copernicus` includes currents).
 
 ## 8. Approval
 

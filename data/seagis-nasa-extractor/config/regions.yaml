@@ -10,10 +10,11 @@ regions:
   - {id: ID-NTB,        country: ID, name: West Nusa Tenggara,  subregions: [East Lombok, Sumbawa, Bima], status: candidate}
   - {id: ID-N-KAL,      country: ID, name: North Kalimantan,    subregions: [Nunukan, Tarakan, Sebatik], status: candidate}
   - {id: ID-MALUKU,     country: ID, name: Maluku,              subregions: [Seram, Kei, Aru], status: candidate, review_notes: validate administrative coverage}
-  - {id: PH-NE-BOHOL,   country: PH, name: Northeastern Bohol,  subregions: [], status: candidate, review_notes: identify actual study coast}
+  - {id: PH-BOHOL,      country: PH, name: Bohol,               subregions: [], status: candidate, review_notes: 'whole-province coast; Faisan et al. 2021 (five farms in Bohol, municipalities not named in the abstract)'}
+  - {id: PH-NE-BOHOL,   country: PH, name: Northeastern Bohol,  subregions: [], status: candidate, review_notes: 'pending: no zone until the study coast of Largo et al. 1995 is identified'}
   - {id: PH-TAWI,       country: PH, name: Tawi-Tawi,           subregions: [Bongao, Sitangkai, Sibutu], status: candidate}
   - {id: PH-PANG,       country: PH, name: Pangasinan,          subregions: [Bolinao, Lingayen Gulf], status: candidate}
-  - {id: PH-S-LUZON,    country: PH, name: Southern Luzon,      subregions: [], status: candidate, review_notes: study-specific extent required}
+  - {id: PH-S-LUZON,    country: PH, name: Southern Luzon,      subregions: [Calatagan], status: candidate, review_notes: 'Calatagan, Batangas (Solis et al. 2010, cited by the review as Southern Luzon)'}
   - {id: PH-PALAWAN,    country: PH, name: Palawan,             subregions: [Coron, Taytay, Roxas], status: candidate}
   - {id: PH-ZAMBOANGA,  country: PH, name: Zamboanga City,      subregions: [], status: candidate, review_notes: study-specific coast}
   - {id: PH-DAVAO-N,    country: PH, name: Davao del Norte,     subregions: [], status: candidate, review_notes: validate coastal extent; Samal is administratively separate}

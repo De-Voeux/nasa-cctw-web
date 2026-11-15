@@ -283,7 +283,7 @@ export class SidePanel {
       : `${drivers.length ? `${countLabel(drivers.length)} of ${total}` : `None of the ${total}`} water conditions ${drivers.length === 1 ? "is" : "are"} outside the safe range for this seaweed. This is a warning about the water, not a sign the seaweed is sick.`
 
     const card = (d) => {
-      const index = Math.min(d.values.length - 1, d.dates ? this._selectedIndex({ dates: d.dates, todayIndex: d.values.length - 1 }) : sel)
+      const index = Math.min(d.values.length - 1, d.dates ? this._selectedIndex({ dates: d.dates, todayIndex: d.todayIndex ?? d.values.length - 1 }) : sel)
       const chartToday = Math.min(d.values.length - 1, d.todayIndex ?? (d.dates ? d.values.length - 1 : data.todayIndex))
       // Cut the series to the chosen chart length; the dot stays on the chosen day.
       const w = this._window(d.dates || data.dates, d.values, chartToday)
@@ -292,19 +292,24 @@ export class SidePanel {
       const rule = ENVIRONMENT_RULES[this.species]?.[d.key]
       const band = rule ? [rule.min, rule.max] : d.baseline
       const chart = () =>
-        trendChart({ ...d, values: w.values, baseline: band, bandLabel: rule ? "Safe range" : "Usual range" }, w.dates, w.todayIndex, Math.max(0, index - cut))
+        trendChart({ ...d, values: w.values, baseline: band, bandLabel: rule ? "Safe range" : "Usual range" }, w.dates, w.todayIndex,
+          Math.max(0, index - cut), d.todayDate || data.todayDate)
       const charted = a.observed || d.driver
-      const fullSource = `${d.source || ""}${d.product_version ? ` · product ${d.product_version}` : ""}`
+      // A day after today shows the forecast product's headline and source instead of the measured one.
+      const isForecast = index > (d.todayIndex ?? d.values.length - 1)
+      const src = isForecast ? (d.forecastSource || d.source) : d.source
+      const version = isForecast ? d.forecastProductVersion : d.product_version
+      const fullSource = `${src || ""}${version ? ` · product ${version}` : ""}`
       return `
       <article class="driver${d.driver ? " is-driver" : ""}">
         <header>
           <h3>${esc(d.name)}</h3>
           <p class="driver-value">${d.values[index].toFixed(d.digits)}<span> ${esc(d.unit)}</span></p>
         </header>
-        <p class="driver-head">${esc(d.headline || "Measured value")}</p>
+        <p class="driver-head">${esc(isForecast ? (d.forecastHeadline || "Forecast value") : (d.headline || "Measured value"))}</p>
         ${charted ? chart() : ""}
         ${insightHtml(d, d.values[index], charted ? w : null)}
-        <p class="driver-src" title="${esc(fullSource)}">Data: ${esc(shortSource(d.source))}${rule ? `<br>Safe range for ${esc(this.species)}: ${esc(rule.source)} (provisional)` : ` · No safe range set for this yet`}</p>
+        <p class="driver-src" title="${esc(fullSource)}">Data: ${esc(shortSource(src))}${rule ? `<br>Safe range for ${esc(this.species)}: ${esc(rule.source)} (provisional)` : ` · No safe range set for this yet`}</p>
       </article>`
     }
 

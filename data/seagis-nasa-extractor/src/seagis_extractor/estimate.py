@@ -46,7 +46,7 @@ ASSUMPTIONS = {
 
 FINAL_SCHEMA = [
     ("date", "date32"), ("region_id", "string"), ("subregion_id", "string"), ("dataset", "string"),
-    ("variable", "string"), ("units", "string"), ("valid_pixel_count", "int32"), ("roi_pixel_count", "int32"),
+    ("variable", "string"), ("data_type", "string"), ("units", "string"), ("valid_pixel_count", "int32"), ("roi_pixel_count", "int32"),
     ("coverage_fraction", "float32"), ("mean", "float32"), ("min", "float32"), ("max", "float32"),
     ("std", "float32"), ("area_weighted", "bool"), ("source_granule", "string"), ("product_version", "string"),
     ("geometry_version", "string"), ("qc_flags", "string"),
@@ -339,8 +339,9 @@ def calibrate_from_pilot(report: dict, rois: list[dict]) -> dict:
 
 def build_plan(catalog: dict, roi_geojson: dict, cfg: dict, inputs: dict, membership_dir: Path,
                pilot: dict | None = None, pilot_days: int = 7, copernicus_fn=None,
-               pilot_report: dict | None = None) -> dict:
-    """copernicus_fn(rois, roi_geoms) -> plan section (network HEADs); None skips Copernicus."""
+               pilot_report: dict | None = None, extra_fns: dict | None = None) -> dict:
+    """copernicus_fn(rois, roi_geoms) -> plan section (network HEADs); None skips Copernicus.
+    extra_fns: {"imerg": fn, "power": fn}, each fn(rois, roi_geoms) -> plan section (metadata only)."""
     prod = next(p for p in catalog["products"] if p["key"] == "mur_sst")
     start = dt.date.fromisoformat(str(cfg["period"]["start"]))
     end = dt.date.fromisoformat(str(cfg["period"]["end"]))
@@ -443,6 +444,8 @@ def build_plan(catalog: dict, roi_geojson: dict, cfg: dict, inputs: dict, member
                     w.writerows(table)
                 r["membership_table"] = path.name
         plan["copernicus"] = sec
+    for name, fn in (extra_fns or {}).items():
+        plan[name] = fn(roi_summ, roi_geoms)
     plan["totals"] = totals(plan)
     plan["plan_sha256"] = plan_hash(plan)
     plan["generated_at"] = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
@@ -620,6 +623,23 @@ def summary(plan: dict) -> str:
         g_t = plan["totals"]["grand"]["transfer_bytes_expected"]
         L.append(f"GRAND TOTAL TRANSFER (MUR expected + Copernicus): {human(g_t + (cm['transfer_bytes_total'] or 0))} per-region, "
                  f"{human(g_t + (cm.get('transfer_bytes_total_unique_chunks') or 0))} with shared chunk cache")
+    im = plan.get("imerg")
+    if im:
+        L.append("")
+        L.append(f"GPM IMERG {im['collection']['short_name']} v{im['collection']['version']} "
+                 f"{im['collection']['concept_id']}  {im['period']['start']} .. {im['period']['end']}  0.1 deg, Harmony")
+        L.append(f"  days {im['available_days']}/{im['requested_days']}"
+                 + (f", not yet published: {', '.join(im['missing_dates'])}" if im["missing_dates"] else ""))
+        L.append(f"  {len(im['rois'])} zones, {sum(len(r['requests']) for r in im['rois'])} boxes, "
+                 f"largest {max(q['expected_cells'] for r in im['rois'] for q in r['requests'])} cells/day; "
+                 f"ROI cells min {min(r['roi_cells'] for r in im['rois'])} / max {max(r['roi_cells'] for r in im['rois'])}")
+        L.append(f"  {im['daily_files']} daily files, transfer <= {human(im['transfer_bytes_upper'])}, {im['final_rows']} rows")
+    pw = plan.get("power")
+    if pw:
+        L.append("")
+        L.append(f"NASA POWER daily point ({pw['community']})  {pw['period']['start']} .. {pw['period']['end']}  "
+                 f"{', '.join(pw['parameters'])}")
+        L.append(f"  {pw['requests']} requests (one point per zone, inside the zone), {pw['final_rows']} rows, no account")
     L.append("")
     L.append(f"PLAN SHA256: {plan['plan_sha256']}")
     L.append("No historical data downloaded. Run fetch only after reviewing and approving the plan.")

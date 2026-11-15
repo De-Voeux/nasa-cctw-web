@@ -26,8 +26,9 @@ const decimalsFor = (step) => (String(+step.toFixed(10)).split(".")[1] || "").le
  * @param {Date[]} dates
  * @param {number} todayIndex  last measured point; later points are forecast
  * @param {number} selIndex    the day picked in the date bar
+ * @param {Date} todayDate     the actual calendar date used for the Today marker
  */
-export function trendChart(item, dates, todayIndex, selIndex) {
+export function trendChart(item, dates, todayIndex, selIndex, todayDate) {
   const { values, baseline, digits, unit } = item
   const bandLabel = item.bandLabel || "Safe range"
   const n = values.length
@@ -51,12 +52,17 @@ export function trendChart(item, dates, todayIndex, selIndex) {
   for (let v = lo; v <= hi + step / 2; v += step) yTicks.push(+v.toFixed(10))
   const tickDigits = Math.min(4, decimalsFor(step))
 
+  // x positions follow calendar time, so uneven date gaps (forecast days) stay to scale.
   const H = 40
-  const X = (i) => (n > 1 ? (i / (n - 1)) * 100 : 50)
+  const firstTime = dates[0]?.getTime() ?? 0
+  const lastTime = dates[n - 1]?.getTime() ?? firstTime
+  const span = Math.max(1, lastTime - firstTime)
+  const X = (i) => (n > 1 ? ((dates[i]?.getTime() - firstTime) / span) * 100 : 50)
+  const todayTime = (todayDate instanceof Date ? todayDate : dates[todayIndex])?.getTime() ?? firstTime
+  const tx = Math.max(0, Math.min(100, ((todayTime - firstTime) / span) * 100))
   const Y = (v) => H - ((v - lo) / (hi - lo)) * H
   const pct = (v) => ((Y(v) / H) * 100).toFixed(2)
   const pts = (a, b) => values.slice(a, b + 1).map((v, k) => `${X(a + k).toFixed(2)},${Y(v).toFixed(2)}`).join(" ")
-  const tx = X(todayIndex)
   const sel = Math.min(n - 1, Math.max(0, selIndex))
   const hasForecast = todayIndex < n - 1
 

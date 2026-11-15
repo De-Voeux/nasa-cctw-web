@@ -73,10 +73,10 @@ regions:
     review_notes: >-
       validate administrative coverage. Central Seram belongs to Maluku Tengah, which also holds
       Ambon/Lease/Banda, so it is not included. Maluku Tenggara Barat (Tanimbar) is not Kei.
-  PH-NE-BOHOL:
+  PH-BOHOL:                # renamed from PH-NE-BOHOL 2026-11-15: this zone is the whole province
     source: PHL-ADM2
     subregions: {bohol: Bohol}
-    review_notes: PROVISIONAL whole-province coast; identify actual study coast (northeast).
+    review_notes: PROVISIONAL whole-province coast (Bohol, Faisan et al. 2021).
   PH-PANG:
     source: PHL-ADM3
     within_unit: {source: PHL-ADM2, name: Pangasinan}
@@ -116,6 +116,14 @@ regions:
     source: PHL-ADM2
     subregions: {batangas: Batangas}
     review_notes: PROVISIONAL whole-province coast; study-specific coastal bays not yet identified.
+  PH-S-LUZON:
+    source: PHL-ADM3
+    within_unit: {source: PHL-ADM2, name: Batangas}
+    subregions: {calatagan: Calatagan}
+    review_notes: >-
+      "Southern Luzon" in the review (Alimin et al. 2026, Table 1) is Solis et al. 2010, whose samples
+      were collected at Calatagan, Batangas (resolved 2026-11-15). Overlaps the PROVISIONAL PH-BATANGAS
+      whole-province zone on purpose: this one is the study site.
   MY-SABAH:
     source: MYS-ADM2
     subregions: {semporna: Semporna}
@@ -126,8 +134,8 @@ regions:
       nha_trang: Nha Trang                     # Nha Trang Bay -> Nha Trang city
       cam_ranh: Cam Ranh
     review_notes: Nha Trang Bay mapped to Nha Trang city; the bay's Cam Lam / Ninh Hoa shores not included.
-pending_regions:            # no ROI until a specific coast is identified
-  PH-S-LUZON: Southern Luzon is not an administrative unit; needs named provinces or municipalities.
+pending_regions:           # no ROI until a specific coast is identified (PH-S-LUZON resolved 2026-11-15)
+  PH-NE-BOHOL: Largo et al. 1995 visited 'northeastern Bohol' in June 1993; farm sites not named in sources seen so far
 pilot_subregions:          # small units for the 7-day pilot (task criterion 4)
   PH-TAWI: bongao
   ID-SOUTH-SUL: takalar

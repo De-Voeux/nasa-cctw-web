@@ -14,6 +14,20 @@ test("aggregate combines subregions with valid-pixel weights", () => {
   assert.match(regions["ID-SOUTH-SUL"].series.sst.source, /NASA MUR/)
 })
 
+test("aggregate keeps three-day forecast separate from observed values", () => {
+  const regions = aggregate([
+    { region_id: "PH-TAWI", dataset: "cmems_phy_so", variable: "so", data_type: "observed", date: "2026-11-14", units: "PSU", mean: 34, valid_pixel_count: 1, coverage_fraction: 1, product_version: "analysis" },
+    { region_id: "PH-TAWI", dataset: "cmems_phy_so", variable: "so", data_type: "forecast", date: "2026-11-15", units: "PSU", mean: 34.2, valid_pixel_count: 1, coverage_fraction: 1, product_version: "forecast" },
+    { region_id: "PH-TAWI", dataset: "cmems_phy_so", variable: "so", data_type: "forecast", date: "2026-11-16", units: "PSU", mean: 34.4, valid_pixel_count: 1, coverage_fraction: 1, product_version: "forecast" },
+  ], "2026-11-14")
+  const item = regions["PH-TAWI"].series.salinity
+  assert.deepEqual(item.dates, ["2026-11-14"])
+  assert.deepEqual(item.values, [34])
+  assert.deepEqual(item.forecast_dates, ["2026-11-15", "2026-11-16"])
+  assert.deepEqual(item.forecast_values, [34.2, 34.4])
+  assert.match(item.forecast_source, /Copernicus/)
+})
+
 test("endpoint pages measurements and never exposes the service key", async () => {
   const calls = []
   const fetchImpl = async (url, init) => {
@@ -23,10 +37,16 @@ test("endpoint pages measurements and never exposes the service key", async () =
       { region_id: "PH-TAWI", dataset: "cmems_phy_so", variable: "so", date: "2026-11-14", units: "PSU", mean: 34, valid_pixel_count: 2, coverage_fraction: 1, product_version: "2026" },
     ]), { status: 200 })
   }
-  const res = await handleEnvironment(new Request("https://site/api/environment"), ENV, { fetchImpl })
+  const res = await handleEnvironment(new Request("https://site/api/environment"), ENV, {
+    fetchImpl,
+    now: new Date("2026-11-15T12:00:00Z"),
+  })
   const body = await res.json()
   assert.equal(res.status, 200)
   assert.equal(body.regions["PH-TAWI"].series.salinity.values[0], 34)
+  assert.equal(body.as_of_date, "2026-11-15")
+  assert.ok(calls.some((c) => c.url.includes("date=lte.2026-11-18")))
+  assert.ok(calls.some((c) => c.url.includes("variable=in.(analysed_sst,thetao,so,no3,po4,ph)")))
   assert.ok(calls.every((c) => c.init.headers.authorization === "Bearer secret"))
   assert.ok(!JSON.stringify(body).includes("secret"))
 })
