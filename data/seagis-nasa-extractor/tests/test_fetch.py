@@ -106,3 +106,50 @@ def test_copernicus_open_splits_version_and_asks_surface_only():
     assert seen["dataset_id"] == "cmems_mod_glo_bgc-nut_anfc_0.25deg_P1D-m" and seen["dataset_version"] == "202311"
     assert (seen["minimum_depth"], seen["maximum_depth"]) == (0.49, 0.5)
     assert seen["minimum_longitude"] == BOX[0] and seen["maximum_latitude"] == BOX[3]
+
+
+def _flaky(n_fail, exc, ok):
+    state = {"n": 0}
+
+    def call(*a):
+        state["n"] += 1
+        if state["n"] <= n_fail:
+            raise exc
+        return ok(*a)
+    return call, state
+
+
+def test_transient_resets_are_retried_per_request(tmp_path):
+    import urllib.error
+    from seagis_extractor.http import Response
+    reset = urllib.error.URLError(ConnectionResetError(54, "Connection reset by peer"))
+    tr, ts = _flaky(2, reset, lambda *a: Response(200, {}, b'{"status": "successful", "links": []}'))
+
+    def body(url, headers, timeout, sink):
+        sink(b"abc")
+        return Response(200, {})
+    st, ss = _flaky(3, ConnectionResetError(54, "reset"), body)
+    slept = []
+    c = fetch.HarmonyClient("t", set(), fetch.ByteBudget(1 << 20), transport=tr, stream=st, sleep=slept.append)
+    assert c._json("https://harmony.earthdata.nasa.gov/jobs/J")["status"] == "successful"
+    out = c.download("https://harmony.earthdata.nasa.gov/service-results/x.nc4", tmp_path / "x.nc4")
+    assert out["bytes"] == 3 and (tmp_path / "x.nc4").read_bytes() == b"abc"
+    assert ts["n"] == 3 and ss["n"] == 4 and len(slept) == 5
+    assert not list(tmp_path.glob("*.part"))
+
+
+def test_retry_gives_up_and_429_is_retried(tmp_path):
+    from seagis_extractor.http import Response
+    calls = []
+
+    def tr(method, url, headers, timeout):
+        calls.append(1)
+        return Response(429, {"Retry-After": "7"}, b"slow down") if len(calls) < 3 else Response(200, {}, b"{}")
+    slept = []
+    c = fetch.HarmonyClient("t", set(), fetch.ByteBudget(1 << 20), transport=tr, sleep=slept.append)
+    assert c._json("https://harmony.earthdata.nasa.gov/jobs/J") == {}
+    assert slept == [7.0, 7.0]
+    st, _ = _flaky(99, ConnectionResetError(54, "reset"), None)
+    c = fetch.HarmonyClient("t", set(), fetch.ByteBudget(1 << 20), stream=st, sleep=lambda s: None)
+    with pytest.raises(fetch.FetchError, match=r"download https://harmony.earthdata.nasa.gov/service-results/x.nc4 failed 6x: ConnectionResetError"):
+        c.download("https://harmony.earthdata.nasa.gov/service-results/x.nc4", tmp_path / "y.nc4")

@@ -162,6 +162,98 @@ def cmd_pilot(args) -> int:
     return 0 if report["status"] == "PASS" else 4
 
 
+MAX_CONCURRENCY = 16
+
+
+def _concurrency(v: str) -> int:
+    n = int(v)
+    if not 1 <= n <= MAX_CONCURRENCY:
+        raise argparse.ArgumentTypeError(f"must be 1..{MAX_CONCURRENCY}")
+    return n
+
+
+def cmd_export(args) -> int:
+    import json
+
+    from . import __version__, auth, export
+
+    cfg = load_config(Path(args.config))
+    root = cfg["_root"]
+    plan = json.loads((Path(args.plan) if args.plan else root / "outputs/plan.json").read_text())
+    roi_path = root / cfg.get("roi_directory", "data/roi") / "roi_candidates_v1.geojson"
+    mig = Path(args.migrations_dir) if args.migrations_dir else root.parent.parent / "supabase/migrations"
+    try:
+        inp = export.load_inputs(root, plan, root / "data/processed", roi_path)
+    except export.ExportError as e:
+        print(f"REFUSED: {e}", file=sys.stderr)
+        return 2
+    print(f"EXPORT plan {plan['plan_sha256'][:12]}..  period {plan['period']['start']}..{plan['period']['end']}")
+    for line in export.summary_lines(inp):
+        print(line)
+    if args.apply_migrations:
+        print("migrations: " + (", ".join(p.name for p in export.migration_files(mig)) or f"none found in {mig}"))
+    names = auth.apply_env(root / ".env")
+    try:
+        dsn = export.dsn_from_env()
+    except export.ExportError as e:
+        print(("DRY RUN: " if args.dry_run else "REFUSED: ") + str(e), file=sys.stderr)
+        return 0 if args.dry_run else 2
+    print(f"target: {export.describe(dsn)}" + (f" (from .env: {', '.join(sorted(names))}; values not shown)" if names else ""))
+    if args.dry_run:
+        print("DRY RUN: nothing was sent to the database.")
+        return 0
+    if args.confirm_host != export.dsn_host(dsn):
+        print(f"REFUSED: pass --confirm-host {export.dsn_host(dsn)} to write to this database", file=sys.stderr)
+        return 2
+    import psycopg
+    try:
+        with psycopg.connect(dsn, connect_timeout=20, application_name="seagis-extract") as conn:
+            res = export.export(conn, inp, plan, mig if args.apply_migrations else None, tool_version=__version__)
+    except (psycopg.Error, export.ExportError) as e:
+        print(f"FAILED (rolled back, nothing written): {type(e).__name__}: {str(e).splitlines()[0][:300]}", file=sys.stderr)
+        return 4
+    print(json.dumps(res, indent=1))
+    return 0
+
+
+def cmd_status(args) -> int:
+    import json
+
+    from . import backfill
+
+    cfg = load_config(Path(args.config))
+    root = cfg["_root"]
+    plan = json.loads((Path(args.plan) if args.plan else root / "outputs/plan.json").read_text())
+    regions = None
+    if args.batch is not None:
+        batches = (yaml.safe_load((root / "config/fetch_batches.yaml").read_text()) or {}).get("batches") or {}
+        if args.batch not in batches:
+            print(f"unknown batch {args.batch}; defined: {sorted(batches)}", file=sys.stderr)
+            return 2
+        regions = batches[args.batch]
+    units = backfill.build_units(plan, cfg, regions=regions)
+    log = root / f"outputs/fetch/batch{args.batch}.log" if args.batch is not None else None
+    s = backfill.status(units, root / "outputs/fetch/fetch_manifest.jsonl", root / "outputs/fetch/fetch.lock",
+                        root / "data/raw/fetch", log)
+    scope = f"batch {args.batch}" if args.batch is not None else "all batches"
+    print(f"{scope}: {'RUNNING' if s['running'] else 'not running'}")
+    print(f"  done {s['done']}/{s['units_total']} units, remaining {s['remaining']}")
+    if s["running"]:
+        print(f"  elapsed {s['elapsed_min']} min" + (f", finished this run {s['done_this_run']}" if s["done_this_run"] is not None else ""))
+        print(f"  ETA {s['eta_min']} min" if s["eta_min"] is not None else
+              "  ETA: not yet (no unit finished in this run, or no batch log to read the start from)")
+        print(f"  raw daily files in progress: {s['raw_files_in_progress']}")
+    if s["failed_last_attempt"] and s["running"]:
+        print(f"  {len(s['failed_last_attempt'])} of the remaining failed in an earlier run and are being retried now")
+    elif s["failed_last_attempt"]:
+        print(f"  failed ({len(s['failed_last_attempt'])}), rerun the same fetch command to retry:")
+        for k in s["failed_last_attempt"][:10]:
+            print(f"    {k}")
+        if len(s["failed_last_attempt"]) > 10:
+            print(f"    ... and {len(s['failed_last_attempt']) - 10} more")
+    return 0
+
+
 def cmd_fetch(args) -> int:
     import json
 
@@ -171,7 +263,14 @@ def cmd_fetch(args) -> int:
     root = cfg["_root"]
     plan_path = Path(args.plan) if args.plan else root / "outputs/plan.json"
     plan = json.loads(plan_path.read_text())
-    units = backfill.build_units(plan, cfg, regions=args.region, sources=args.source)
+    regions = list(args.region or [])
+    if args.batch is not None:
+        batches = (yaml.safe_load((root / "config/fetch_batches.yaml").read_text()) or {}).get("batches") or {}
+        if args.batch not in batches:
+            print(f"unknown batch {args.batch}; defined: {sorted(batches)}", file=sys.stderr)
+            return 2
+        regions += batches[args.batch]
+    units = backfill.build_units(plan, cfg, regions=regions or None, sources=args.source)
     if args.dry_run:
         mur = [u for u in units if u["kind"] == "mur"]
         jobs = sum(len(u["roi"]["mur_requests"]) for u in mur)
@@ -182,7 +281,7 @@ def cmd_fetch(args) -> int:
             print("  " + u["key"])
         cal = (plan.get("transfer_ratios") or {}).get("calibration")
         print(f"Calibrated: {'yes' if cal else 'NO (fetch will refuse)'}; budget {plan['execution'].get('max_download_gb')} GB; "
-              f"concurrency {plan['execution'].get('concurrency')}")
+              f"concurrency {args.concurrency or plan['execution'].get('concurrency')}")
         return 0
     try:
         backfill.verify_fetch_plan(plan, args.approve_plan, root)
@@ -194,8 +293,10 @@ def cmd_fetch(args) -> int:
         print("Loaded from .env: " + ", ".join(sorted(names)) + " (values not shown)")
     try:
         bf = backfill.Backfill(root, cfg, plan, out_dir=root / "outputs/fetch", raw_dir=root / "data/raw/fetch",
-                               processed_dir=root / "data/processed", membership_dir=root / "outputs/membership")
-        summary = bf.run(units, max_units=args.max_units)
+                               processed_dir=root / "data/processed", membership_dir=root / "outputs/membership",
+                               log=lambda m: print(m, flush=True), concurrency=args.concurrency)
+        with backfill.RunLock(root / "outputs/fetch/fetch.lock"):
+            summary = bf.run(units, max_units=args.max_units)
     except pilot.FetchGuardError as e:
         print(f"ABORTED by download guard: {e}", file=sys.stderr)
         return 5
@@ -242,11 +343,27 @@ def main(argv=None) -> int:
     fe.add_argument("--plan", default=None, help="default outputs/plan.json")
     fe.add_argument("--approve-plan", default=None, help="the PLAN SHA256 you reviewed (required)")
     fe.add_argument("--region", action="append", help="limit to region id (repeatable)")
+    fe.add_argument("--batch", type=int, default=None, help="run one batch from execution.batches")
     fe.add_argument("--source", choices=["all", "mur", "copernicus"], default="all")
+    fe.add_argument("--concurrency", type=_concurrency, default=None,
+                    help=f"units run at once (1-{MAX_CONCURRENCY}); overrides execution.concurrency, does not change the plan")
     fe.add_argument("--max-units", type=int, default=None, help="stop after N units (e.g. to measure speed)")
     fe.add_argument("--dry-run", action="store_true", help="count the work; send nothing")
     fe.set_defaults(func=cmd_fetch)
-    for name in ("process", "validate", "export"):
+    st = sub.add_parser("status", help="read-only progress of fetch (done / remaining / ETA)")
+    st.add_argument("--config", default="config/extraction.yaml")
+    st.add_argument("--plan", default=None, help="default outputs/plan.json")
+    st.add_argument("--batch", type=int, default=None, help="batch number; omit for every unit in the plan")
+    st.set_defaults(func=cmd_status)
+    ex = sub.add_parser("export", help="upsert data/processed Parquet into Postgres/Supabase (SEAGIS_DB_DSN)")
+    ex.add_argument("--config", default="config/extraction.yaml")
+    ex.add_argument("--plan", default=None, help="default outputs/plan.json")
+    ex.add_argument("--dry-run", action="store_true", help="summarise what would be loaded; no connection")
+    ex.add_argument("--confirm-host", default=None, help="must equal the DSN host to write")
+    ex.add_argument("--apply-migrations", action="store_true", help="apply pending supabase/migrations/*.sql first")
+    ex.add_argument("--migrations-dir", default=None, help="default <repo>/supabase/migrations")
+    ex.set_defaults(func=cmd_export)
+    for name in ("process", "validate"):
         sp = sub.add_parser(name, help="not implemented yet")
         sp.add_argument("rest", nargs="*")
         sp.set_defaults(func=_not_yet(name))

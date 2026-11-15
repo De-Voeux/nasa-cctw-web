@@ -1,0 +1,13 @@
+# Fetch batches (2026-11-15). Only the ORDER of work: what is fetched is fixed by the approved plan,
+# so this file is deliberately not a plan input (editing it does not change the plan hash).
+# Pilot regions first; then by area, roughly balanced by work units.
+# ID-CENT-SUL (Banggai, Morowali, Tomini Gulf) excluded by the user on 2026-11-15 after repeated
+# Harmony connection resets on tomini_tojo_una_una; its downloaded outputs were deleted. It is still
+# in the approved plan, so `status`/export without --batch still count it until the plan is rebuilt.
+excluded: [ID-CENT-SUL]
+batches:
+  1: [PH-TAWI, ID-SOUTH-SUL]
+  2: [ID-SEA-SUL]
+  3: [ID-N-JAVA-SEA, ID-NTB, ID-N-KAL, ID-MALUKU]
+  4: [PH-PANG, PH-PALAWAN]
+  5: [PH-NE-BOHOL, PH-ZAMBOANGA, PH-DAVAO-N, PH-E-SAMAR, PH-BATANGAS, MY-SABAH, VN-KHANH-HOA]

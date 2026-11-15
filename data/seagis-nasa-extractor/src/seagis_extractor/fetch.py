@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import datetime as dt
 import hashlib
+import random
+import socket
 import threading
 import time
 import urllib.error
@@ -104,6 +106,18 @@ def harmony_url(collection_id: str, variables: list[str], bbox: list[float], sta
             + urllib.parse.urlencode(q, quote_via=urllib.parse.quote))
 
 
+# Transient network trouble seen live (2026-11-15, batch 2): "Connection reset by peer" from
+# Earthdata under load. One reset must not fail a whole ROI-month, so each HTTP call retries.
+TRANSIENT_HTTP = {429, 500, 502, 503, 504}
+TRANSIENT_ERRORS = (urllib.error.URLError, ConnectionError, TimeoutError, socket.timeout)
+
+
+def _backoff(attempt: int, retry_after: str | None = None) -> float:
+    if retry_after and retry_after.strip().isdigit():
+        return min(120.0, float(retry_after))
+    return min(60.0, 2.0 ** attempt) * (0.5 + random.random())
+
+
 @dataclass
 class HarmonyClient:
     token: str
@@ -115,11 +129,28 @@ class HarmonyClient:
     poll_seconds: float = 5.0
     max_polls: int = 360
     timeout: float = 120.0
+    net_retries: int = 6
     calls: int = field(default=0)
 
+    def _get(self, url: str) -> Response:
+        """One GET through `transport`, retried on resets, timeouts, 429 and 5xx."""
+        for attempt in range(1, self.net_retries + 1):
+            self.calls += 1
+            try:
+                r = self.transport("GET", url, _auth_for(url, self.token), self.timeout)
+            except TRANSIENT_ERRORS as e:
+                if attempt == self.net_retries:
+                    raise FetchError(f"GET {redact(url)} failed {attempt}x: {type(e).__name__}: {e}") from e
+                self.sleep(_backoff(attempt))
+                continue
+            if r.status in TRANSIENT_HTTP and attempt < self.net_retries:
+                self.sleep(_backoff(attempt, r.header("Retry-After")))
+                continue
+            return r
+        raise AssertionError("unreachable")
+
     def _json(self, url: str) -> dict:
-        self.calls += 1
-        r = self.transport("GET", url, _auth_for(url, self.token), self.timeout)
+        r = self._get(url)
         if r.status in (401, 403):
             raise FetchError(f"Harmony refused credentials (HTTP {r.status}) for {redact(url)}")
         if r.status != 200:
@@ -130,8 +161,7 @@ class HarmonyClient:
         if tuple(bbox) not in self.allowed_boxes:
             raise FetchGuardError(f"request box {bbox} is not in the approved plan")
         url = harmony_url(collection_id, variables, bbox, start, end)
-        self.calls += 1
-        r = self.transport("GET", url, _auth_for(url, self.token), self.timeout)
+        r = self._get(url)
         if r.status in (301, 302, 303, 307, 308):
             # async requests answer "303 See Other -> /jobs/<jobID>" (seen live 2026-11-15)
             loc = urllib.parse.urlsplit(r.header("Location") or "").path
@@ -173,9 +203,11 @@ class HarmonyClient:
         dest.parent.mkdir(parents=True, exist_ok=True)
         part = dest.with_name(dest.name + ".part")
         h = hashlib.sha256()
-        for _ in range(max_hops + 1):
+        hop = attempt = 0
+        while hop <= max_hops:
             self.calls += 1
             written = 0
+            h = hashlib.sha256()
             try:
                 with part.open("wb") as f:
                     def sink(chunk: bytes):
@@ -185,15 +217,27 @@ class HarmonyClient:
                         h.update(chunk)
                         f.write(chunk)
                     r = self.stream(url, _auth_for(url, self.token), self.timeout, sink)
+            except TRANSIENT_ERRORS as e:
+                part.unlink(missing_ok=True)
+                attempt += 1
+                if attempt >= self.net_retries:
+                    raise FetchError(f"download {redact(url)} failed {attempt}x: {type(e).__name__}: {e}") from e
+                self.sleep(_backoff(attempt))
+                continue
             except BaseException:
                 part.unlink(missing_ok=True)
                 raise
+            if r.status in TRANSIENT_HTTP and attempt + 1 < self.net_retries:
+                part.unlink(missing_ok=True)
+                attempt += 1
+                self.sleep(_backoff(attempt, r.header("Retry-After")))
+                continue
+            hop += 1
             if r.status in (301, 302, 303, 307, 308):
                 loc = r.header("Location")
                 if not loc:
                     raise FetchError(f"redirect without Location from {redact(url)}")
                 url = urllib.parse.urljoin(url, loc)
-                h = hashlib.sha256()
                 continue
             if r.status != 200:
                 part.unlink(missing_ok=True)

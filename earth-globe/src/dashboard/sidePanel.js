@@ -109,40 +109,50 @@ export class SidePanel {
     this.body.scrollTop = 0
   }
 
-  /** Days between the date-bar selection and today (−1 … +3). */
-  _dayOffset() {
-    if (!this.day) return 0
-    const t = new Date()
-    t.setHours(0, 0, 0, 0)
-    return Math.round((this.day.date - t) / 86400000)
+  /** Select the closest available value without extending observations into the future. */
+  _selectedIndex(data) {
+    if (!this.day || !data?.dates?.length) return data?.todayIndex || 0
+    const target = this.day.date.getTime()
+    let best = 0
+    let distance = Infinity
+    data.dates.forEach((date, i) => {
+      const d = Math.abs(date.getTime() - target)
+      if (d < distance) { best = i; distance = d }
+    })
+    return best
   }
 
   /**
-   * Stress summary and the stressors behind it ("What drives this"), each driver
-   * with a trend chart. Stressor values are DUMMY (data/sampleDrivers.js) until
-   * the data pipeline feeds the dashboard.
+   * Stress summary and the environmental series behind it. Demo series remain
+   * available only when the explicit demo query parameter is used.
    */
   _stressHtml(loc, a) {
     const lv = LEVELS[a.level]
-    const data = driversFor(loc.id, a.level)
-    const sel = data ? data.todayIndex + this._dayOffset() : 0
+    const data = a.data || (a.demo ? driversFor(loc.id, a.level) : null)
+    const sel = data ? this._selectedIndex(data) : 0
     const drivers = data ? data.items.filter((d) => d.driver) : []
     const others = data ? data.items.filter((d) => !d.driver) : []
     const total = data ? WORDS[data.items.length].toLowerCase() : ""
-    const summary = !data
+    const summary = a.observed
+      ? `${esc(a.condition)}. These are environmental observations; no biological stress level has been assigned.`
+      : !data
       ? `${esc(a.condition)}. There isn't enough data to assess this region, which is not the same as low stress.`
       : `${drivers.length ? `${WORDS[drivers.length]} of ${total}` : `None of the ${total}`} evaluated stressors ${drivers.length === 1 ? "is" : "are"} outside the species reference range. This is an environmental warning, not a disease diagnosis.`
 
-    const card = (d) => `
+    const card = (d) => {
+      const index = Math.min(d.values.length - 1, d.dates ? this._selectedIndex({ dates: d.dates, todayIndex: d.values.length - 1 }) : sel)
+      const chartToday = Math.min(d.values.length - 1, d.todayIndex ?? d.values.length - 1)
+      return `
       <article class="driver${d.driver ? " is-driver" : ""}">
         <header>
           <h3>${esc(d.name)}</h3>
-          <p class="driver-value">${d.values[sel].toFixed(d.digits)}<span> ${esc(d.unit)}</span></p>
+          <p class="driver-value">${d.values[index].toFixed(d.digits)}<span> ${esc(d.unit)}</span></p>
         </header>
-        <p class="driver-head">${esc(d.headline)}</p>
-        ${d.driver ? trendChart(d, data.dates, data.todayIndex, sel) : ""}
-        <p class="driver-src">${esc(d.source)}<br>Species reference range: not yet reviewed</p>
+        <p class="driver-head">${esc(d.headline || "Observed environmental value")}</p>
+        ${data.observed || d.driver ? trendChart(d, d.dates || data.dates, chartToday, index) : ""}
+        <p class="driver-src">${esc(d.source)}${d.product_version ? ` · product ${esc(d.product_version)}` : ""}<br>Species reference range: not yet reviewed</p>
       </article>`
+    }
 
     return `
         <section class="stress-sum tint-${a.level}">
@@ -157,15 +167,15 @@ export class SidePanel {
         </section>
         ${data ? `
         <h2 class="section-title">What drives this</h2>
-        ${drivers.length ? drivers.map(card).join("") : `<p class="muted small">No stressor is outside its reference range.</p>`}
+        ${drivers.length ? drivers.map(card).join("") : `<p class="muted small">No stressor classification is active. The cards below show observed values only.</p>`}
         <h2 class="section-title">Also checked</h2>
         ${others.map(card).join("")}` : ""}
         <section class="not-assessed">
           <h2 class="section-title">Not assessed</h2>
-          <ul>${(data ? NOT_ASSESSED : [{ name: "All stressors", why: "Environmental layers are not connected yet." }])
+          <ul>${(data?.notAssessed || (data ? NOT_ASSESSED : [{ name: "All stressors", why: "Environmental layers are not connected yet." }]))
             .map((x) => `<li><b>${esc(x.name)}</b> · ${esc(x.why)}</li>`).join("")}</ul>
         </section>
-        ${data ? `<p class="fineprint">${esc(DUMMY_NOTE)} Stress level is a demo value.</p>` : ""}
+        ${a.demo ? `<p class="fineprint">${esc(DUMMY_NOTE)} Stress level is a demo value.</p>` : ""}
         <h2 class="section-title">About this place</h2>`
   }
 }
