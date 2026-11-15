@@ -1,5 +1,6 @@
 import { answer } from "./ask.js"
 import { askAssistant, renderAnswer, MESSAGES, MAX_QUESTION } from "./assistant.js"
+import { placesIn } from "./places.js"
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c])
 
@@ -55,7 +56,16 @@ export function mountChat(root, { locations, onShow, getContext = () => ({}) }) 
     try {
       const reply = await askAssistant(q, getContext())
       if (reply.ok) {
-        bubble.innerHTML = renderAnswer(reply.data)
+        const d = reply.data
+        // Places the answer names become "Show on the globe" buttons; if the QUESTION itself named exactly one
+        // place, go there at once (the same as the built-in answers do).
+        const named = placesIn([d.answer_md, ...(d.claims ?? []).map((c) => c.text)].join("\n"), locations)
+        const buttons = named
+          .map((loc) => `<button type="button" class="show-btn" data-goto="${loc.id}">Show ${esc(loc.name)} on the globe</button>`)
+          .join("")
+        bubble.innerHTML = renderAnswer(d) + (buttons ? `<div class="msg-actions">${buttons}</div>` : "")
+        const asked = placesIn(q, locations)
+        if (asked.length === 1) onShow(asked[0])
         return
       }
       if (reply.reason !== "unavailable") {
