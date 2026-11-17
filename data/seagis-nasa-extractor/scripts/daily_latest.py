@@ -1,4 +1,4 @@
-"""Daily top-up: the newest published day of each source, one day per source, into seagis_daily_metrics.
+"""Daily top-up: every day each source is missing, up to the newest published one, into seagis_daily_metrics.
 
 Runs from .github/workflows/daily-fetch.yml at 19:00 WIB. Same 48 zones, boxes, grid cells, hosts and
 aggregation as the approved backfill plan (outputs/plan.json): the plan hash is verified exactly as
@@ -7,13 +7,15 @@ changes the plan hash, so the job refuses until a new plan is reviewed and its h
 
     python scripts/daily_latest.py --approve-plan <PLAN SHA256> [--dry-run] [--confirm-host <db host>]
 
-Per source (observed data only, never a forecast):
-- mur_sst     newest MUR granule in CMR, if it is newer than the database
-- gpm_imerg   newest IMERG Late daily granule in CMR, if newer
-- cmems_*     yesterday (WIB) from the Copernicus analysis, if newer
-- nasa_power  newest day of the last 10 whose T2M is published, if newer
+Per source (observed data only, never a forecast), every day of the last 7 (to yesterday, WIB) that the
+database does not have yet, so a missed run or a late release is filled the next evening:
+- mur_sst     the MUR granules CMR lists for those days
+- gpm_imerg   the IMERG Late daily granules CMR lists for those days
+- cmems_*     those days from the Copernicus analysis
+- nasa_power  those days whose T2M POWER has published (one call per zone covers the last 10 days)
 
-Nothing new for a source -> that source is skipped. A day already in the database is never fetched again.
+Nothing missing for a source -> that source is skipped. A day already in the database is not fetched again
+(Copernicus fetches one date range per region, so a day it already has may be rewritten with the same value).
 Secrets come from the environment (EARTHDATA_TOKEN, COPERNICUSMARINE_SERVICE_USERNAME/PASSWORD, SEAGIS_DB_DSN).
 """
 from __future__ import annotations
@@ -23,6 +25,7 @@ import copy
 import datetime as dt
 import json
 import sys
+import time
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -38,33 +41,44 @@ WIB = dt.timezone(dt.timedelta(hours=7))
 CMR = "https://cmr.earthdata.nasa.gov/search/granules.json"
 OUT = ROOT / "outputs" / "daily"
 POWER_LOOKBACK = 10
+CATCH_UP_DAYS = 7          # a missed day is filled while it is at most this many days before yesterday
 
 
 def log(msg: str) -> None:
     print(msg, flush=True)
 
 
-def newest_granule_day(concept_id: str) -> dt.date | None:
-    """Metadata only: the date of the newest granule of a collection (CMR, no account)."""
-    q = urllib.parse.urlencode({"collection_concept_id": concept_id, "sort_key": "-start_date", "page_size": 5})
-    with urllib.request.urlopen(f"{CMR}?{q}", timeout=60) as r:
-        entries = json.load(r)["feed"]["entry"]
-    days = [granule_date(e.get("title") or e.get("producer_granule_id") or "") for e in entries]
-    days = [d for d in days if d]
-    return max(days) if days else None
+def granule_days(concept_id: str) -> list[dt.date]:
+    """Metadata only: the dates of the newest granules of a collection (CMR, no account)."""
+    q = urllib.parse.urlencode({"collection_concept_id": concept_id, "sort_key": "-start_date",
+                                "page_size": CATCH_UP_DAYS + 5})
+    for attempt in range(1, 5):
+        try:
+            with urllib.request.urlopen(f"{CMR}?{q}", timeout=60) as r:
+                entries = json.load(r)["feed"]["entry"]
+            break
+        except OSError:
+            if attempt == 4:
+                raise
+            time.sleep(15 * attempt)
+    days = {granule_date(e.get("title") or e.get("producer_granule_id") or "") for e in entries}
+    return sorted(d for d in days if d)
 
 
-def db_latest(dsn: str | None) -> dict[str, dt.date]:
-    """Newest observed day with a value, per dataset (POWER: per T2M, since CERES fields lag)."""
+def db_days(dsn: str | None, since: dt.date) -> dict[str, set[dt.date]]:
+    """Observed days with a value since `since`, per dataset (POWER: per T2M, since CERES fields lag)."""
     if not dsn:
         return {}
     import psycopg
     with psycopg.connect(dsn, connect_timeout=20, application_name="seagis-daily") as c:
         rows = c.execute(
-            "select dataset, max(date) from public.seagis_daily_metrics "
-            "where coalesce(data_type, 'observed') = 'observed' and mean is not null "
-            "and (dataset <> 'nasa_power' or variable = 'T2M') group by dataset").fetchall()
-    return {d: m for d, m in rows}
+            "select distinct dataset, date from public.seagis_daily_metrics "
+            "where coalesce(data_type, 'observed') = 'observed' and mean is not null and date >= %s "
+            "and (dataset <> 'nasa_power' or variable = 'T2M')", (since,)).fetchall()
+    out: dict[str, set[dt.date]] = {}
+    for d, day in rows:
+        out.setdefault(d, set()).add(day)
+    return out
 
 
 def main(argv=None) -> int:
@@ -97,40 +111,44 @@ def main(argv=None) -> int:
     if dsn and not args.dry_run and args.confirm_host != export.dsn_host(dsn):
         log("REFUSED: --confirm-host does not match the DSN host; nothing fetched")
         return 2
-    have = db_latest(dsn)
-    log(f"today (WIB) {today}; newest in database: " + (", ".join(f"{k} {v}" for k, v in sorted(have.items())) or "unknown"))
+    first_ok = yesterday - dt.timedelta(CATCH_UP_DAYS - 1)
+    have = db_days(dsn, first_ok)
+    log(f"today (WIB) {today}; newest in database: "
+        + (", ".join(f"{k} {max(v)}" for k, v in sorted(have.items())) or "unknown"))
 
-    def newer(dataset: str, day: dt.date | None) -> bool:
-        return day is not None and day <= yesterday and (dataset not in have or day > have[dataset])
+    def missing(dataset: str, candidates) -> list[dt.date]:
+        """Days of the last CATCH_UP_DAYS (to yesterday) that the database does not have yet."""
+        return sorted(d for d in candidates if first_ok <= d <= yesterday and d not in have.get(dataset, set()))
 
-    # ---------------------------------------------------------------- pick one day per source
-    days: dict[str, dt.date] = {}
+    window = [first_ok + dt.timedelta(n) for n in range(CATCH_UP_DAYS)]
+
+    # ---------------------------------------------------------------- the days each source is missing
+    days: dict[str, list[dt.date]] = {}
     if "mur" in sources:
-        d = newest_granule_day(plan["dataset"]["collection"]["concept_id"])
-        log(f"mur_sst: newest granule {d}")
-        if newer("mur_sst", d):
-            days["mur"] = d
+        g = granule_days(plan["dataset"]["collection"]["concept_id"])
+        log(f"mur_sst: newest granule {g[-1] if g else None}")
+        days["mur"] = missing("mur_sst", g)
     if "imerg" in sources and plan.get("imerg"):
-        d = newest_granule_day(plan["imerg"]["collection"]["concept_id"])
-        log(f"gpm_imerg: newest granule {d}")
-        if newer("gpm_imerg", d):
-            days["imerg"] = d
+        g = granule_days(plan["imerg"]["collection"]["concept_id"])
+        log(f"gpm_imerg: newest granule {g[-1] if g else None}")
+        days["imerg"] = missing("gpm_imerg", g)
     specs = {s["key"]: s for s in cfg["_products"].get("copernicus", [])}
     cop_keys = [x["key"] for x in (plan.get("copernicus") or {}).get("datasets", [])
                 if not specs.get(x["key"], {}).get("forecast_only")]       # the 3-day outlook has its own run
-    if "copernicus" in sources and cop_keys:
-        if any(newer(k, yesterday) for k in cop_keys):
-            days["copernicus"] = yesterday
-    if "power" in sources and plan.get("power") and newer("nasa_power", yesterday):
-        days["power"] = yesterday            # the newest published day inside the window is chosen after the call
+    cop_need = {k: missing(k, window) for k in cop_keys} if "copernicus" in sources else {}
+    days["copernicus"] = sorted({d for v in cop_need.values() for d in v})
+    if "power" in sources and plan.get("power"):
+        days["power"] = missing("nasa_power", window)   # what POWER has published is known after the call
+    days = {k: v for k, v in days.items() if v}
     if not days:
         log("nothing new for any source; done")
         return 0
-    log("to fetch: " + ", ".join(f"{k} {v}" for k, v in days.items()))
+    log("to fetch: " + "; ".join(f"{k} {', '.join(map(str, v))}" for k, v in days.items()))
 
     # ---------------------------------------------------------------- the approved plan, re-dated
     p = copy.deepcopy(plan)
-    p["copernicus"]["period"] = {"start": str(days.get("copernicus", yesterday)), "end": str(days.get("copernicus", yesterday))}
+    if "copernicus" in days:
+        p["copernicus"]["period"] = {"start": str(days["copernicus"][0]), "end": str(days["copernicus"][-1])}
     pw_start = yesterday - dt.timedelta(POWER_LOOKBACK - 1)
     if p.get("power"):
         spec = cfg["_products"]["power"]
@@ -141,20 +159,19 @@ def main(argv=None) -> int:
                 raise SystemExit(f"POWER URL of {row['subregion_id']} is not the approved one; refusing")
             row["url"] = power.point_url(spec, row["lat"], row["lon"], pw_start, yesterday)  # same point, new dates
     units = []
-    for kind, d in days.items():
-        month = d.isoformat()
+    for kind, ds in days.items():
+        tag = f"{ds[0]}_{ds[-1]}"
         if kind == "mur":
-            units += [{"kind": "mur", "key": f"mur/{r['region_id']}/{r['subregion_id']}/{month}", "roi": r,
-                       "month": month, "first": d, "last": d, "expected": [d]} for r in p["rois"]]
+            units += [{"kind": "mur", "key": f"mur/{r['region_id']}/{r['subregion_id']}/{tag}", "roi": r,
+                       "month": tag, "first": ds[0], "last": ds[-1], "expected": ds} for r in p["rois"]]
         elif kind == "imerg":
-            units += [{"kind": "imerg", "key": f"imerg/{r['region_id']}/{r['subregion_id']}/{month}", "row": r,
-                       "month": month, "first": d, "last": d, "expected": [d]} for r in p["imerg"]["rois"]]
+            units += [{"kind": "imerg", "key": f"imerg/{r['region_id']}/{r['subregion_id']}/{tag}", "row": r,
+                       "month": tag, "first": ds[0], "last": ds[-1], "expected": ds} for r in p["imerg"]["rois"]]
         elif kind == "copernicus":
-            units += [{"kind": "copernicus", "key": f"{x['key']}/{reg}/{month}", "dataset": x["key"], "region": reg}
-                      for x in p["copernicus"]["datasets"] if x["key"] in cop_keys and newer(x["key"], d)
-                      for reg in x["regions"]]
+            units += [{"kind": "copernicus", "key": f"{x['key']}/{reg}/{tag}", "dataset": x["key"], "region": reg}
+                      for x in p["copernicus"]["datasets"] if cop_need.get(x["key"]) for reg in x["regions"]]
         elif kind == "power":
-            units += [{"kind": "power", "key": f"power/{r['region_id']}/{r['subregion_id']}/{month}", "row": r}
+            units += [{"kind": "power", "key": f"power/{r['region_id']}/{r['subregion_id']}/{tag}", "row": r}
                       for r in p["power"]["rois"]]
     log(f"{len(units)} units: " + ", ".join(f"{k} {sum(1 for u in units if u['kind'] == k)}" for k in days))
     if args.dry_run:
@@ -169,25 +186,30 @@ def main(argv=None) -> int:
     failed = [r for r in bf.manifest.items.values() if r.get("status") != "ok"]
     log(f"fetch: {len(units) - len(failed)} ok, {len(failed)} failed")
 
-    # POWER returns the whole look-back window: keep only its newest day with T2M published.
+    # POWER returns the whole look-back window: keep the missing days whose T2M is published.
     import pandas as pd
     pw_files = sorted((processed / power.DATASET).rglob("*.parquet")) if (processed / power.DATASET).exists() else []
     if pw_files:
         frames = [pd.read_parquet(f) for f in pw_files]
         allp = pd.concat(frames)
         ok = allp[(allp["variable"] == "T2M") & allp["mean"].notna()]
-        best = pd.to_datetime(ok["date"]).dt.date.max() if len(ok) else None
-        if best is None or ("nasa_power" in have and best <= have["nasa_power"]):
-            log(f"nasa_power: newest published day {best} is not new; skipped")
-            for f in pw_files:
-                f.unlink()
+        keep = set(missing("nasa_power", set(pd.to_datetime(ok["date"]).dt.date)))
+        log(f"nasa_power: published and missing: {', '.join(map(str, sorted(keep))) or 'none'}")
+        if keep:
+            days["power"] = sorted(keep)
         else:
-            days["power"] = best
-            log(f"nasa_power: newest published day {best}")
-            for f, d in zip(pw_files, frames):
-                d[pd.to_datetime(d["date"]).dt.date == best].to_parquet(f, index=False)
+            days.pop("power", None)
+        for f, d in zip(pw_files, frames):
+            d = d[pd.to_datetime(d["date"]).dt.date.isin(keep)]
+            if len(d):
+                d.to_parquet(f, index=False)
+            else:
+                f.unlink()
 
-    fetched = list(days.values())
+    fetched = [d for v in days.values() for d in v]
+    if not fetched:
+        log("nothing new to load")
+        return 1 if failed else 0
     pe = copy.deepcopy(plan)
     pe["period"] = {"start": str(min(fetched)), "end": str(max(fetched))}   # export keeps rows inside this window
     roi_path = root / cfg.get("roi_directory", "data/roi") / "roi_candidates_v1.geojson"
