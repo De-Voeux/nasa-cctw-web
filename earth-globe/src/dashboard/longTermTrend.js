@@ -263,6 +263,7 @@ export function insightsHtml(doc, regionId, { place, rules = null, species = nul
         <li><b>Area:</b> the sea within 5 km of the coast where ice-ice was reported, averaged over the area. Not measurements at a farm.</li>
         ${region ? `<li><b>Trend test:</b> Mann-Kendall on yearly averages, clear when p &lt; 0.05; size from Sen's slope with a 95% confidence interval.</li>` : ""}
         ${ruleSources.length ? `<li><b>Safe ranges:</b> ${esc(ruleSources.join("; "))}. Provisional.</li>` : ""}
+        <li><b>Code and data pipeline:</b> <a href="https://github.com/De-Voeux/nasa-cctw-web" target="_blank" rel="noopener noreferrer">open on GitHub</a>.</li>
       </ul>
       <h3>What these data cannot show</h3>
       <ul>

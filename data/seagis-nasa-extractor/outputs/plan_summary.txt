@@ -1,0 +1,103 @@
+PLAN  MUR SST C1996881146-POCLOUD  2026-08-15 .. 2026-11-14  (metadata only, 0 science bytes)
+
+REGION/SUBREGION           BBOX CELLS ROI CELLS   EFF  DAYS          TRANSFER LOW / EXPECTED / HIGH    ROWS
+-----------------------------------------------------------------------------------------------------------
+PH-TAWI/bongao                    550       318  0.58    91     4.64 MiB /    5.15 MiB /    6.44 MiB     182
+PH-TAWI/sitangkai                1794       667  0.37    91     4.74 MiB /    5.27 MiB /    6.59 MiB     182
+PH-TAWI/sibutu                    602       406  0.67    91     4.64 MiB /    5.16 MiB /    6.45 MiB     182
+ID-SOUTH-SUL/takalar             1710       669  0.39    91     4.73 MiB /    5.26 MiB /    6.58 MiB     182
+ID-SOUTH-SUL/jeneponto           1012       391  0.39    91     4.68 MiB /    5.20 MiB /    6.50 MiB     182
+ID-SOUTH-SUL/pangkep             3990      1506  0.38    91     4.93 MiB /    5.47 MiB /    6.84 MiB     182
+ID-SOUTH-SUL/selayar             4280      1532  0.36    91     4.95 MiB /    5.50 MiB /    6.87 MiB     182
+ID-SEA-SUL/buton                 3658       866  0.24    91     4.90 MiB /    5.44 MiB /    6.80 MiB     182
+ID-SEA-SUL/muna                  4680      1076  0.23    91     4.98 MiB /    5.54 MiB /    6.92 MiB     182
+ID-SEA-SUL/wakatobi             12250      2176  0.18    91    10.02 MiB /   11.13 MiB /   13.92 MiB     182
+ID-SEA-SUL/konawe                 589       281  0.48    91     4.64 MiB /    5.16 MiB /    6.45 MiB     182
+ID-N-JAVA-SEA/kepulauan_seribu       5264      1759  0.33    91     5.03 MiB /    5.59 MiB /    6.99 MiB     182
+ID-CENT-SUL/banggai             20664      3016  0.15    91    19.60 MiB /   21.78 MiB /   27.23 MiB     182
+ID-CENT-SUL/morowali            26690      2398  0.09    91    14.75 MiB /   16.39 MiB /   20.48 MiB     182
+ID-CENT-SUL/tomini_parigi_moutong      22140      1929  0.09    91    14.87 MiB /   16.52 MiB /   20.65 MiB     182
+ID-CENT-SUL/tomini_poso          1190       367  0.31    91     4.69 MiB /    5.21 MiB /    6.52 MiB     182
+ID-CENT-SUL/tomini_tojo_una_una      21372      3018  0.14    91    19.49 MiB /   21.66 MiB /   27.07 MiB     182
+ID-NTB/lombok_timur              3198       851  0.27    91     4.86 MiB /    5.40 MiB /    6.75 MiB     182
+ID-NTB/sumbawa                  17172      3164  0.18    91    14.91 MiB /   16.57 MiB /   20.71 MiB     182
+ID-NTB/bima                     14833      2803  0.19    91    10.38 MiB /   11.53 MiB /   14.41 MiB     182
+ID-N-KAL/nunukan                25194      3380  0.13    91    24.64 MiB /   27.38 MiB /   34.22 MiB     182
+ID-N-KAL/tarakan                  638       320  0.50    91     4.65 MiB /    5.16 MiB /    6.45 MiB     182
+ID-MALUKU/seram_barat           35724      3437  0.10    91    14.82 MiB /   16.47 MiB /   20.58 MiB     182
+ID-MALUKU/seram_timur           39346      3700  0.09    91    24.63 MiB /   27.37 MiB /   34.21 MiB     182
+ID-MALUKU/kei_maluku_tenggara       7482      2395  0.32    91     5.22 MiB /    5.80 MiB /    7.25 MiB     182
+ID-MALUKU/kei_tual               7227      1731  0.24    91     5.20 MiB /    5.77 MiB /    7.22 MiB     182
+ID-MALUKU/aru                   17765      6965  0.39    91    10.63 MiB /   11.81 MiB /   14.76 MiB     182
+PH-BOHOL/bohol                   9222      2972  0.32    91     5.36 MiB /    5.96 MiB /    7.45 MiB     182
+PH-PANG/bolinao                   725       275  0.38    91     4.65 MiB /    5.17 MiB /    6.46 MiB     182
+PH-PANG/lingayen_gulf_anda        336       192  0.57    91     4.62 MiB /    5.13 MiB /    6.42 MiB     182
+PH-PANG/lingayen_gulf_alaminos        260       122  0.47    91     4.61 MiB /    5.13 MiB /    6.41 MiB     182
+PH-PANG/lingayen_gulf_sual        160       112  0.70    91     4.61 MiB /    5.12 MiB /    6.40 MiB     182
+PH-PANG/lingayen_gulf_labrador         30        20  0.67    91     4.59 MiB /    5.10 MiB /    6.38 MiB     182
+PH-PANG/lingayen_gulf_lingayen         72        63  0.88    91     4.60 MiB /    5.11 MiB /    6.39 MiB     182
+PH-PANG/lingayen_gulf_binmaley         56        41  0.73    91     4.60 MiB /    5.11 MiB /    6.38 MiB     182
+PH-PANG/lingayen_gulf_dagupan        100        57  0.57    91     4.60 MiB /    5.11 MiB /    6.39 MiB     182
+PH-PANG/lingayen_gulf_san_fabian         90        57  0.63    91     4.60 MiB /    5.11 MiB /    6.39 MiB     182
+PH-PALAWAN/coron                 3726      1726  0.46    91     4.90 MiB /    5.45 MiB /    6.81 MiB     182
+PH-PALAWAN/taytay                4030      1802  0.45    91     4.93 MiB /    5.48 MiB /    6.85 MiB     182
+PH-PALAWAN/roxas                 1845       612  0.33    91     4.75 MiB /    5.27 MiB /    6.59 MiB     182
+PH-ZAMBOANGA/zamboanga_city       4158      1168  0.28    91     4.94 MiB /    5.49 MiB /    6.86 MiB     182
+PH-DAVAO-N/davao_del_norte       1219       654  0.54    91     4.69 MiB /    5.22 MiB /    6.52 MiB     182
+PH-E-SAMAR/eastern_samar        13244      2642  0.20    91    10.01 MiB /   11.13 MiB /   13.91 MiB     182
+PH-BATANGAS/batangas             8829      1799  0.20    91     5.33 MiB /    5.92 MiB /    7.40 MiB     182
+PH-S-LUZON/calatagan              462       278  0.60    91     4.63 MiB /    5.15 MiB /    6.43 MiB     182
+MY-SABAH/semporna                2700      1167  0.43    91     4.82 MiB /    5.35 MiB /    6.69 MiB     182
+VN-KHANH-HOA/nha_trang            621       395  0.64    91     4.64 MiB /    5.16 MiB /    6.45 MiB     182
+VN-KHANH-HOA/cam_ranh             600       302  0.50    91     4.64 MiB /    5.16 MiB /    6.45 MiB     182
+-----------------------------------------------------------------------------------------------------------
+COUNTRY PH                                                    105.05 MiB /  116.73 MiB /  145.91 MiB    3822
+COUNTRY ID                                                    242.19 MiB /  269.10 MiB /  336.37 MiB    4368
+COUNTRY MY                                                      4.82 MiB /    5.35 MiB /    6.69 MiB     182
+COUNTRY VN                                                      9.29 MiB /   10.32 MiB /   12.90 MiB     364
+TOTAL MUR 2026-26                                             361.35 MiB /  401.49 MiB /  501.87 MiB    8736
+
+Peak disk LOW / EXPECTED / HIGH : 98.05 MiB / 105.51 MiB / 124.17 MiB
+Retained raw: discard_after_validation 0 | archive_subsets <= 501.87 MiB | archive_all 64.20 GiB
+Final aggregate: 8736 rows, Parquet ~0.375 MiB, CSV ~2.00 MiB
+Uncompressed subset arrays: 114.47 MiB   API calls (est.): 8806
+Limits: max_download_gb=20 -> HIGH within limit; max_disk_gb=30 -> HIGH peak within limit
+Shared fetch (cells/day): PH-TAWI per-ROI 2946, unique 2829, one region bbox 6164; ID-SOUTH-SUL per-ROI 10992, unique 10968, one region bbox 39843; ID-SEA-SUL per-ROI 21177, unique 20883, one region bbox 58555; ID-N-JAVA-SEA per-ROI 5264, unique 5264, one region bbox 5264; ID-CENT-SUL per-ROI 92056, unique 80843, one region bbox 148122; ID-NTB per-ROI 35203, unique 29793, one region bbox 33900; ID-N-KAL per-ROI 25832, unique 25744, one region bbox 31369; ID-MALUKU per-ROI 107544, unique 104653, one region bbox 438246; PH-BOHOL per-ROI 9222, unique 9222, one region bbox 9222; PH-PANG per-ROI 1829, unique 1414, one region bbox 3266; PH-PALAWAN per-ROI 9601, unique 9601, one region bbox 32076; PH-ZAMBOANGA per-ROI 4158, unique 4158, one region bbox 4158; PH-DAVAO-N per-ROI 1219, unique 1219, one region bbox 1219; PH-E-SAMAR per-ROI 13244, unique 13244, one region bbox 13244; PH-BATANGAS per-ROI 8829, unique 8829, one region bbox 8829; PH-S-LUZON per-ROI 462, unique 462, one region bbox 462; MY-SABAH per-ROI 2700, unique 2700, one region bbox 2700; VN-KHANH-HOA per-ROI 1221, unique 1221, one region bbox 1575
+Download scope: only the boxes in plan.json rois[].mur_requests (see outputs/qa/requests_*.png); 74 boxes for 48 ROIs, largest 10000 cells/day, limit 10000
+Missing dates (not published): 2026-11-14
+Confidence: days HIGH, grid MEDIUM, transfer LOW, final size LOW. See plan.json assumptions/unknowns.
+Pilot (7 days; PH-TAWI/bongao, ID-SOUTH-SUL/takalar): transfer 0.721 MiB / 0.801 MiB / 1.00 MiB, 28 API calls
+
+COPERNICUS MARINE  2026-08-15 .. 2026-11-14  surface level, exact chunk sizes via HEAD
+DATASET          VARS          GRID      DAYS  PER REGION  IF MONTHLY      UNIQUE
+---------------------------------------------------------------------------------
+cmems_bgc_nut    no3,po4     0.250°   92/92     67.89 MiB  271.56 MiB   28.21 MiB
+    by region: PH-TAWI 2.77 MiB, ID-SOUTH-SUL 2.84 MiB, ID-SEA-SUL 5.86 MiB, ID-N-JAVA-SEA 3.12 MiB, ID-CENT-SUL 5.61 MiB, ID-NTB 6.13 MiB, ID-N-KAL 2.77 MiB, ID-MALUKU 3.01 MiB, PH-BOHOL 6.73 MiB, PH-PANG 3.10 MiB, PH-PALAWAN 3.44 MiB, PH-ZAMBOANGA 2.77 MiB, PH-DAVAO-N 3.36 MiB, PH-E-SAMAR 3.28 MiB, PH-BATANGAS 3.44 MiB, PH-S-LUZON 3.44 MiB, MY-SABAH 2.77 MiB, VN-KHANH-HOA 3.44 MiB
+cmems_bgc_car    ph          0.250°   92/92     22.32 MiB   89.29 MiB    9.25 MiB
+    by region: PH-TAWI 0.903 MiB, ID-SOUTH-SUL 0.918 MiB, ID-SEA-SUL 1.93 MiB, ID-N-JAVA-SEA 1.04 MiB, ID-CENT-SUL 1.82 MiB, ID-NTB 1.98 MiB, ID-N-KAL 0.903 MiB, ID-MALUKU 1.01 MiB, PH-BOHOL 2.21 MiB, PH-PANG 1.07 MiB, PH-PALAWAN 1.16 MiB, PH-ZAMBOANGA 0.903 MiB, PH-DAVAO-N 1.05 MiB, PH-E-SAMAR 1.04 MiB, PH-BATANGAS 1.16 MiB, PH-S-LUZON 1.16 MiB, MY-SABAH 0.903 MiB, VN-KHANH-HOA 1.16 MiB
+cmems_phy_so     so          0.083°   92/92     47.61 MiB  133.84 MiB   35.12 MiB
+    by region: PH-TAWI 1.46 MiB, ID-SOUTH-SUL 2.55 MiB, ID-SEA-SUL 5.23 MiB, ID-N-JAVA-SEA 2.00 MiB, ID-CENT-SUL 3.55 MiB, ID-NTB 5.35 MiB, ID-N-KAL 0.623 MiB, ID-MALUKU 10.38 MiB, PH-BOHOL 2.65 MiB, PH-PANG 1.13 MiB, PH-PALAWAN 2.80 MiB, PH-ZAMBOANGA 1.42 MiB, PH-DAVAO-N 1.18 MiB, PH-E-SAMAR 1.38 MiB, PH-BATANGAS 1.25 MiB, PH-S-LUZON 1.25 MiB, MY-SABAH 2.09 MiB, VN-KHANH-HOA 1.31 MiB
+cmems_phy_thetao thetao      0.083°   92/92     53.53 MiB  150.42 MiB   39.53 MiB
+    by region: PH-TAWI 1.60 MiB, ID-SOUTH-SUL 2.93 MiB, ID-SEA-SUL 5.98 MiB, ID-N-JAVA-SEA 2.25 MiB, ID-CENT-SUL 4.10 MiB, ID-NTB 6.12 MiB, ID-N-KAL 0.608 MiB, ID-MALUKU 12.02 MiB, PH-BOHOL 2.90 MiB, PH-PANG 1.25 MiB, PH-PALAWAN 3.04 MiB, PH-ZAMBOANGA 1.56 MiB, PH-DAVAO-N 1.30 MiB, PH-E-SAMAR 1.49 MiB, PH-BATANGAS 1.38 MiB, PH-S-LUZON 1.38 MiB, MY-SABAH 2.21 MiB, VN-KHANH-HOA 1.39 MiB
+cmems_phy_cur    uo,vo       0.083°   92/92    147.26 MiB  414.37 MiB  108.81 MiB
+    by region: PH-TAWI 4.29 MiB, ID-SOUTH-SUL 7.97 MiB, ID-SEA-SUL 16.45 MiB, ID-N-JAVA-SEA 6.26 MiB, ID-CENT-SUL 11.02 MiB, ID-NTB 16.77 MiB, ID-N-KAL 1.61 MiB, ID-MALUKU 33.03 MiB, PH-BOHOL 8.16 MiB, PH-PANG 3.48 MiB, PH-PALAWAN 8.55 MiB, PH-ZAMBOANGA 4.36 MiB, PH-DAVAO-N 3.65 MiB, PH-E-SAMAR 4.15 MiB, PH-BATANGAS 3.89 MiB, PH-S-LUZON 3.89 MiB, MY-SABAH 5.89 MiB, VN-KHANH-HOA 3.85 MiB
+TOTAL COPERNICUS                               338.61 MiB              220.93 MiB
+  PER REGION = one subset per region (chunks shared by regions re-read); UNIQUE = every chunk read once (fetch with a shared chunk cache).
+  cmems_bgc_nut: sea cells per ROI min 0 / median 5 / max 25
+  cmems_bgc_car: sea cells per ROI min 0 / median 5 / max 25
+  cmems_phy_so: sea cells per ROI min 2 / median 19 / max 112
+  cmems_phy_thetao: sea cells per ROI min 2 / median 19 / max 112
+  cmems_phy_cur: sea cells per ROI min 2 / median 19 / max 112
+  Outputs: 30084 daily rows, NetCDF subsets <= 23.74 MiB, ~918 requests. Account: Copernicus Marine (free) needed for fetch.
+GRAND TOTAL TRANSFER (MUR expected + Copernicus): 740.11 MiB per-region, 622.42 MiB with shared chunk cache
+
+GPM IMERG GPM_3IMERGDL v07 C2723754859-GES_DISC  2026-08-15 .. 2026-11-14  0.1 deg, Harmony
+  days 91/92, not yet published: 2026-11-14
+  48 zones, 48 boxes, largest 440 cells/day; ROI cells min 1 / max 144
+  4368 daily files, transfer <= 126.41 MiB, 4368 rows
+
+NASA POWER daily point (AG)  2026-08-15 .. 2026-11-14  T2M, RH2M, WS10M, WD10M, ALLSKY_SFC_SW_DWN, ALLSKY_SFC_PAR_TOT, CLOUD_AMT
+  48 requests (one point per zone, inside the zone), 30912 rows, no account
+
+PLAN SHA256: 1a86251733793f430c8733780259cdec59cd9eceaa9a7b9745b61dee00183a76
+No historical data downloaded. Run fetch only after reviewing and approving the plan.

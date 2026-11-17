@@ -1,0 +1,1327 @@
+{
+  "schema": "seagis.catalog/1",
+  "generated_at": "2026-11-14T22:25:36+00:00",
+  "period": {
+    "start": "2026-08-15",
+    "end": "2026-11-14"
+  },
+  "metadata_requests": 5,
+  "science_bytes_downloaded": 0,
+  "products": [
+    {
+      "key": "mur_sst",
+      "group": "sst",
+      "role": "primary",
+      "processing": "standard",
+      "collection": {
+        "concept_id": "C1996881146-POCLOUD",
+        "provider": "POCLOUD",
+        "short_name": "MUR-JPL-L4-GLOB-v4.1",
+        "version": "4.1",
+        "title": "GHRSST Level 4 MUR Global Foundation Sea Surface Temperature Analysis (v4.1)",
+        "doi": "10.5067/GHGMR-4FJ04",
+        "temporal_begin": "2002-05-31T21:00:00.000Z",
+        "temporal_end": null,
+        "cloud_region": "us-west-2",
+        "service_ids": [
+          "S3177988677-POCLOUD",
+          "S2164732315-XYZ_PROV",
+          "S3616918458-LARC_CLOUD",
+          "S2874702816-XYZ_PROV"
+        ],
+        "variable_ids": [
+          "V2262655973-POCLOUD",
+          "V2112015425-POCLOUD",
+          "V2028632047-POCLOUD",
+          "V2112015422-POCLOUD",
+          "V2028668049-POCLOUD",
+          "V2028632042-POCLOUD",
+          "V2112015420-POCLOUD",
+          "V2028632044-POCLOUD"
+        ],
+        "revision_date": "2026-11-13T21:07:06.962Z"
+      },
+      "variables": {
+        "analysed_sst": {
+          "concept_id": "V2028632042-POCLOUD",
+          "long_name": "analysed sea surface temperature",
+          "dtype": "short",
+          "units": "kelvin",
+          "fill_values": [
+            -32768
+          ],
+          "scale_factor": 0.001,
+          "add_offset": 298.15,
+          "valid_ranges": [
+            {
+              "Min": -32767,
+              "Max": 32767
+            }
+          ],
+          "dimensions": {
+            "time": 1,
+            "lat": 17999,
+            "lon": 36000
+          }
+        },
+        "analysis_error": {
+          "concept_id": "V2028632044-POCLOUD",
+          "long_name": "estimated error standard deviation of analysed_sst",
+          "dtype": "short",
+          "units": "kelvin",
+          "fill_values": [
+            -32768
+          ],
+          "scale_factor": 0.01,
+          "add_offset": null,
+          "valid_ranges": [
+            {
+              "Min": 0,
+              "Max": 32767
+            }
+          ],
+          "dimensions": {
+            "time": 1,
+            "lat": 17999,
+            "lon": 36000
+          }
+        },
+        "mask": {
+          "concept_id": "V2028668049-POCLOUD",
+          "long_name": "sea/land field composite mask",
+          "dtype": "byte",
+          "units": null,
+          "fill_values": [
+            -128
+          ],
+          "scale_factor": 1.0,
+          "add_offset": null,
+          "valid_ranges": [
+            {
+              "Min": 1,
+              "Max": 31
+            }
+          ],
+          "dimensions": {
+            "time": 1,
+            "lat": 17999,
+            "lon": 36000
+          }
+        },
+        "sea_ice_fraction": {
+          "concept_id": "V2028632047-POCLOUD",
+          "long_name": "sea ice area fraction",
+          "dtype": "byte",
+          "units": "fraction (between 0 and 1)",
+          "fill_values": [
+            -128
+          ],
+          "scale_factor": 0.01,
+          "add_offset": null,
+          "valid_ranges": [
+            {
+              "Min": 0,
+              "Max": 100
+            }
+          ],
+          "dimensions": {
+            "time": 1,
+            "lat": 17999,
+            "lon": 36000
+          }
+        }
+      },
+      "missing_variables": [],
+      "harmony": {
+        "available": true,
+        "services": [
+          {
+            "name": "sds/HOSS-geographic",
+            "subsetting": {
+              "bbox": true,
+              "dimension": true,
+              "shape": true,
+              "temporal": true,
+              "variable": true
+            },
+            "output_formats": [
+              "NETCDF-4"
+            ]
+          },
+          {
+            "name": "asdc/imagenator_l3",
+            "subsetting": {
+              "variable": true
+            },
+            "output_formats": [
+              "PNG",
+              "JPEG"
+            ]
+          },
+          {
+            "name": "net2cog",
+            "subsetting": {
+              "variable": true
+            },
+            "output_formats": [
+              "GEOTIFF"
+            ]
+          }
+        ]
+      },
+      "inventory": {
+        "granule_pattern": "*-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+        "records_returned": 91,
+        "unique_dates": 91,
+        "first_date": "2026-08-15",
+        "last_date": "2026-11-13",
+        "duplicates": [],
+        "months": {
+          "2026-08": {
+            "days_in_period": 17,
+            "granules": 17,
+            "missing_dates": [],
+            "bytes_total": 12768704519,
+            "bytes_min": 726554783,
+            "bytes_max": 758505203,
+            "sizes_known": 17
+          },
+          "2026-09": {
+            "days_in_period": 30,
+            "granules": 30,
+            "missing_dates": [],
+            "bytes_total": 23055310933,
+            "bytes_min": 754431752,
+            "bytes_max": 787225649,
+            "sizes_known": 30
+          },
+          "2026-10": {
+            "days_in_period": 31,
+            "granules": 31,
+            "missing_dates": [],
+            "bytes_total": 23506492593,
+            "bytes_min": 746331327,
+            "bytes_max": 767890056,
+            "sizes_known": 31
+          },
+          "2026-11": {
+            "days_in_period": 14,
+            "granules": 13,
+            "missing_dates": [
+              "2026-11-14"
+            ],
+            "bytes_total": 9608346018,
+            "bytes_min": 710318017,
+            "bytes_max": 752979574,
+            "sizes_known": 13
+          }
+        },
+        "missing_days_total": 1
+      },
+      "granules": [
+        {
+          "granule_ur": "20260815090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-08-15",
+          "begin": "2026-08-14T21:00:00.000Z",
+          "end": "2026-08-15T21:00:00.000Z",
+          "file_name": "20260815090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 741524106,
+          "checksum": "4d3c83b17679e4c6c5ae5494688d2230",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-08-24T07:54:09.376Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260815090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260816090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-08-16",
+          "begin": "2026-08-15T21:00:00.000Z",
+          "end": "2026-08-16T21:00:00.000Z",
+          "file_name": "20260816090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 749120166,
+          "checksum": "3c4a088f9da40f47574435ecb372a30b",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-08-25T07:52:08.348Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260816090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260817090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-08-17",
+          "begin": "2026-08-16T21:00:00.000Z",
+          "end": "2026-08-17T21:00:00.000Z",
+          "file_name": "20260817090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 752512717,
+          "checksum": "3b5f971fdf7a2af2e10f9f53d6d2b47c",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-08-26T07:53:10.077Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260817090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260818090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-08-18",
+          "begin": "2026-08-17T21:00:00.000Z",
+          "end": "2026-08-18T21:00:00.000Z",
+          "file_name": "20260818090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 754446210,
+          "checksum": "7b1d89cb845e295de4b97bf895b1b3fa",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-08-27T07:53:08.370Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260818090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260819090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-08-19",
+          "begin": "2026-08-18T21:00:00.000Z",
+          "end": "2026-08-19T21:00:00.000Z",
+          "file_name": "20260819090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 753610354,
+          "checksum": "8f581f99b3bee3264f7313b09c611b54",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-08-28T07:52:07.683Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260819090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260820090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-08-20",
+          "begin": "2026-08-19T21:00:00.000Z",
+          "end": "2026-08-20T21:00:00.000Z",
+          "file_name": "20260820090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 756200280,
+          "checksum": "c127b6786354415647563a44e6a893fe",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-08-29T07:53:07.376Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260820090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260821090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-08-21",
+          "begin": "2026-08-20T21:00:00.000Z",
+          "end": "2026-08-21T21:00:00.000Z",
+          "file_name": "20260821090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 758505203,
+          "checksum": "0bb402f9d18a7013baadd3e2177231ab",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-08-30T07:53:09.616Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260821090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260822090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-08-22",
+          "begin": "2026-08-21T21:00:00.000Z",
+          "end": "2026-08-22T21:00:00.000Z",
+          "file_name": "20260822090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 746732975,
+          "checksum": "9b28655112cdc6788f1db2d12f19ee78",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-08-31T07:53:09.334Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260822090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260823090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-08-23",
+          "begin": "2026-08-22T21:00:00.000Z",
+          "end": "2026-08-23T21:00:00.000Z",
+          "file_name": "20260823090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 726554783,
+          "checksum": "d88fceca862ac8fa4590aff1e8d75c5b",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-09-01T07:52:08.507Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260823090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260824090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-08-24",
+          "begin": "2026-08-23T21:00:00.000Z",
+          "end": "2026-08-24T21:00:00.000Z",
+          "file_name": "20260824090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 740913541,
+          "checksum": "84c6c3d10257e26e6e968ee47e26e32e",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-09-02T07:53:08.867Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260824090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260825090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-08-25",
+          "begin": "2026-08-24T21:00:00.000Z",
+          "end": "2026-08-25T21:00:00.000Z",
+          "file_name": "20260825090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 751334350,
+          "checksum": "2f7033b1409c624327cbd662e599537e",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-09-03T07:53:12.646Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260825090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260826090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-08-26",
+          "begin": "2026-08-25T21:00:00.000Z",
+          "end": "2026-08-26T21:00:00.000Z",
+          "file_name": "20260826090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 756366762,
+          "checksum": "33826944df1f4cd6cbb9e6bd37608b7a",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-09-04T07:53:12.604Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260826090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260827090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-08-27",
+          "begin": "2026-08-26T21:00:00.000Z",
+          "end": "2026-08-27T21:00:00.000Z",
+          "file_name": "20260827090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 757621150,
+          "checksum": "5160d72047e73267dffbddc67d35e5e8",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-09-05T07:53:14.224Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260827090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260828090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-08-28",
+          "begin": "2026-08-27T21:00:00.000Z",
+          "end": "2026-08-28T21:00:00.000Z",
+          "file_name": "20260828090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 757248925,
+          "checksum": "f27bf451fca6115309fcec640c261a25",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-09-06T07:52:11.207Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260828090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260829090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-08-29",
+          "begin": "2026-08-28T21:00:00.000Z",
+          "end": "2026-08-29T21:00:00.000Z",
+          "file_name": "20260829090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 755542389,
+          "checksum": "027d3a4c501c65531e6d1ebfe117013b",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-09-07T07:54:07.830Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260829090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260830090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-08-30",
+          "begin": "2026-08-29T21:00:00.000Z",
+          "end": "2026-08-30T21:00:00.000Z",
+          "file_name": "20260830090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 755225416,
+          "checksum": "9d180085181331ab38a556de5022c24d",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-09-08T07:54:08.322Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260830090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260831090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-08-31",
+          "begin": "2026-08-30T21:00:00.000Z",
+          "end": "2026-08-31T21:00:00.000Z",
+          "file_name": "20260831090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 755245192,
+          "checksum": "899958f690e95bafac1f1031fe732490",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-09-09T07:53:12.155Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260831090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260901090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-09-01",
+          "begin": "2026-08-31T21:00:00.000Z",
+          "end": "2026-09-01T21:00:00.000Z",
+          "file_name": "20260901090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 754431752,
+          "checksum": "8f46adb01cf748d6dddb84751384675c",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-09-10T07:54:10.924Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260901090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260902090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-09-02",
+          "begin": "2026-09-01T21:00:00.000Z",
+          "end": "2026-09-02T21:00:00.000Z",
+          "file_name": "20260902090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 759104186,
+          "checksum": "7473036b992293ce516c8003c6a7e5f5",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-09-11T07:54:10.835Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260902090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260903090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-09-03",
+          "begin": "2026-09-02T21:00:00.000Z",
+          "end": "2026-09-03T21:00:00.000Z",
+          "file_name": "20260903090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 761851683,
+          "checksum": "5652f753e02479757aa71005b78479c5",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-09-12T07:54:08.665Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260903090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260904090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-09-04",
+          "begin": "2026-09-03T21:00:00.000Z",
+          "end": "2026-09-04T21:00:00.000Z",
+          "file_name": "20260904090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 767741046,
+          "checksum": "5be011f27e82666ee7565116570b876a",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-09-13T07:52:10.232Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260904090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260905090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-09-05",
+          "begin": "2026-09-04T21:00:00.000Z",
+          "end": "2026-09-05T21:00:00.000Z",
+          "file_name": "20260905090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 771161479,
+          "checksum": "c5de3f49dfa8ddce8911ec4150c84c4c",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-09-14T07:53:10.877Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260905090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260906090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-09-06",
+          "begin": "2026-09-05T21:00:00.000Z",
+          "end": "2026-09-06T21:00:00.000Z",
+          "file_name": "20260906090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 772114615,
+          "checksum": "5fb11f8a368c5d2334ee005863f2310e",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-09-15T07:52:08.602Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260906090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260907090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-09-07",
+          "begin": "2026-09-06T21:00:00.000Z",
+          "end": "2026-09-07T21:00:00.000Z",
+          "file_name": "20260907090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 772198549,
+          "checksum": "856775dd4ea2eb3c6fca76868136bf04",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-09-16T07:53:09.490Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260907090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260908090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-09-08",
+          "begin": "2026-09-07T21:00:00.000Z",
+          "end": "2026-09-08T21:00:00.000Z",
+          "file_name": "20260908090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 771370774,
+          "checksum": "4580fe31c0eb2d1d7f5b70fcf86fb7ef",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-09-17T07:53:14.200Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260908090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260909090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-09-09",
+          "begin": "2026-09-08T21:00:00.000Z",
+          "end": "2026-09-09T21:00:00.000Z",
+          "file_name": "20260909090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 768463894,
+          "checksum": "e7ac8d7e1817914ea9f7bf960b9c27fc",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-09-18T07:53:11.595Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260909090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260910090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-09-10",
+          "begin": "2026-09-09T21:00:00.000Z",
+          "end": "2026-09-10T21:00:00.000Z",
+          "file_name": "20260910090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 782318076,
+          "checksum": "a6eaf272ac61e5584c7517dbc1ebf684",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-09-19T07:53:08.672Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260910090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260911090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-09-11",
+          "begin": "2026-09-10T21:00:00.000Z",
+          "end": "2026-09-11T21:00:00.000Z",
+          "file_name": "20260911090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 776556259,
+          "checksum": "ca564cfd6a0d11847854fbd179fc6d50",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-09-20T07:52:10.093Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260911090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260912090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-09-12",
+          "begin": "2026-09-11T21:00:00.000Z",
+          "end": "2026-09-12T21:00:00.000Z",
+          "file_name": "20260912090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 769695663,
+          "checksum": "c6be4d6914f5d9cd18000069c8bf3882",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-09-21T07:53:14.462Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260912090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260913090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-09-13",
+          "begin": "2026-09-12T21:00:00.000Z",
+          "end": "2026-09-13T21:00:00.000Z",
+          "file_name": "20260913090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 769970846,
+          "checksum": "a41eb061693126124dc04d7e2483b158",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-09-22T07:53:16.682Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260913090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260914090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-09-14",
+          "begin": "2026-09-13T21:00:00.000Z",
+          "end": "2026-09-14T21:00:00.000Z",
+          "file_name": "20260914090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 767268588,
+          "checksum": "e315324f1ac3fa8013cde79daf071e3c",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-09-23T07:53:11.299Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260914090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260915090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-09-15",
+          "begin": "2026-09-14T21:00:00.000Z",
+          "end": "2026-09-15T21:00:00.000Z",
+          "file_name": "20260915090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 762342191,
+          "checksum": "10b64a90fe52d76d2ae884d6643eb16b",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-09-24T07:53:08.096Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260915090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260916090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-09-16",
+          "begin": "2026-09-15T21:00:00.000Z",
+          "end": "2026-09-16T21:00:00.000Z",
+          "file_name": "20260916090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 760615820,
+          "checksum": "33bec357adbe416a397f2ab6da6cf9d4",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-09-25T07:52:08.218Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260916090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260917090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-09-17",
+          "begin": "2026-09-16T21:00:00.000Z",
+          "end": "2026-09-17T21:00:00.000Z",
+          "file_name": "20260917090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 762226718,
+          "checksum": "4d140392e2ff48fe3f382b12fc6ce009",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-09-26T07:53:09.162Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260917090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260918090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-09-18",
+          "begin": "2026-09-17T21:00:00.000Z",
+          "end": "2026-09-18T21:00:00.000Z",
+          "file_name": "20260918090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 763744564,
+          "checksum": "167fe6e79c4e859d9606a774653d4f21",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-09-27T07:53:11.141Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260918090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260919090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-09-19",
+          "begin": "2026-09-18T21:00:00.000Z",
+          "end": "2026-09-19T21:00:00.000Z",
+          "file_name": "20260919090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 766214648,
+          "checksum": "0ebfae640b810759d2b3867e497233b9",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-09-27T07:53:14.385Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260919090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260920090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-09-20",
+          "begin": "2026-09-19T21:00:00.000Z",
+          "end": "2026-09-20T21:00:00.000Z",
+          "file_name": "20260920090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 766315576,
+          "checksum": "d315975bd1327dc020417e3fb36d5019",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-09-29T07:53:09.654Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260920090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260921090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-09-21",
+          "begin": "2026-09-20T21:00:00.000Z",
+          "end": "2026-09-21T21:00:00.000Z",
+          "file_name": "20260921090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 778923859,
+          "checksum": "3778620189dc2d8d9e96b6bd51dc0f84",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-09-30T07:52:10.086Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260921090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260922090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-09-22",
+          "begin": "2026-09-21T21:00:00.000Z",
+          "end": "2026-09-22T21:00:00.000Z",
+          "file_name": "20260922090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 769877193,
+          "checksum": "9fe504fd612c3ddecf7e15234baf922c",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-10-01T07:52:14.974Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260922090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260923090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-09-23",
+          "begin": "2026-09-22T21:00:00.000Z",
+          "end": "2026-09-23T21:00:00.000Z",
+          "file_name": "20260923090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 771512033,
+          "checksum": "ba7bb2b0f04f3542981e28f8dab35fc9",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-10-02T07:53:12.781Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260923090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260924090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-09-24",
+          "begin": "2026-09-23T21:00:00.000Z",
+          "end": "2026-09-24T21:00:00.000Z",
+          "file_name": "20260924090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 771617720,
+          "checksum": "e3f9e0e1aba567b28cde8af0acca62dc",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-10-03T07:53:11.452Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260924090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260925090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-09-25",
+          "begin": "2026-09-24T21:00:00.000Z",
+          "end": "2026-09-25T21:00:00.000Z",
+          "file_name": "20260925090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 770708704,
+          "checksum": "d9a38d2166940c5dea0d9b48c33bf8b9",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-10-04T08:54:09.737Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260925090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260926090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-09-26",
+          "begin": "2026-09-25T21:00:00.000Z",
+          "end": "2026-09-26T21:00:00.000Z",
+          "file_name": "20260926090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 787225649,
+          "checksum": "5fcdb6af9c0286da4275d2fb2650419a",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-10-05T07:52:12.006Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260926090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260927090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-09-27",
+          "begin": "2026-09-26T21:00:00.000Z",
+          "end": "2026-09-27T21:00:00.000Z",
+          "file_name": "20260927090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 763215355,
+          "checksum": "e6fa19712f94e1a88e7094155f6cd7e3",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-10-06T07:52:14.478Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260927090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260928090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-09-28",
+          "begin": "2026-09-27T21:00:00.000Z",
+          "end": "2026-09-28T21:00:00.000Z",
+          "file_name": "20260928090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 765472539,
+          "checksum": "acfeeba0beda93e2aa7da80e21cfe36c",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-10-07T07:54:07.026Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260928090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260929090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-09-29",
+          "begin": "2026-09-28T21:00:00.000Z",
+          "end": "2026-09-29T21:00:00.000Z",
+          "file_name": "20260929090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 766243729,
+          "checksum": "bffbe67f957bf05642a0c0c66c7ae5f2",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-10-08T07:54:07.309Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260929090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20260930090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-09-30",
+          "begin": "2026-09-29T21:00:00.000Z",
+          "end": "2026-09-30T21:00:00.000Z",
+          "file_name": "20260930090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 764807225,
+          "checksum": "ea641cc4c8b1dc6c0bd9689f3a576f8f",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-10-09T07:52:08.711Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260930090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261001090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-10-01",
+          "begin": "2026-09-30T21:00:00.000Z",
+          "end": "2026-10-01T21:00:00.000Z",
+          "file_name": "20261001090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 763906105,
+          "checksum": "bde04e198207f1ccfa47de0fdda8e621",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-10-10T07:52:08.162Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261001090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261002090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-10-02",
+          "begin": "2026-10-01T21:00:00.000Z",
+          "end": "2026-10-02T21:00:00.000Z",
+          "file_name": "20261002090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 755021285,
+          "checksum": "f0ad3ed0f4ea4aa44024ce113aa67d63",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-10-11T07:52:09.615Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261002090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261003090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-10-03",
+          "begin": "2026-10-02T21:00:00.000Z",
+          "end": "2026-10-03T21:00:00.000Z",
+          "file_name": "20261003090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 758836987,
+          "checksum": "791d757828259a6e679c11e175f19f52",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-10-12T07:54:09.148Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261003090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261004090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-10-04",
+          "begin": "2026-10-03T21:00:00.000Z",
+          "end": "2026-10-04T21:00:00.000Z",
+          "file_name": "20261004090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 763382077,
+          "checksum": "9ddd6d0237d964d1f17b256596785ce0",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-10-13T07:54:13.987Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261004090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261005090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-10-05",
+          "begin": "2026-10-04T21:00:00.000Z",
+          "end": "2026-10-05T21:00:00.000Z",
+          "file_name": "20261005090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 767890056,
+          "checksum": "84d68945aff8baf27d84fb7da0bd6a4b",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-10-14T07:53:14.301Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261005090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261006090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-10-06",
+          "begin": "2026-10-05T21:00:00.000Z",
+          "end": "2026-10-06T21:00:00.000Z",
+          "file_name": "20261006090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 766274681,
+          "checksum": "346d95db973da3aae3b253a559027afb",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-10-15T07:53:21.770Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261006090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261007090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-10-07",
+          "begin": "2026-10-06T21:00:00.000Z",
+          "end": "2026-10-07T21:00:00.000Z",
+          "file_name": "20261007090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 761919794,
+          "checksum": "519ed3cfc291a26fae4226f0b858151e",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-10-16T07:53:13.402Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261007090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261008090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-10-08",
+          "begin": "2026-10-07T21:00:00.000Z",
+          "end": "2026-10-08T21:00:00.000Z",
+          "file_name": "20261008090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 760819078,
+          "checksum": "b2aef55ab714611ed1be0f61df412348",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-10-17T07:53:12.325Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261008090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261009090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-10-09",
+          "begin": "2026-10-08T21:00:00.000Z",
+          "end": "2026-10-09T21:00:00.000Z",
+          "file_name": "20261009090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 759810329,
+          "checksum": "afcc21f9d106ae94c10c8cf52ffd6f2e",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-10-18T07:53:12.939Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261009090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261010090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-10-10",
+          "begin": "2026-10-09T21:00:00.000Z",
+          "end": "2026-10-10T21:00:00.000Z",
+          "file_name": "20261010090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 758410068,
+          "checksum": "f8627b9cb553917882d3ca8ed243deae",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-10-19T07:52:15.570Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261010090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261011090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-10-11",
+          "begin": "2026-10-10T21:00:00.000Z",
+          "end": "2026-10-11T21:00:00.000Z",
+          "file_name": "20261011090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 761235279,
+          "checksum": "eb19b7cc2b227433676b96a1d01a5e0b",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-10-20T17:13:53.175Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261011090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261012090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-10-12",
+          "begin": "2026-10-11T21:00:00.000Z",
+          "end": "2026-10-12T21:00:00.000Z",
+          "file_name": "20261012090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 764081841,
+          "checksum": "9e5cdf5a4310a343e505d01a220a6ed8",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-10-21T07:53:12.384Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261012090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261013090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-10-13",
+          "begin": "2026-10-12T21:00:00.000Z",
+          "end": "2026-10-13T21:00:00.000Z",
+          "file_name": "20261013090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 764318819,
+          "checksum": "2d42966871f71bd401351e222b0b000f",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-10-22T07:54:11.076Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261013090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261014090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-10-14",
+          "begin": "2026-10-13T21:00:00.000Z",
+          "end": "2026-10-14T21:00:00.000Z",
+          "file_name": "20261014090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 762546655,
+          "checksum": "3d9409ddffe56a16daaa74a20abfbc1e",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-10-23T07:54:10.551Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261014090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261015090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-10-15",
+          "begin": "2026-10-14T21:00:00.000Z",
+          "end": "2026-10-15T21:00:00.000Z",
+          "file_name": "20261015090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 762818338,
+          "checksum": "d06473b1fd373abd0635caa86d198dd6",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-10-24T07:53:10.445Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261015090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261016090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-10-16",
+          "begin": "2026-10-15T21:00:00.000Z",
+          "end": "2026-10-16T21:00:00.000Z",
+          "file_name": "20261016090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 762264847,
+          "checksum": "83dfa27b485b17c1cab05c31512a7612",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-10-25T07:53:11.539Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261016090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261017090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-10-17",
+          "begin": "2026-10-16T21:00:00.000Z",
+          "end": "2026-10-17T21:00:00.000Z",
+          "file_name": "20261017090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 759572106,
+          "checksum": "7e31521b7e6bb59a3b809850c0c0fd8b",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-10-26T07:54:10.746Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261017090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261018090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-10-18",
+          "begin": "2026-10-17T21:00:00.000Z",
+          "end": "2026-10-18T21:00:00.000Z",
+          "file_name": "20261018090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 760996921,
+          "checksum": "dfd68efd11435e275417799d5a0935e9",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-10-27T07:53:13.850Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261018090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261019090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-10-19",
+          "begin": "2026-10-18T21:00:00.000Z",
+          "end": "2026-10-19T21:00:00.000Z",
+          "file_name": "20261019090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 759321053,
+          "checksum": "19aa0c2142a3e3392c5c8c05f0227cee",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-10-28T07:53:30.422Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261019090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261020090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-10-20",
+          "begin": "2026-10-19T21:00:00.000Z",
+          "end": "2026-10-20T21:00:00.000Z",
+          "file_name": "20261020090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 755502803,
+          "checksum": "98bfe850a5543c94315f348e89d388b6",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-11-04T21:23:57.844Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261020090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261021090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-10-21",
+          "begin": "2026-10-20T21:00:00.000Z",
+          "end": "2026-10-21T21:00:00.000Z",
+          "file_name": "20261021090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 746331327,
+          "checksum": "c4b0c643b437c18d96d0b1cc6b33fdac",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-11-04T21:24:57.981Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261021090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261022090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-10-22",
+          "begin": "2026-10-21T21:00:00.000Z",
+          "end": "2026-10-22T21:00:00.000Z",
+          "file_name": "20261022090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 748739721,
+          "checksum": "0372acb274d2c20039a5773c8ae6bd7e",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-11-04T21:24:58.089Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261022090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261023090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-10-23",
+          "begin": "2026-10-22T21:00:00.000Z",
+          "end": "2026-10-23T21:00:00.000Z",
+          "file_name": "20261023090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 752033076,
+          "checksum": "bd211ca0ed25a42ffa5748eb26fae5f4",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-11-04T21:23:56.999Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261023090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261024090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-10-24",
+          "begin": "2026-10-23T21:00:00.000Z",
+          "end": "2026-10-24T21:00:00.000Z",
+          "file_name": "20261024090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 752897357,
+          "checksum": "d2d747beb2858bab1e3580a4b1d20612",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-11-04T21:24:57.905Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261024090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261025090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-10-25",
+          "begin": "2026-10-24T21:00:00.000Z",
+          "end": "2026-10-25T21:00:00.000Z",
+          "file_name": "20261025090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 751896073,
+          "checksum": "7f8d8549049b24eda838f9092a7a5e65",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-11-04T21:23:57.643Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261025090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261026090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-10-26",
+          "begin": "2026-10-25T21:00:00.000Z",
+          "end": "2026-10-26T21:00:00.000Z",
+          "file_name": "20261026090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 750848643,
+          "checksum": "d1928e85a765763d1c3203f7e9b4a486",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-11-04T21:24:58.100Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261026090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261027090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-10-27",
+          "begin": "2026-10-26T21:00:00.000Z",
+          "end": "2026-10-27T21:00:00.000Z",
+          "file_name": "20261027090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 749685134,
+          "checksum": "5e9656982c60bbf17c69d88ea72882f3",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-11-05T08:23:57.257Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261027090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261028090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-10-28",
+          "begin": "2026-10-27T21:00:00.000Z",
+          "end": "2026-10-28T21:00:00.000Z",
+          "file_name": "20261028090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 752249193,
+          "checksum": "4a6a6c4ae3129621290d54a3ed20d46d",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-11-06T08:23:57.018Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261028090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261029090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-10-29",
+          "begin": "2026-10-28T21:00:00.000Z",
+          "end": "2026-10-29T21:00:00.000Z",
+          "file_name": "20261029090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 755859589,
+          "checksum": "db790d30c63edc49b6eba0864ed8ab70",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-11-07T08:23:57.155Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261029090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261030090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-10-30",
+          "begin": "2026-10-29T21:00:00.000Z",
+          "end": "2026-10-30T21:00:00.000Z",
+          "file_name": "20261030090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 758010716,
+          "checksum": "eee8cb5ae63a6ccf4f32a747f2ee0825",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-11-08T08:23:56.328Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261030090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261031090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-10-31",
+          "begin": "2026-10-30T21:00:00.000Z",
+          "end": "2026-10-31T21:00:00.000Z",
+          "file_name": "20261031090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 759012642,
+          "checksum": "ff899c5a1b6024ce2f85d66afa2a88ae",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-11-09T08:22:58.121Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261031090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261101090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-11-01",
+          "begin": "2026-10-31T21:00:00.000Z",
+          "end": "2026-11-01T21:00:00.000Z",
+          "file_name": "20261101090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 752979574,
+          "checksum": "77d610348d74142c85f4fbf83caf1f0b",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-11-10T08:22:57.798Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261101090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261102090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-11-02",
+          "begin": "2026-11-01T21:00:00.000Z",
+          "end": "2026-11-02T21:00:00.000Z",
+          "file_name": "20261102090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 752011762,
+          "checksum": "7231e2794a1b21b714579924b3476559",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-11-11T08:23:57.117Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261102090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261103090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-11-03",
+          "begin": "2026-11-02T21:00:00.000Z",
+          "end": "2026-11-03T21:00:00.000Z",
+          "file_name": "20261103090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 745928285,
+          "checksum": "4fabab88c6602d94b1d2d3f29805973f",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-11-12T07:22:57.788Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261103090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261104090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-11-04",
+          "begin": "2026-11-03T21:00:00.000Z",
+          "end": "2026-11-04T21:00:00.000Z",
+          "file_name": "20261104090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 718583028,
+          "checksum": "f61a67e6445f0259c4622bc9d3741095",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-11-13T07:22:57.942Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261104090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261105090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-11-05",
+          "begin": "2026-11-04T21:00:00.000Z",
+          "end": "2026-11-05T21:00:00.000Z",
+          "file_name": "20261105090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 710318017,
+          "checksum": "8adf5943543ef680b3f0e0a25f436c72",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-11-14T07:22:58.210Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261105090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261106090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-11-06",
+          "begin": "2026-11-05T21:00:00.000Z",
+          "end": "2026-11-06T21:00:00.000Z",
+          "file_name": "20261106090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 729685288,
+          "checksum": "1b59ad0f9df1d26ae281384bd3b88ba9",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-11-14T08:22:56.720Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261106090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261107090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-11-07",
+          "begin": "2026-11-06T21:00:00.000Z",
+          "end": "2026-11-07T21:00:00.000Z",
+          "file_name": "20261107090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 741302710,
+          "checksum": "d07e5d2497daa2e2bc1eb30c09e98a77",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-11-14T08:22:56.277Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261107090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261108090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-11-08",
+          "begin": "2026-11-07T21:00:00.000Z",
+          "end": "2026-11-08T21:00:00.000Z",
+          "file_name": "20261108090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 744999183,
+          "checksum": "6a34967b8bc294bc7f126c7fe1e11771",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-11-14T08:23:56.624Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261108090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261109090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-11-09",
+          "begin": "2026-11-08T21:00:00.000Z",
+          "end": "2026-11-09T21:00:00.000Z",
+          "file_name": "20261109090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 743067239,
+          "checksum": "0aeb8d6ca8467e0e88e8168e5305cadc",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-11-14T08:23:56.567Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261109090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261110090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-11-10",
+          "begin": "2026-11-09T21:00:00.000Z",
+          "end": "2026-11-10T21:00:00.000Z",
+          "file_name": "20261110090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 743548548,
+          "checksum": "8e78a869ea0203bf3a7edb03de90ded8",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-11-14T09:22:57.062Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261110090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261111090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-11-11",
+          "begin": "2026-11-10T21:00:00.000Z",
+          "end": "2026-11-11T21:00:00.000Z",
+          "file_name": "20261111090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 746464783,
+          "checksum": "9df905e8fad69e7ba831418c711ed1c7",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-11-14T09:22:58.163Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261111090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261112090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-11-12",
+          "begin": "2026-11-11T21:00:00.000Z",
+          "end": "2026-11-12T21:00:00.000Z",
+          "file_name": "20261112090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 745288228,
+          "checksum": "9f9235a8d6d5753a08fd7d206c64da60",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-11-14T09:23:56.921Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261112090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        },
+        {
+          "granule_ur": "20261113090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1",
+          "date": "2026-11-13",
+          "begin": "2026-11-12T21:00:00.000Z",
+          "end": "2026-11-13T21:00:00.000Z",
+          "file_name": "20261113090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+          "size_bytes": 734169373,
+          "checksum": "8461ebe2864d69211d542c7fb96ed360",
+          "checksum_algorithm": "MD5",
+          "revision_date": "2026-11-14T09:23:57.173Z",
+          "https_url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20261113090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc"
+        }
+      ],
+      "endpoint": {
+        "probed": true,
+        "url": "https://archive.podaac.earthdata.nasa.gov/podaac-ops-cumulus-protected/MUR-JPL-L4-GLOB-v4.1/20260815090000-JPL-L4_GHRSST-SSTfnd-MUR-GLOB-v02.0-fv04.1.nc",
+        "bucket": "podaac-ops-cumulus-protected",
+        "head_status": 303,
+        "redirect_host": "deotb6e7tfubr.cloudfront.net",
+        "classification": "redirect_to_signed_url",
+        "content_length": "0",
+        "note": "HEAD only; anonymous GET was not attempted. Treat data access as requiring Earthdata Login until a credentialed pilot proves otherwise."
+      }
+    }
+  ]
+}

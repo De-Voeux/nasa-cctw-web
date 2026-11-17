@@ -103,6 +103,7 @@
 .insights-data ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.5; color: var(--source-text); }
 .insights-data li { margin: 4px 0; }
 .insights-data b { color: var(--text); font-weight: 600; }
+.insights-data a { color: var(--text); text-decoration: underline; text-underline-offset: 2px; }
 
 .not-assessed { margin-top: 6px; padding: 2px 16px 12px; border-radius: var(--radius-md); border: 1px dashed rgba(255, 255, 255, 0.2); }
 .not-assessed .section-title { margin-top: 14px; }
