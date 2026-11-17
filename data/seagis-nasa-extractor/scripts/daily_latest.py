@@ -66,18 +66,23 @@ def granule_days(concept_id: str) -> list[dt.date]:
 
 
 def db_days(dsn: str | None, since: dt.date) -> dict[str, set[dt.date]]:
-    """Observed days with a value since `since`, per dataset (POWER: per T2M, since CERES fields lag)."""
+    """Complete observed days since `since`, per dataset: a day counts only when it has a value in as many zones
+    as the best day of that dataset (a partly fetched day is fetched again). POWER: per T2M, since CERES lags."""
     if not dsn:
         return {}
     import psycopg
     with psycopg.connect(dsn, connect_timeout=20, application_name="seagis-daily") as c:
         rows = c.execute(
-            "select distinct dataset, date from public.seagis_daily_metrics "
+            "select dataset, date, count(distinct (region_id, subregion_id)) from public.seagis_daily_metrics "
             "where coalesce(data_type, 'observed') = 'observed' and mean is not null and date >= %s "
-            "and (dataset <> 'nasa_power' or variable = 'T2M')", (since,)).fetchall()
+            "and (dataset <> 'nasa_power' or variable = 'T2M') group by dataset, date", (since,)).fetchall()
+    full: dict[str, int] = {}
+    for d, _, n in rows:
+        full[d] = max(full.get(d, 0), n)
     out: dict[str, set[dt.date]] = {}
-    for d, day in rows:
-        out.setdefault(d, set()).add(day)
+    for d, day, n in rows:
+        if n >= full[d]:
+            out.setdefault(d, set()).add(day)
     return out
 
 
